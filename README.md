@@ -38,5 +38,5 @@ wrangler publish
 
 ## TODO
 
-1. Optional syntax highlighting page
-2. shortening URLs
+1. shortening URLs
+2. GUI upload page
