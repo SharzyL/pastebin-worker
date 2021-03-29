@@ -1,23 +1,74 @@
-const CHAR_GEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-_=@!';
+const CHAR_GEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@';
 const RAND_LEN = 4
+const PRIVATE_RAND_LEN = 24
+const SEP = '_'
 const MAX_LEN = 5 * 1024 * 1024
-const README = `A Pastebin based on cloudflare workers
 
-Usage: 
-
-$ cat foo.txt | curl -F "c=@-" ${BASE_URL}
+const README = `<!DOCTYPE html>
+<body>
+  <h1>Pastebin based on Cloudflare workers</h1>
+  <h2>Usage</h2>
+  
+  <p> Upload a paste </p>
+  <pre> <code>
+$ echo "make Cloudflare great again" | curl -F "c=@-" ${BASE_URL}
 {
-  "url": "${BASE_URL}ZlvK",
-  "short": "ZlvK",
-  "deleteUrl": "${BASE_URL}ZlvK-Mp2BkyvI5WyL3SZ09Dp8ennoPUQ="
+  "url": "${BASE_URL}qotL",
+  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
+  "isPrivate": false
+}%
+  </code> </pre>
+  
+  <p>Fetch the paste</p>
+  <pre><code>
+$ curl https://shz.al/qotL
+make Cloudflare great again
+  </code></pre>
+  
+  <p>Delete the paste</p>
+  <pre><code>
+$ curl -X DELETE ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
+the paste will be deleted in seconds
+  </code></pre>
+  
+  <p>Update the paste</p>
+  <pre><code>
+$ echo "make Cloudflare great again and again" | curl -F "c=@-" ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
+  </code></pre>
+  
+  <h2>Advanced Usage</h2>
+  
+  <p>Let the paste expire in 120 seconds</p>
+  <pre><code>
+$ echo "make Cloudflare great again" | curl -F "c=@-" -F "e=120" ${BASE_URL}
+{
+  "url": "${BASE_URL}qotL",
+  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
+  "isPrivate": false,
+  "expire": "120"
+}%
+  </code></pre>
+  
+  <p>Create a paste with longer path name for better privacy</p>
+  <pre><code>
+$ echo "make Cloudflare great again" | curl -F "c=@-" -F "p=true" ${BASE_URL}
+{
+  "url": "${BASE_URL}HaK8PuBqrLi5woH0cbTBi7uN",
+  "admin": "${BASE_URL}HaK8PuBqrLi5woH0cbTBi7uN_TWcWYDRL4SscGQ9P9n7tO7Vu6HU=",
+  "isPrivate": true,
+}%
+  </code></pre>
+  <h2>About</h2>
+  <p>API design is inspired by <a href='https://fars.ee'>fars.ee</a></p>
+  <p>Source code and error report: <a href='https://github.com/SharzyL/pastebin-worker'>SharzyL/pastebin-worker</a> </p>
+</body>`
+
+class WorkerError extends Error {
+  constructor(statusCode, ...params) {
+    super(...params);
+    this.statusCode = statusCode
+  }
 }
-
-$ curl ${BASE_URL}ZlvK
-foo bar foo bar meow meow
-
-$ curl -X DELETE "${BASE_URL}ZlvK-Mp2BkyvI5WyL3SZ09Dp8ennoPUQ="
-it will be deleted soon
-`
 
 addEventListener('fetch', event => {
   const { request } = event
@@ -34,98 +85,115 @@ async function handleRequest(request) {
       return await handleDelete(request)
     }
   } catch (e) {
-    return new request("unknown error", {status: 500})
+    console.log(e.stack)
+    if (e instanceof WorkerError) {
+      return new Response(e.message, {status: e.statusCode})
+    } else {
+      return new Response(e.message, {status: 500})
+    }
   }
 }
 
-/**
- * Respond to the post request
- * @param {Request} request
- */
 async function handlePost(request) {
   const contentType = request.headers.get("content-type") || ""
-
-  let content = ""
-
+  const url = new URL(request.url)
+  let form = {}
   if (contentType.includes("form")) {
     const formData = await request.formData()
-    for (const entry of formData.entries()) {
-      if (entry[0] === "c") content = entry[1]
-    }
+    for (const entry of formData.entries()) { form[entry[0]] = entry[1] }
+  } else {
+    throw new WorkerError(400, "bad usage, please use formdata")
+  }
+  const content = form["c"]
+  const isPrivate = form["p"] !== undefined
+  const expire = form["e"]
+
+  if (content === undefined) {
+    throw new WorkerError(400, "cannot find content in formdata")
+  } else if (content.length > MAX_LEN) {
+    throw new WorkerError(413, "payload too large")
   }
 
-  if (content.length > MAX_LEN) {
-    return new Response("file too large", {status: 400})
-  } else if (content.length === 0) {
-    return new Response("please upload via Formdata", {status: 400})
-  } else {
-    const created = await createPaste(content)
+  if (url.pathname.length === 1) {
+    const created = await createPaste(content, isPrivate, expire)
     return new Response(JSON.stringify(created, null, 2))
+  } else {
+    const { short, digest } = parsePath(url.pathname)
+    const item = await PB.getWithMetadata(short)
+    const date = item.metadata.postedAt
+    if (item.value === null) {
+      throw new WorkerError(404, "not found")
+    } else {
+      if (digest !== await hashWithSalt(item.metadata.postedAt + short)) {
+        throw new WorkerError(403, "bad handler")
+      } else {
+        const created = await createPaste(content, isPrivate, expire, short, date)
+        return new Response(JSON.stringify(created, null, 2))
+      }
+    }
   }
 }
 
-/**
- * Respond to the post request
- * @param {Request} request
- */
 async function handleGet(request) {
   const url = new URL(request.url)
-  const short = url.pathname.slice(1)
+  const { short } = parsePath(url.pathname)
   if (short.length === 0) {
-    return new Response(README)
+    return new Response(README, {
+      headers: {
+        "content-type": "text/html;charset=UTF-8",
+      }
+    })
   }
-  const val = await PB.get(short)
-  if (val === null) {
-    return new Response("not found", {status: 404})
-  } else {
-    return new Response(val)
+  const item = await PB.getWithMetadata(short)
+  if (item.value === null) {
+    throw new WorkerError(404, "not found")
   }
+  return new Response(item.value)
 }
 
-/**
- * Respond to the DELETE request
- * @param {Request} request
- */
 async function handleDelete(request) {
-  const path = new URL(request.url).pathname
-  if (path.length < RAND_LEN + 3) {
-    console.log(RAND_LEN + 1)
-    return new Response("bad format", {status: 400})
-  }
-  const short = path.slice(1, 1 + RAND_LEN)
-  const digest = path.slice(2 + RAND_LEN)
+  const url = new URL(request.url)
+  const { short, digest } = parsePath(url.pathname)
   const item = await PB.getWithMetadata(short)
-  console.log(short)
-  console.log(item)
   if (item.value === null) {
-    return new Response("not found", {status: 400})
+    throw new WorkerError(404, "not found")
   } else {
     if (digest !== await hashWithSalt(item.metadata.postedAt + short)) {
-      return new Response("bad handler", {status:400})
+      throw new WorkerError(403, "bad handler")
     } else {
       await PB.delete(short)
-      return new Response("it will be deleted soon")
+      return new Response("the paste will be deleted in seconds")
     }
   }
 }
 
-async function createPaste(content) {
-  let date = new Date()
-  let short = null
-  while (true) {
-    short = genRandStr(RAND_LEN);
-    if (await PB.get(short) === null) break
+async function createPaste(content, isPrivate, expire, short, date) {
+  date = date || new Date().toISOString()
+
+  let short_len = RAND_LEN
+  if (isPrivate) short_len = PRIVATE_RAND_LEN
+
+  if (short === undefined) {
+    while (true) {
+      short = genRandStr(short_len);
+      if (await PB.get(short) === null) break
+    }
   }
+
   await PB.put(short, content, {
+    expirationTtl: expire,
     metadata: {
-      postedAt: String(date),
+      postedAt: date,
     }
   })
   const digest = await hashWithSalt(date + short)
+  let accessUrl = BASE_URL + short
+  const adminUrl = BASE_URL + short + SEP + digest
   return {
-    url: BASE_URL + short,
-    short: short,
-    deleteUrl: BASE_URL + short + '-' + digest
+    url: accessUrl,
+    admin: adminUrl,
+    isPrivate: isPrivate,
+    expire: expire
   }
 }
 
@@ -144,4 +212,12 @@ async function hashWithSalt(data) {
     {name: "SHA-1"}, text
   )
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
+}
+
+function parsePath(pathname) {
+  let idx = pathname.indexOf(SEP)
+  if (idx < 0) idx = pathname.length
+  const short = pathname.slice(1, idx)
+  const digest = pathname.slice(idx + 1)
+  return { short, digest }
 }
