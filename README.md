@@ -38,5 +38,4 @@ wrangler publish
 
 ## TODO
 
-1. shortening URLs
-2. GUI upload page
+1. GUI upload page

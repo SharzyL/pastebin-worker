@@ -80,25 +80,26 @@ async function handlePost(request) {
 
 async function handleGet(request) {
   const url = new URL(request.url)
-  const { short } = parsePath(url.pathname)
+  const { role, short } = parsePath(url.pathname)
   if (short.length === 0) {
     return new Response(helpHTML, {
-      headers: {
-        "content-type": "text/html;charset=UTF-8",
-      }
+      headers: { "content-type": "text/html;charset=UTF-8", }
     })
   }
+
   const item = await PB.getWithMetadata(short)
   if (item.value === null) {
     throw new WorkerError(404, "not found")
   }
 
+  if (role === "u") {
+    return Response.redirect(item.value, 301)
+  }
+
   const lang = url.searchParams.get("lang")
   if (lang) {
     return new Response(makeHighlight(item.value, lang), {
-      headers: {
-        "content-type": "text/html;charset=UTF-8",
-      }
+      headers: { "content-type": "text/html;charset=UTF-8", }
     })
   }
 
@@ -169,9 +170,14 @@ async function hashWithSalt(data) {
 }
 
 function parsePath(pathname) {
+  let role = ""
+  if (pathname[2] === "/") {
+    role = pathname[1]
+    pathname = pathname.slice(2)
+  }
   let idx = pathname.indexOf(SEP)
   if (idx < 0) idx = pathname.length
   const short = pathname.slice(1, idx)
   const digest = pathname.slice(idx + 1)
-  return { short, digest }
+  return { role, short, digest }
 }

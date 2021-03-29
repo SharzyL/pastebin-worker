@@ -45,6 +45,11 @@ $ echo "make Cloudflare great again and again" | curl -F "c=@-" ${BASE_URL}qotL_
 $ curl ${BASE_URL}qotL?lang=shell
 </code></pre>
 
+<p>Url redirect</p>
+<pre><code>
+$ curl -L ${BASE_URL}u/qotL
+</code></pre>
+
 <p>Let the paste expire in 120 seconds</p>
 <pre><code>
 $ echo "make Cloudflare great again" | curl -F "c=@-" -F "e=120" ${BASE_URL}
