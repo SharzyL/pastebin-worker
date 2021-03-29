@@ -1,75 +1,11 @@
+import { helpHTML } from './help'
+import { makeHighlight } from './highlight'
+
 const CHAR_GEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@';
 const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
 const SEP = '_'
 const MAX_LEN = 5 * 1024 * 1024
-
-const README = `<!DOCTYPE html>
-<body>
-  <h1>Pastebin based on Cloudflare workers</h1>
-  <h2>Usage</h2>
-  
-  <p> Upload a paste </p>
-  <pre> <code>
-$ echo "make Cloudflare great again" | curl -F "c=@-" ${BASE_URL}
-{
-  "url": "${BASE_URL}qotL",
-  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
-  "isPrivate": false
-}%
-  </code> </pre>
-  
-  <p>Fetch the paste</p>
-  <pre><code>
-$ curl ${BASE_URL}qotL
-make Cloudflare great again
-  </code></pre>
-  
-  <p>Delete the paste</p>
-  <pre><code>
-$ curl -X DELETE ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
-the paste will be deleted in seconds
-
-$ curl ${BASE_URL}qotL
-not found%
-  </code></pre>
-  
-  <p>Update the paste</p>
-  <pre><code>
-$ echo "make Cloudflare great again and again" | curl -F "c=@-" ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
-{
-  "url": "${BASE_URL}qotL",
-  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
-  "isPrivate": false
-}%
-  </code></pre>
-  
-  <h2>Advanced Usage</h2>
-  
-  <p>Let the paste expire in 120 seconds</p>
-  <pre><code>
-$ echo "make Cloudflare great again" | curl -F "c=@-" -F "e=120" ${BASE_URL}
-{
-  "url": "${BASE_URL}qotL",
-  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
-  "isPrivate": false,
-  "expire": "120"
-}%
-  </code></pre>
-  
-  <p>Create a paste with longer path name for better privacy</p>
-  <pre><code>
-$ echo "make Cloudflare great again" | curl -F "c=@-" -F "p=true" ${BASE_URL}
-{
-  "url": "${BASE_URL}HaK8PuBqrLi5woH0cbTBi7uN",
-  "admin": "${BASE_URL}HaK8PuBqrLi5woH0cbTBi7uN_TWcWYDRL4SscGQ9P9n7tO7Vu6HU=",
-  "isPrivate": true,
-}%
-  </code></pre>
-  <h2>About</h2>
-  <p>API design is inspired by <a href='https://fars.ee'>fars.ee</a></p>
-  <p>Source code and error report: <a href='https://github.com/SharzyL/pastebin-worker'>SharzyL/pastebin-worker</a> </p>
-</body>`
 
 class WorkerError extends Error {
   constructor(statusCode, ...params) {
@@ -146,7 +82,7 @@ async function handleGet(request) {
   const url = new URL(request.url)
   const { short } = parsePath(url.pathname)
   if (short.length === 0) {
-    return new Response(README, {
+    return new Response(helpHTML, {
       headers: {
         "content-type": "text/html;charset=UTF-8",
       }
@@ -156,6 +92,16 @@ async function handleGet(request) {
   if (item.value === null) {
     throw new WorkerError(404, "not found")
   }
+
+  const lang = url.searchParams.get("lang")
+  if (lang) {
+    return new Response(makeHighlight(item.value, lang), {
+      headers: {
+        "content-type": "text/html;charset=UTF-8",
+      }
+    })
+  }
+
   return new Response(item.value)
 }
 
