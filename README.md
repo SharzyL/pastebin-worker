@@ -1,5 +1,7 @@
 # A pastebin based on Cloudflare Workers
 
+See [shz.al](https://shz.al) for usage and examples. 
+
 ## Deploy
 
 Install [wrangler](https://github.com/cloudflare/wrangler), 
@@ -33,3 +35,8 @@ Publish it
 ```shell
 wrangler publish
 ```
+
+## TODO
+
+1. Optional syntax highlighting page
+2. shortening URLs
