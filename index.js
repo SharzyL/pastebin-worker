@@ -21,7 +21,7 @@ $ echo "make Cloudflare great again" | curl -F "c=@-" ${BASE_URL}
   
   <p>Fetch the paste</p>
   <pre><code>
-$ curl https://shz.al/qotL
+$ curl ${BASE_URL}qotL
 make Cloudflare great again
   </code></pre>
   
@@ -29,11 +29,19 @@ make Cloudflare great again
   <pre><code>
 $ curl -X DELETE ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
 the paste will be deleted in seconds
+
+$ curl ${BASE_URL}qotL
+not found%
   </code></pre>
   
   <p>Update the paste</p>
   <pre><code>
 $ echo "make Cloudflare great again and again" | curl -F "c=@-" ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
+{
+  "url": "${BASE_URL}qotL",
+  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
+  "isPrivate": false
+}%
   </code></pre>
   
   <h2>Advanced Usage</h2>
