@@ -58,6 +58,7 @@ async function handlePost(request) {
     throw new WorkerError(413, "payload too large")
   }
 
+  if (/^\s*$/.test(expire)) expire = undefined
   if (expire !== undefined) {
     expire = parseInt(expire)
     if (isNaN(expire)) {

@@ -35,7 +35,3 @@ Publish it
 ```shell
 wrangler publish
 ```
-
-## TODO
-
-1. GUI upload page

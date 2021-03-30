@@ -16,7 +16,7 @@ export const helpHTML = `
   <label>
     <textarea placeholder='Put your paste here' id="c" name='c' rows='20' style="width: 100%"></textarea>
   </label>
-  <input type="submit" value="Submit" formaction="https://shz.al" formmethod="POST">
+  <input type="submit" value="Submit" formaction="${BASE_URL}" formmethod="POST">
 </form>
 
 <h2>CLI Usage</h2>
