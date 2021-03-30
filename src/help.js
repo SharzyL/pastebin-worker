@@ -18,7 +18,7 @@ export const helpHTML = `
     <input id="e" placeholder='Expire in (sec)' name='e' type='number' min='60'/>
   </div>
   <label>
-    <textarea placeholder='Put your paste here' id="c" name='c' rows='20' style="width: 100%"></textarea>
+    <textarea placeholder='Put your paste here' id="c" name='c' rows='20' style="width: 100%; font-family: monospace; font-size: 14px"></textarea>
   </label>
   <input type="submit" value="Submit" formaction="${BASE_URL}" formmethod="POST">
 </form>
