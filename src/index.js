@@ -50,7 +50,7 @@ async function handlePost(request) {
   }
   const content = form["c"]
   const isPrivate = form["p"] !== undefined
-  const expire = form["e"]
+  let expire = form["e"]
 
   if (content === undefined) {
     throw new WorkerError(400, "cannot find content in formdata")
@@ -58,7 +58,17 @@ async function handlePost(request) {
     throw new WorkerError(413, "payload too large")
   }
 
-  if (url.pathname.length === 1) {
+  if (expire !== undefined) {
+    expire = parseInt(expire)
+    if (isNaN(expire)) {
+      throw new WorkerError(400, "cannot parse expire as an integer")
+    }
+    if (expire < 60) {
+      throw new WorkerError(400, "expire should be a integer greater than 60")
+    }
+  }
+
+  if (url.pathname === '/') {
     const created = await createPaste(content, isPrivate, expire)
     return new Response(JSON.stringify(created, null, 2))
   } else {
@@ -72,7 +82,9 @@ async function handlePost(request) {
         throw new WorkerError(403, "bad handler")
       } else {
         const created = await createPaste(content, isPrivate, expire, short, date)
-        return new Response(JSON.stringify(created, null, 2))
+        return new Response(JSON.stringify(created, null, 2), {
+          headers: { "content-type": "application/json;charset=UTF-8"}
+        })
       }
     }
   }

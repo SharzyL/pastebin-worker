@@ -1,8 +1,25 @@
 export const helpHTML = `
 <!DOCTYPE html>
 <body>
-<h1>Pastebin based on Cloudflare workers</h1>
-<h2>Usage</h2>
+
+<h1>Yet Another Pastebin</h1>
+<p>This is a pastebin deployed on Cloudflare workers, depending on its KV storage.
+  It is designed to be easy to deploy, and friendly for CLI usage. </p>
+
+<form enctype="multipart/form-data">
+  <div>
+    <input id="p" type="checkbox" name="p">
+    <label for="p">Private paste</label>
+    <input id="e" name='e' type='number' min='60'/>
+    <label for="e">Expire in seconds (at least 60)</label>
+  </div>
+  <label>
+    <textarea placeholder='Put your paste here' id="c" name='c' rows='20' style="width: 100%"></textarea>
+  </label>
+  <input type="submit" value="Submit" formaction="https://shz.al" formmethod="POST">
+</form>
+
+<h2>CLI Usage</h2>
 <p> Upload a paste </p>
 <pre><code>$ echo "make Cloudflare great again" | curl -F "c=@-" ${BASE_URL}
 {
@@ -33,11 +50,11 @@ not found% </code></pre>
 <h2>Advanced Usage</h2>
 
 <p>Fetch the paste with syntax highlighting</p>
-<pre><code>$ curl ${BASE_URL}qotL?lang=shell
+<pre><code>$ curl ${BASE_URL}48wp?lang=makefile
 </code></pre>
 
 <p>Url redirect</p>
-<pre><code>$ curl -L ${BASE_URL}u/qotL
+<pre><code>$ curl -L ${BASE_URL}u/i-p-
 </code></pre>
 
 <p>Let the paste expire in 120 seconds</p>
@@ -60,4 +77,5 @@ not found% </code></pre>
 <h2>About</h2>
 <p>API design is inspired by <a href='https://fars.ee'>fars.ee</a></p>
 <p>Source code and error report: <a href='https://github.com/SharzyL/pastebin-worker'>SharzyL/pastebin-worker</a> </p>
-</body>`
+</body>
+`
