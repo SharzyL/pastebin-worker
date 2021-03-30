@@ -3,6 +3,7 @@ export const helpHTML = `
 <head>
   <title>Yet another pastebin</title>
   <link rel="stylesheet" href="https://pages.github.com/assets/css/style.css"/>
+  <link rel="icon" href="${FAVICON_URL}" type="image/png"/>
 </head>
 <body>
 <div class="container-lg px-3 my-5 markdown-body">
@@ -12,15 +13,15 @@ export const helpHTML = `
 <p><b>Philosophy</b>: effortless deployment, friendly CLI usage, rich functionality. </p>
 
 <form enctype="multipart/form-data">
-  <div>
-    <input id="p" type="checkbox" name="p">
-    <label for="p">Private paste</label>
-    <input id="e" placeholder='Expire in (sec)' name='e' type='number' min='60'/>
-  </div>
   <label>
     <textarea placeholder='Put your paste here' id="c" name='c' rows='20' style="width: 100%; font-family: monospace; font-size: 14px"></textarea>
   </label>
-  <input type="submit" value="Submit" formaction="${BASE_URL}" formmethod="POST">
+  <div style="display: flex; align-items: center">
+    <input id="p" type="checkbox" name="p">
+    <label for="p" style="flex: 1">Private paste</label>
+    <input id="e" placeholder='Expire in (secs)' name='e' type='number' min='60' style="width: 10em"/>
+    <input type="submit" value="Submit" formaction="${BASE_URL}" formmethod="POST">
+  </div>
 </form>
 
 <h2>CLI Usage</h2>

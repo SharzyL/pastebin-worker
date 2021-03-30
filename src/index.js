@@ -93,13 +93,13 @@ async function handlePost(request) {
 
 async function handleGet(request) {
   const url = new URL(request.url)
-  const { role, short } = parsePath(url.pathname)
-  if (short.length === 0) {
+  if (url.pathname === '/') {
     return new Response(helpHTML, {
       headers: { "content-type": "text/html;charset=UTF-8", }
     })
   }
 
+  const { role, short } = parsePath(url.pathname)
   const item = await PB.getWithMetadata(short)
   if (item.value === null) {
     throw new WorkerError(404, "not found")
