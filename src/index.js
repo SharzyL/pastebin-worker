@@ -1,5 +1,6 @@
-import { helpHTML } from './help'
+import { helpHTML } from './indexPage'
 import { makeHighlight } from './highlight'
+import { makeUploadedPage } from './uploadedPage'
 
 const CHAR_GEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@';
 const RAND_LEN = 4
@@ -50,6 +51,7 @@ async function handlePost(request) {
   }
   const content = form["c"]
   const isPrivate = form["p"] !== undefined
+  const isHuman = form["h"] !== undefined  // return a JSON or a human friendly page?
   let expire = form["e"]
 
   if (content === undefined) {
@@ -65,13 +67,26 @@ async function handlePost(request) {
       throw new WorkerError(400, "cannot parse expire as an integer")
     }
     if (expire < 60) {
-      throw new WorkerError(400, "expire should be a integer greater than 60")
+      throw new WorkerError(400, "due to limitation of Cloudflare, expire should be a integer greater than 60")
+    }
+  }
+
+  function makeResponse(created) {
+    if (isHuman) {
+      console.log('true')
+      return new Response(makeUploadedPage(created), {
+        headers: { "content-type": "text/html;charset=UTF-8", }
+      })
+    } else {
+      console.log('false')
+      return new Response(JSON.stringify(created, null, 2), {
+        headers: { "content-type": "application/json;charset=UTF-8"}
+      })
     }
   }
 
   if (url.pathname === '/') {
-    const created = await createPaste(content, isPrivate, expire)
-    return new Response(JSON.stringify(created, null, 2))
+    return makeResponse(await createPaste(content, isPrivate, expire))
   } else {
     const { short, digest } = parsePath(url.pathname)
     const item = await PB.getWithMetadata(short)
@@ -82,10 +97,7 @@ async function handlePost(request) {
       if (digest !== await hashWithSalt(item.metadata.postedAt + short)) {
         throw new WorkerError(403, "bad handler")
       } else {
-        const created = await createPaste(content, isPrivate, expire, short, date)
-        return new Response(JSON.stringify(created, null, 2), {
-          headers: { "content-type": "application/json;charset=UTF-8"}
-        })
+        return makeResponse(await createPaste(content, isPrivate, expire, short, date))
       }
     }
   }

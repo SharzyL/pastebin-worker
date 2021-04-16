@@ -1,6 +1,7 @@
 export const helpHTML = `
 <!DOCTYPE html>
 <head>
+  <meta charset='UTF-8'>
   <title>Yet another pastebin</title>
   <link rel="stylesheet" href="https://pages.github.com/assets/css/style.css"/>
   <link rel="icon" href="${FAVICON_URL}" type="image/png"/>
@@ -17,10 +18,13 @@ export const helpHTML = `
     <textarea placeholder='Put your paste here' id="c" name='c' rows='20' style="width: 100%; font-family: monospace; font-size: 14px"></textarea>
   </label>
   <div style="display: flex; align-items: center">
-    <input id="p" type="checkbox" name="p">
-    <label for="p" style="flex: 1">Private paste</label>
+    <div style="flex: 1">
+      <input id="p" type="checkbox" name="p"/>
+      <label for="p"> Private paste</label>
+    </div>
     <input id="e" placeholder='Expire in (secs)' name='e' type='number' min='60' style="width: 10em"/>
-    <input type="submit" value="Submit" formaction="${BASE_URL}" formmethod="POST">
+    <input name='h' value="true" style="display: none"/>
+    <input type="submit" value="Submit" formaction="${BASE_URL}" formmethod="POST"/>
   </div>
 </form>
 
@@ -70,7 +74,9 @@ $ curl -L ${BASE_URL}u/i-p-
   "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
   "isPrivate": false,
   "expire": "120"
-}% </code></pre>
+}%
+$ sleep 120; curl ${BASE_URL}qotL
+not found%</code></pre>
 
 <p>Create a paste with longer path name for better privacy</p>
 <pre><code>$ echo "make Cloudflare great again" | curl -Fc=@- -Fp=true ${BASE_URL}
