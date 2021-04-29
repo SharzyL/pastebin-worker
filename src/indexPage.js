@@ -49,7 +49,7 @@ $ curl ${BASE_URL}qotL
 not found% </code></pre>
 
 <p>Update the paste</p>
-<pre><code>$ echo "make Cloudflare great again and again" | curl -Fc=@- ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
+<pre><code>$ echo "make Cloudflare great again and again" | curl -X POST -Fc=@- ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
 {
   "url": "${BASE_URL}qotL",
   "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
@@ -58,7 +58,7 @@ not found% </code></pre>
 
 <h2>Advanced Usage</h2>
 
-<p>Fetch the paste with syntax highlighting</p>
+<p>Fetch the paste with syntax highlighting. Refer to <a href="https://prismjs.com/#supported-languages">Prism</a> for language support information</p>
 <pre><code>$ curl ${BASE_URL}48wp?lang=makefile
 </code></pre>
 

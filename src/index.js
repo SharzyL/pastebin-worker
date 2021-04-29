@@ -23,11 +23,13 @@ addEventListener('fetch', event => {
 async function handleRequest(request) {
   try {
     if (request.method === "POST") {
-      return await handlePost(request)
+      return await handlePostOrPut(request, false)
     } else if (request.method === "GET") {
       return await handleGet(request)
     } else if (request.method === "DELETE") {
       return await handleDelete(request)
+    } else if (request.method === "PUT") {
+      return await handlePostOrPut(request, true)
     }
   } catch (e) {
     console.log(e.stack)
@@ -39,9 +41,11 @@ async function handleRequest(request) {
   }
 }
 
-async function handlePost(request) {
+async function handlePostOrPut(request, isPut) {
   const contentType = request.headers.get("content-type") || ""
   const url = new URL(request.url)
+
+  // parse formdata
   let form = {}
   if (contentType.includes("form")) {
     const formData = await request.formData()
@@ -54,13 +58,15 @@ async function handlePost(request) {
   const isHuman = form["h"] !== undefined  // return a JSON or a human friendly page?
   let expire = form["e"]
 
+  // check if paste content is legal
   if (content === undefined) {
     throw new WorkerError(400, "cannot find content in formdata")
   } else if (content.length > MAX_LEN) {
     throw new WorkerError(413, "payload too large")
   }
 
-  if (/^\s*$/.test(expire)) expire = undefined
+  // check if expiration is legal
+  if (/^\s*$/.test(expire)) expire = undefined  // if `expire` is empty string, set it to undefined
   if (expire !== undefined) {
     expire = parseInt(expire)
     if (isNaN(expire)) {
@@ -73,21 +79,17 @@ async function handlePost(request) {
 
   function makeResponse(created) {
     if (isHuman) {
-      console.log('true')
       return new Response(makeUploadedPage(created), {
-        headers: { "content-type": "text/html;charset=UTF-8", }
+        headers: { "content-type": "text/html;charset=UTF-8" }
       })
     } else {
-      console.log('false')
       return new Response(JSON.stringify(created, null, 2), {
-        headers: { "content-type": "application/json;charset=UTF-8"}
+        headers: { "content-type": "application/json;charset=UTF-8" }
       })
     }
   }
 
-  if (url.pathname === '/') {
-    return makeResponse(await createPaste(content, isPrivate, expire))
-  } else {
+  if (isPut) {
     const { short, digest } = parsePath(url.pathname)
     const item = await PB.getWithMetadata(short)
     const date = item.metadata.postedAt
@@ -100,6 +102,8 @@ async function handlePost(request) {
         return makeResponse(await createPaste(content, isPrivate, expire, short, date))
       }
     }
+  } else {
+    return makeResponse(await createPaste(content, isPrivate, expire))
   }
 }
 
@@ -195,8 +199,13 @@ async function hashWithSalt(data) {
 }
 
 function parsePath(pathname) {
+  // Example of paths (SEP='_'). Note: query string is not processed here
+  // example.com/abcd
+  // example.com/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
+  // example.com/u/abcd
+  // example.com/u/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
   let role = ""
-  if (pathname[2] === "/") {
+  if (pathname[2] === "/") {  // example.com/r/
     role = pathname[1]
     pathname = pathname.slice(2)
   }

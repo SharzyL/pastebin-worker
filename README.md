@@ -27,7 +27,6 @@ wrangler publish
 ```
 
 ## TODO
-1. Use `PUT` instead of `POST` method for updating paste. 
-2. Add support for custom mimetypes. 
-3. Support line-wise highlight for highlighted paste. 
+1. Add support for custom mimetypes. 
+2. Support line-wise highlight for highlighted paste. 
 
