@@ -55,6 +55,7 @@ async function handlePostOrPut(request, isPut) {
     throw new WorkerError(400, "bad usage, please use formdata")
   }
   const content = form["c"]
+  const name = form["n"]
   const isPrivate = form["p"] !== undefined
   const isHuman = form["h"] !== undefined  // return a JSON or a human friendly page?
   let expire = form["e"]
@@ -76,6 +77,11 @@ async function handlePostOrPut(request, isPut) {
     if (expire < 60) {
       throw new WorkerError(400, "due to limitation of Cloudflare, expire should be a integer greater than 60")
     }
+  }
+
+  // check if name is legal
+  if (name && !/[a-zA-Z0-9+-=@]{3,}/.test(name)) {
+    throw new WorkerError(400, "Name not satisfying regexp ~[a-zA-Z0-9+-=@]{3,}")
   }
 
   function makeResponse(created) {
@@ -104,7 +110,13 @@ async function handlePostOrPut(request, isPut) {
       }
     }
   } else {
-    return makeResponse(await createPaste(content, isPrivate, expire))
+    let short = undefined
+    if (name !== undefined) {
+      short = '~' + name
+      if (await PB.get(short) !== null)
+        throw new WorkerError(400, `name '${name}' is already used`)
+    }
+    return makeResponse(await createPaste(content, isPrivate, expire, short))
   }
 }
 

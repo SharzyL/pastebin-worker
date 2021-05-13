@@ -62,6 +62,14 @@ not found% </code></pre>
 <pre><code>$ curl ${BASE_URL}48wp?lang=makefile
 </code></pre>
 
+<p> Upload paste with custom address (address must satisfy regex <code>~[a-zA-Z0-9+-=@]{3,}</code>)</p>
+<pre><code>$ echo "make Cloudflare great again" | curl -Fc=@- -Fn=cloudflare ${BASE_URL}
+{
+  "url": "${BASE_URL}~cloudflare",
+  "admin": "${BASE_URL}~cloudflare_vOcQS1yv0v1UmIJOnfEKMAElCqE=",
+  "isPrivate": false
+}</code></pre>
+
 <p>Url 301 redirect</p>
 <pre><code>$ curl -fc=https://github.com/SharzyL/pastebin-worker/ ${BASE_URL}
 $ firefox ${BASE_URL}u/i-p-
