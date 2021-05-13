@@ -55,7 +55,7 @@ async function handlePostOrPut(request, isPut) {
     throw new WorkerError(400, "bad usage, please use formdata")
   }
   const content = form["c"]
-  const name = form["n"]
+  const name = form["n"] || undefined
   const isPrivate = form["p"] !== undefined
   const isHuman = form["h"] !== undefined  // return a JSON or a human friendly page?
   let expire = form["e"]
@@ -80,7 +80,7 @@ async function handlePostOrPut(request, isPut) {
   }
 
   // check if name is legal
-  if (name && !/[a-zA-Z0-9+-=@]{3,}/.test(name)) {
+  if (name !== undefined && !/[a-zA-Z0-9+-=@]{3,}/.test(name)) {
     throw new WorkerError(400, "Name not satisfying regexp ~[a-zA-Z0-9+-=@]{3,}")
   }
 
