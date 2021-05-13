@@ -2,6 +2,18 @@
 
 See [shz.al](https://shz.al) for usage and examples. 
 
+Features: 
+
+1. Share your paste with as short as 4 characters
+1. Customize the paste URL as you want
+1. Make changes to uploaded paste
+1. Delete your paste after uploading
+1. Let your paste deleted from the server after a period of time
+1. Syntax highlighting powered by Prism
+1. Redirect to custom URL
+1. Specify the mimetype when fetching your paste
+1. Optional longer paste URL for better privacy
+
 ## Deploy
 
 Install [wrangler](https://github.com/cloudflare/wrangler) and login your Cloudflare account. 
