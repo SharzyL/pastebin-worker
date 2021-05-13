@@ -22,6 +22,7 @@ export const helpHTML = `
       <input id="p" type="checkbox" name="p"/>
       <label for="p"> Private paste</label>
     </div>
+    <input id="n" placeholder='Custom Name' name='n' type='text' style="width: 10em"/>
     <input id="e" placeholder='Expire in (secs)' name='e' type='number' min='60' style="width: 10em"/>
     <input name='h' value="true" style="display: none"/>
     <input type="submit" value="Submit" formaction="/" formmethod="POST"/>
