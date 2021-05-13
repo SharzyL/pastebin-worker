@@ -135,7 +135,7 @@ async function handleGet(request) {
   const lang = url.searchParams.get("lang")
   if (lang) {
     return new Response(makeHighlight(item.value, lang), {
-      headers: { "content-type": `${mime};charset=UTF-8`, }
+      headers: { "content-type": `text/html;charset=UTF-8`, }
     })
   } else {
     return new Response(item.value, {
