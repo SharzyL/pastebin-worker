@@ -13,5 +13,9 @@
   "devDependencies": {
     "prettier": "^1.18.2",
     "webpack-cli": "^4.6.0"
+  },
+  "dependencies": {
+    "mime-db": "^1.46.0",
+    "mime-type": "^4.0.0"
   }
 }

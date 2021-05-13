@@ -1,6 +1,7 @@
 import { helpHTML } from './indexPage'
 import { makeHighlight } from './highlight'
 import { makeUploadedPage } from './uploadedPage'
+import MimeTypes from 'mime-type/with-db.js'
 
 const CHAR_GEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@';
 const RAND_LEN = 4
@@ -115,24 +116,33 @@ async function handleGet(request) {
     })
   }
 
-  const { role, short } = parsePath(url.pathname)
+  const { role, short, ext } = parsePath(url.pathname)
+  const mime = url.searchParams.get("mime") || MimeTypes.lookup(ext) || "text/plain"
+
   const item = await PB.getWithMetadata(short)
+
+  // when paste is not found
   if (item.value === null) {
     throw new WorkerError(404, "not found")
   }
 
+  // handle URL redirection
   if (role === "u") {
     return Response.redirect(item.value, 301)
   }
 
+  // handle language highlight
   const lang = url.searchParams.get("lang")
   if (lang) {
     return new Response(makeHighlight(item.value, lang), {
-      headers: { "content-type": "text/html;charset=UTF-8", }
+      headers: { "content-type": `${mime};charset=UTF-8`, }
+    })
+  } else {
+    return new Response(item.value, {
+      headers: { "content-type": `${mime};charset=UTF-8`, }
     })
   }
 
-  return new Response(item.value)
 }
 
 async function handleDelete(request) {
@@ -204,14 +214,19 @@ function parsePath(pathname) {
   // example.com/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
   // example.com/u/abcd
   // example.com/u/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
-  let role = ""
-  if (pathname[2] === "/") {  // example.com/r/
+  let role = "", ext = ""
+  if (pathname[2] === "/") {
     role = pathname[1]
     pathname = pathname.slice(2)
   }
-  let idx = pathname.indexOf(SEP)
-  if (idx < 0) idx = pathname.length
-  const short = pathname.slice(1, idx)
-  const digest = pathname.slice(idx + 1)
-  return { role, short, digest }
+  let startOfExt = pathname.indexOf('.')
+  if (startOfExt >= 0) {
+    ext = pathname.slice(startOfExt)
+    pathname = pathname.slice(0, startOfExt)
+  }
+  let endOfShort = pathname.indexOf(SEP)
+  if (endOfShort < 0) endOfShort = pathname.length  // when there is no SEP, digest is left empty
+  const short = pathname.slice(1, endOfShort)
+  const digest = pathname.slice(endOfShort + 1)
+  return { role, short, digest, ext }
 }

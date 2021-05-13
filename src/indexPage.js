@@ -24,7 +24,7 @@ export const helpHTML = `
     </div>
     <input id="e" placeholder='Expire in (secs)' name='e' type='number' min='60' style="width: 10em"/>
     <input name='h' value="true" style="display: none"/>
-    <input type="submit" value="Submit" formaction="${BASE_URL}" formmethod="POST"/>
+    <input type="submit" value="Submit" formaction="/" formmethod="POST"/>
   </div>
 </form>
 
@@ -62,10 +62,21 @@ not found% </code></pre>
 <pre><code>$ curl ${BASE_URL}48wp?lang=makefile
 </code></pre>
 
-<p>Url redirect</p>
+<p>Url 301 redirect</p>
 <pre><code>$ curl -fc=https://github.com/SharzyL/pastebin-worker/ ${BASE_URL}
-$ curl -L ${BASE_URL}u/i-p-
+$ firefox ${BASE_URL}u/i-p-
 </code></pre>
+
+<p>Specify mimetype</p>
+<pre><code>$ curl ${BASE_URL}qotL.json -v | grep 'content-type'
+...
+< content-type: application/json;charset=UTF-8
+...
+
+$ curl '${BASE_URL}qotL?mime=application/json' -v
+...
+< content-type: application/json;charset=UTF-8
+...</code></pre>
 
 <p>Let the paste expire in 120 seconds</p>
 <pre><code>$ echo "make Cloudflare great again" | curl -Fc=@- -Fe=120 ${BASE_URL}
@@ -75,6 +86,7 @@ $ curl -L ${BASE_URL}u/i-p-
   "isPrivate": false,
   "expire": "120"
 }%
+
 $ sleep 120; curl ${BASE_URL}qotL
 not found%</code></pre>
 

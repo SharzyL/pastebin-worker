@@ -27,6 +27,4 @@ wrangler publish
 ```
 
 ## TODO
-1. Add support for custom mimetypes. 
-2. Support line-wise highlight for highlighted paste. 
-
+1. Support line-wise highlight for highlighted paste. 
