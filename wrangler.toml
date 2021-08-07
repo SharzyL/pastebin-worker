@@ -1,5 +1,5 @@
 name = "pb"
-type = "webpack"
+type = "javascript"
 account_id = "1ddaf86dbca12e8f4fcaa76f32bb707d"
 workers_dev = true
 zone_id = "2fc9ecfb4871050ddd87299674f3039c"

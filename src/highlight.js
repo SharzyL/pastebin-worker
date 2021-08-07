@@ -1,13 +1,13 @@
-String.prototype.escapeHtml = function() {
+String.prototype.escapeHtml = function () {
   const tagsToReplace = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;'
-  };
-  return this.replace(/[&<>]/g, function(tag) {
-    return tagsToReplace[tag] || tag;
-  });
-};
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+  }
+  return this.replace(/[&<>]/g, function (tag) {
+    return tagsToReplace[tag] || tag
+  })
+}
 
 export function makeHighlight(content, lang) {
   return `<!DOCTYPE html>

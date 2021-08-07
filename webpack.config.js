@@ -1,5 +1,19 @@
-module.exports = {
-  context: __dirname,
+let config = {
   target: "webworker",
-  entry: "./src/index.js",
+  entry: {
+    worker: "./src/index.js",
+  },
+  devtool: "inline-nosources-source-map",
+}
+
+export default (env, argv) => {
+  if (argv && argv.mode === "development") {
+    config.devtool = "inline-nosources-source-map"
+    config.mode = "development"
+  } else {
+    config.devtool = false
+    config.mode = "production"
+  }
+
+  return config
 }

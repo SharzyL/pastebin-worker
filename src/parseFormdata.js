@@ -1,11 +1,11 @@
 export function parseFormdata(/** @type {Uint8Array} */ uint8Array) {
+  console.log(uint8Array)
   const parts = [...parseMimeMultipart(uint8Array)]
-  console.log(parts)
   let form = new Map()
   for (const part of parts) {
     let name = undefined
     for (const header of part.headers) {
-      if (header.name === 'Content-Disposition') {
+      if (header.name === "Content-Disposition") {
         for (const value of header.values) {
           const nameMatches = /^name="(.*)"$/.exec(value)
           if (nameMatches !== null) {
@@ -14,7 +14,6 @@ export function parseFormdata(/** @type {Uint8Array} */ uint8Array) {
         }
       }
     }
-    console.log('name final', name)
     if (name === undefined) {
       throw Error("cannot find names in formdata")
     }
@@ -23,7 +22,6 @@ export function parseFormdata(/** @type {Uint8Array} */ uint8Array) {
   }
   return form
 }
-
 
 // https://github.com/TomasHubelbauer/mime-multipart
 function* parseMimeMultipart(/** @type {Uint8Array} */ uint8Array) {

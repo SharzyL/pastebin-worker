@@ -1,13 +1,14 @@
-import { helpHTML } from './indexPage'
-import { makeHighlight } from './highlight'
-import { makeUploadedPage } from './uploadedPage'
-import MimeTypes from 'mime-type/with-db.js'
-import { parseFormdata } from './parseFormdata'
+import { helpHTML } from "./indexPage.js"
+import { makeHighlight } from "./highlight.js"
+import { makeUploadedPage } from "./uploadedPage.js"
+import { parseFormdata } from "./parseFormdata.js"
+import { getType } from "mime/lite.js"
 
-const CHAR_GEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@';
+const CHAR_GEN =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@"
 const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
-const SEP = '_'
+const SEP = "_"
 const MAX_LEN = 5 * 1024 * 1024
 
 function decode(arrayBuffer) {
@@ -16,12 +17,12 @@ function decode(arrayBuffer) {
 
 class WorkerError extends Error {
   constructor(statusCode, ...params) {
-    super(...params);
+    super(...params)
     this.statusCode = statusCode
   }
 }
 
-addEventListener('fetch', event => {
+addEventListener("fetch", (event) => {
   const { request } = event
   return event.respondWith(handleRequest(request))
 })
@@ -40,9 +41,9 @@ async function handleRequest(request) {
   } catch (e) {
     console.log(e.stack)
     if (e instanceof WorkerError) {
-      return new Response(e.message + '\n', {status: e.statusCode})
+      return new Response(e.message + "\n", { status: e.statusCode })
     } else {
-      return new Response(e.message + '\n', {status: 500})
+      return new Response(e.message + "\n", { status: 500 })
     }
   }
 }
@@ -64,10 +65,11 @@ async function handlePostOrPut(request, isPut) {
   const content = form.get("c")
   const name = decode(form.get("n")) || undefined
   const isPrivate = form.get("p") !== undefined
-  const isHuman = form.get("h") !== undefined  // return a JSON or a human friendly page?
-  let expire = form.has("e") || form.get("e").length > 0
-    ? parseInt(decode(form.get("e")))
-    : undefined
+  const isHuman = form.get("h") !== undefined // return a JSON or a human friendly page?
+  let expire =
+    form.has("e") || form.get("e").length > 0
+      ? parseInt(decode(form.get("e")))
+      : undefined
 
   // check if paste content is legal
   if (content === undefined) {
@@ -82,23 +84,29 @@ async function handlePostOrPut(request, isPut) {
       throw new WorkerError(400, "cannot parse expire as an integer")
     }
     if (expire < 60) {
-      throw new WorkerError(400, "due to limitation of Cloudflare, expire should be a integer greater than 60")
+      throw new WorkerError(
+        400,
+        "due to limitation of Cloudflare, expire should be a integer greater than 60",
+      )
     }
   }
 
   // check if name is legal
   if (name !== undefined && !/[a-zA-Z0-9+-=@]{3,}/.test(name)) {
-    throw new WorkerError(400, "Name not satisfying regexp ~[a-zA-Z0-9+-=@]{3,}")
+    throw new WorkerError(
+      400,
+      "Name not satisfying regexp ~[a-zA-Z0-9+-=@]{3,}",
+    )
   }
 
   function makeResponse(created) {
     if (isHuman) {
       return new Response(makeUploadedPage(created), {
-        headers: { "content-type": "text/html;charset=UTF-8" }
+        headers: { "content-type": "text/html;charset=UTF-8" },
       })
     } else {
       return new Response(JSON.stringify(created, null, 2), {
-        headers: { "content-type": "application/json;charset=UTF-8" }
+        headers: { "content-type": "application/json;charset=UTF-8" },
       })
     }
   }
@@ -110,17 +118,19 @@ async function handlePostOrPut(request, isPut) {
     if (item.value === null) {
       throw new WorkerError(404, "not found")
     } else {
-      if (digest !== await hashWithSalt(item.metadata.postedAt + short)) {
+      if (digest !== (await hashWithSalt(item.metadata.postedAt + short))) {
         throw new WorkerError(403, "bad handler")
       } else {
-        return makeResponse(await createPaste(content, isPrivate, expire, short, date))
+        return makeResponse(
+          await createPaste(content, isPrivate, expire, short, date),
+        )
       }
     }
   } else {
     let short = undefined
     if (name !== undefined) {
-      short = '~' + name
-      if (await PB.get(short) !== null)
+      short = "~" + name
+      if ((await PB.get(short)) !== null)
         throw new WorkerError(400, `name '${name}' is already used`)
     }
     return makeResponse(await createPaste(content, isPrivate, expire, short))
@@ -129,16 +139,16 @@ async function handlePostOrPut(request, isPut) {
 
 async function handleGet(request) {
   const url = new URL(request.url)
-  if (url.pathname === '/') {
+  if (url.pathname === "/") {
     return new Response(helpHTML, {
-      headers: { "content-type": "text/html;charset=UTF-8", }
+      headers: { "content-type": "text/html;charset=UTF-8" },
     })
   }
 
   const { role, short, ext } = parsePath(url.pathname)
-  const mime = url.searchParams.get("mime") || MimeTypes.lookup(ext) || "text/plain"
+  const mime = url.searchParams.get("mime") || getType(ext) || "text/plain"
 
-  const item = await PB.getWithMetadata(short, {type: "arrayBuffer"})
+  const item = await PB.getWithMetadata(short, { type: "arrayBuffer" })
 
   // when paste is not found
   if (item.value === null) {
@@ -154,14 +164,13 @@ async function handleGet(request) {
   const lang = url.searchParams.get("lang")
   if (lang) {
     return new Response(makeHighlight(decode(item.value), lang), {
-      headers: { "content-type": `text/html;charset=UTF-8`, }
+      headers: { "content-type": `text/html;charset=UTF-8` },
     })
   } else {
     return new Response(item.value, {
-      headers: { "content-type": `${mime};charset=UTF-8`, }
+      headers: { "content-type": `${mime};charset=UTF-8` },
     })
   }
-
 }
 
 async function handleDelete(request) {
@@ -171,7 +180,7 @@ async function handleDelete(request) {
   if (item.value === null) {
     throw new WorkerError(404, "not found")
   } else {
-    if (digest !== await hashWithSalt(item.metadata.postedAt + short)) {
+    if (digest !== (await hashWithSalt(item.metadata.postedAt + short))) {
       throw new WorkerError(403, "bad handler")
     } else {
       await PB.delete(short)
@@ -188,8 +197,8 @@ async function createPaste(content, isPrivate, expire, short, date) {
 
   if (short === undefined) {
     while (true) {
-      short = genRandStr(short_len);
-      if (await PB.get(short) === null) break
+      short = genRandStr(short_len)
+      if ((await PB.get(short)) === null) break
     }
   }
 
@@ -197,7 +206,7 @@ async function createPaste(content, isPrivate, expire, short, date) {
     expirationTtl: expire,
     metadata: {
       postedAt: date,
-    }
+    },
   })
   const digest = await hashWithSalt(date + short)
   let accessUrl = BASE_URL + short
@@ -206,12 +215,12 @@ async function createPaste(content, isPrivate, expire, short, date) {
     url: accessUrl,
     admin: adminUrl,
     isPrivate: isPrivate,
-    expire: expire
+    expire: expire,
   }
 }
 
 function genRandStr(len) {
-  let str = '';
+  let str = ""
   const numOfRand = CHAR_GEN.length
   for (let i = 0; i < len; i++) {
     str += CHAR_GEN.charAt(Math.floor(Math.random() * numOfRand))
@@ -221,9 +230,7 @@ function genRandStr(len) {
 
 async function hashWithSalt(data) {
   const text = new TextEncoder().encode(data + SALT)
-  const digest = await crypto.subtle.digest(
-    {name: "SHA-1"}, text
-  )
+  const digest = await crypto.subtle.digest({ name: "SHA-1" }, text)
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
 }
 
@@ -233,18 +240,19 @@ function parsePath(pathname) {
   // example.com/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
   // example.com/u/abcd
   // example.com/u/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
-  let role = "", ext = ""
+  let role = "",
+    ext = ""
   if (pathname[2] === "/") {
     role = pathname[1]
     pathname = pathname.slice(2)
   }
-  let startOfExt = pathname.indexOf('.')
+  let startOfExt = pathname.indexOf(".")
   if (startOfExt >= 0) {
     ext = pathname.slice(startOfExt)
     pathname = pathname.slice(0, startOfExt)
   }
   let endOfShort = pathname.indexOf(SEP)
-  if (endOfShort < 0) endOfShort = pathname.length  // when there is no SEP, digest is left empty
+  if (endOfShort < 0) endOfShort = pathname.length // when there is no SEP, digest is left empty
   const short = pathname.slice(1, endOfShort)
   const digest = pathname.slice(endOfShort + 1)
   return { role, short, digest, ext }
