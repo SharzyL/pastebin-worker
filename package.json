@@ -3,7 +3,7 @@
   "name": "pb",
   "version": "1.0.0",
   "description": "Pastebin based on Cloudflare worker",
-  "main": "src/index.js",
+  "main": "dist/worker.js",
   "type": "module",
   "scripts": {
     "test": "webpack --mode=development && mocha",

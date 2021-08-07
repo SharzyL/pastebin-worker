@@ -67,7 +67,7 @@ async function handlePostOrPut(request, isPut) {
   const isPrivate = form.get("p") !== undefined
   const isHuman = form.get("h") !== undefined // return a JSON or a human friendly page?
   let expire =
-    form.has("e") || form.get("e").length > 0
+    form.has("e") && form.get("e").length > 0
       ? parseInt(decode(form.get("e")))
       : undefined
 
@@ -114,10 +114,10 @@ async function handlePostOrPut(request, isPut) {
   if (isPut) {
     const { short, digest } = parsePath(url.pathname)
     const item = await PB.getWithMetadata(short)
-    const date = item.metadata.postedAt
     if (item.value === null) {
       throw new WorkerError(404, "not found")
     } else {
+      const date = item.metadata.postedAt
       if (digest !== (await hashWithSalt(item.metadata.postedAt + short))) {
         throw new WorkerError(403, "bad handler")
       } else {
