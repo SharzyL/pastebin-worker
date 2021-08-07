@@ -2,12 +2,17 @@ import { helpHTML } from './indexPage'
 import { makeHighlight } from './highlight'
 import { makeUploadedPage } from './uploadedPage'
 import MimeTypes from 'mime-type/with-db.js'
+import { parseFormdata } from './parseFormdata'
 
 const CHAR_GEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@';
 const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
 const SEP = '_'
 const MAX_LEN = 5 * 1024 * 1024
+
+function decode(arrayBuffer) {
+  return new TextDecoder().decode(arrayBuffer)
+}
 
 class WorkerError extends Error {
   constructor(statusCode, ...params) {
@@ -35,9 +40,9 @@ async function handleRequest(request) {
   } catch (e) {
     console.log(e.stack)
     if (e instanceof WorkerError) {
-      return new Response(e.message, {status: e.statusCode})
+      return new Response(e.message + '\n', {status: e.statusCode})
     } else {
-      return new Response(e.message, {status: 500})
+      return new Response(e.message + '\n', {status: 500})
     }
   }
 }
@@ -49,16 +54,20 @@ async function handlePostOrPut(request, isPut) {
   // parse formdata
   let form = {}
   if (contentType.includes("form")) {
-    const formData = await request.formData()
-    for (const entry of formData.entries()) { form[entry[0]] = entry[1] }
+    // because cloudflare runtime treat all formdata part as strings thus corrupting binary data,
+    // we need to manually parse formdata
+    const uint8Array = await request.arrayBuffer()
+    form = parseFormdata(uint8Array)
   } else {
     throw new WorkerError(400, "bad usage, please use formdata")
   }
-  const content = form["c"]
-  const name = form["n"] || undefined
-  const isPrivate = form["p"] !== undefined
-  const isHuman = form["h"] !== undefined  // return a JSON or a human friendly page?
-  let expire = form["e"]
+  const content = form.get("c")
+  const name = decode(form.get("n")) || undefined
+  const isPrivate = form.get("p") !== undefined
+  const isHuman = form.get("h") !== undefined  // return a JSON or a human friendly page?
+  let expire = form.has("e") || form.get("e").length > 0
+    ? parseInt(decode(form.get("e")))
+    : undefined
 
   // check if paste content is legal
   if (content === undefined) {
@@ -68,9 +77,7 @@ async function handlePostOrPut(request, isPut) {
   }
 
   // check if expiration is legal
-  if (/^\s*$/.test(expire)) expire = undefined  // if `expire` is empty string, set it to undefined
   if (expire !== undefined) {
-    expire = parseInt(expire)
     if (isNaN(expire)) {
       throw new WorkerError(400, "cannot parse expire as an integer")
     }
@@ -131,7 +138,7 @@ async function handleGet(request) {
   const { role, short, ext } = parsePath(url.pathname)
   const mime = url.searchParams.get("mime") || MimeTypes.lookup(ext) || "text/plain"
 
-  const item = await PB.getWithMetadata(short)
+  const item = await PB.getWithMetadata(short, {type: "arrayBuffer"})
 
   // when paste is not found
   if (item.value === null) {
@@ -140,13 +147,13 @@ async function handleGet(request) {
 
   // handle URL redirection
   if (role === "u") {
-    return Response.redirect(item.value, 301)
+    return Response.redirect(decode(item.value), 301)
   }
 
   // handle language highlight
   const lang = url.searchParams.get("lang")
   if (lang) {
-    return new Response(makeHighlight(item.value, lang), {
+    return new Response(makeHighlight(decode(item.value), lang), {
       headers: { "content-type": `text/html;charset=UTF-8`, }
     })
   } else {
