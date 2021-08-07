@@ -11,11 +11,12 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "prettier": "^1.18.2",
-    "webpack-cli": "^4.6.0"
+    "prettier": "^2.3.2",
+    "webpack": "^5.49.0",
+    "webpack-cli": "^4.7.2"
   },
   "dependencies": {
-    "mime-db": "^1.46.0",
+    "mime-db": "^1.49.0",
     "mime-type": "^4.0.0"
   }
 }
