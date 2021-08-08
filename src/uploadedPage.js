@@ -44,6 +44,7 @@ export function makeUploadedPage(created) {
       <td>${created.expire}</td>
     </tr>
   </table>
+  <a href='/'><button>Paste another</button></a>
 </div>
 </body>
 `
