@@ -90,17 +90,17 @@ $ curl -L https://shz.al/u/i-p-
 
 Upload your paste. It accept parameters in form-data: 
 
-- `c`: mandatory. The content of your paste, text of binary. It should be no larger than 10 MB. 
+- `c`: mandatory. The **content** of your paste, text of binary. It should be no larger than 10 MB. 
 
-- `e`: optional. The expiration time of the paste (in seconds). After this period of time, the paste is permanently deleted. It should be no smaller than 60 due to the limitation if Cloudflare KV storage. 
+- `e`: optional. The **expiration** time of the paste (in seconds). After this period of time, the paste is permanently deleted. It should be no smaller than 60 due to the limitation if Cloudflare KV storage. 
 
-- `s`: optional. The password which allows you to modify and delete the paste. If not specified, the worker will generate a random string as password. 
+- `s`: optional. The **password** which allows you to modify and delete the paste. If not specified, the worker will generate a random string as password. 
 
-- `n`: optional. The customized name of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$=@,;`. 
+- `n`: optional. The customized **name** of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$=@,;`. 
 
-- `h`: optional. The flag of human friendly output. If specified to any value, it will return a web page instead of JSON. 
+- `h`: optional. The flag of **human friendly output**. If specified to any value, it will return a web page instead of JSON. 
 
-- `p`: optional. The flag of private mode. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used. 
+- `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used. 
 
 `POST` method returns a JSON string by default, if no error occurs, example: 
 
@@ -138,10 +138,10 @@ $ curl -Fc="kawaii" -Fe=300 -Fn=hitagi https://shz.al  # uploading some text
   "expire": 300
 }
 
-$ curl -Fc=@panty.jpg -Fn=panty https://shz.al   # uploading a file
+$ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
 {
   "url": "https://shz.al/~panty",
-  "admin": "https://shz.al/~panty:fGsQ@SkGAcmVJHcWgKABNsYK",
+  "admin": "https://shz.al/~panty:12345678",
   "isPrivate": false
 }
 ```
