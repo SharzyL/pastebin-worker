@@ -28,12 +28,15 @@ export const helpHTML = `
   </div>
 </form>
 
-<h2>CLI Usage</h2>
-<p>Please refer to <a href='https://github.com/SharzyL/pastebin-worker#api-reference'>Github</a> for documentation. </p>
+<h2>Usage</h2>
+<p>Please refer to <a href='https://github.com/SharzyL/pastebin-worker#usage'>Github</a> for documentation. </p>
 
+<h2>Terms and Conditions</h2>
+<p>Before starting using our service, please read <a href='https://shz.al/~tos.html'>Terms and Conditions</a> first. </p>
 <h2>About</h2>
 <p>API design is inspired by <a href='https://fars.ee'>fars.ee</a></p>
 <p>Source code and error report: <a href='https://github.com/SharzyL/pastebin-worker'>SharzyL/pastebin-worker</a> </p>
+<p>Contact: <a href='mailto:shz.al@sharzy.in'>shz.al@sharzy.in</a></p>
 </div>
 </body>
 `
