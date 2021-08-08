@@ -1,45 +1,37 @@
 #!/bin/sh
 
 localaddr="http://localhost:8787"
-
-declare -i num_tests
-declare -i num_passed
+tmp_file=$(mktemp)
+trap 'rm "$tmp_file"' EXIT
 
 die() {
-    echo $@ >&2
+    echo "$@" >&2
     exit 1
 }
 
 it() {
-    num_tests=num_tests+1
-    printf "\x1b[0;37;32m> it $1\x1b[0m: "
+    num_tests=$((num_tests+1))
+    printf "\x1b[0;37;32m> it %s\x1b[0m: " "$1"
     shift
     echo "$@"
-    return_val=$("$@")
+    "$@"
     exit_code=$?
     if [ "$exit_code" != 0 ]; then
-        printf "\x1b[0;37;31mBut fails with error code $exit_code\x1b[0m\n"
+        printf "\x1b[0;37;31mBut fails with error code %s\x1b[0m\n" "$exit_code"
     else
-        num_passed=num_passed+1
+        num_passed=$((num_passed+1))
     fi
 }
 
-curl_should_return_status_code() {
-    num_tests=num_tests+1
-    printf "\x1b[0;37;32m> it should return status code $1\x1b[0m: "
+curl_code() {  # a wrapper of curl that checks status code
     expected_status_code="$1"
     shift
-    echo curl $@
-    status_code=$(curl -sS -w '%{response_code}' "$@")
-    if [ "$status_code" != "$expected_status_code" ]; then
-        printf "\x1b[0;37;31mBut fails with status code $status_code\x1b[0m\n"
-    else
-        num_passed=num_passed+1
-    fi
+    status_code=$(curl -sS -w '%{response_code' "$@" -o /dev/null) || return 1
+    [ "$status_code" != "$expected_status_code" ]
 }
 
 start_test() {
-    printf "\x1b[0;37;34mStart testing $@\x1b[0m\n"
+    printf "\x1b[0;37;34mStart testing %s\x1b[0m\n" "$*"
 }
 
 conclude() {
@@ -53,42 +45,167 @@ conclude() {
     fi
 }
 
-main() {
-    test_text="Hello world"
-    tmp_file=$(mktemp)
+test_chapters() {
+    for i in "$@"; do
+        echo "---------------------"
+        printf "\x1b[0;97m%s\x1b[0m\n" "$i"
+        echo "---------------------"
+        "_test_${i}"
+    done
+}
 
+_test_primary() {
+    test_text="hello world"
+    wrong_admin_url="this-is-a-wrong-admin-url"
 
     start_test "uploading paste"
-    curl_should_return_status_code 200 -o "$tmp_file" -Fc="$test_text" "$localaddr" 
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" "$localaddr"
 
-    url=$(jq '.url' "$tmp_file" | tr -d '"')
-    admin_url=$(jq '.admin' "$tmp_file" | tr -d '"')
-
+    url=$(jq -r '.url' "$tmp_file")
+    admin_url=$(jq -r '.admin' "$tmp_file")
 
     start_test "fetching paste"
-    curl_should_return_status_code 200 -o "$tmp_file" "$url"
-    it 'should return the original paste' \
-        [ "$(cat $tmp_file)" = "$test_text" ]
+    it 'should fetch paste' curl_code 200 -o "$tmp_file" "$url"
+    it 'should return the original pas\e' [ "$(cat "$tmp_file")" = "$test_text" ]
 
-
-    start_test "fetching unexisting paste"
-    curl_should_return_status_code 404 -o /dev/null "$localaddr/hahaha" 
-
+    start_test "fetching non-existing paste"
+    it 'should return 404 for non-existing paste' curl_code 404 -o /dev/null "$localaddr/$wrong_admin_url"
 
     start_test "updating paste"
     new_text="Hello new world"
-    curl_should_return_status_code 200 -o /dev/null -X PUT -Fc="$new_text" "$admin_url"
-    curl_should_return_status_code 200 -o "$tmp_file" "$url"
-    it 'should return the updated paste' \
-        [ "$(cat $tmp_file)" = "$new_text" ]
-
+    it 'should return 403 for wrong passwd' curl_code 403 -o /dev/null -X PUT -Fc="$new_text" "$url:$wrong_admin_url"
+    it 'should return 200 for true passwd' curl_code 200 -o /dev/null -X PUT -Fc="$new_text" "$admin_url"
+    curl_code 200 -o "$tmp_file" "$url"
+    it 'should return the updated paste' [ "$(cat "$tmp_file")" = "$new_text" ]
 
     start_test "deleting paste"
-    curl_should_return_status_code 200 -o /dev/null -X DELETE "$admin_url"
-    curl_should_return_status_code 404 -o /dev/null "$url"
+    it 'should return 403 for wrong passwd' curl_code 403 -o /dev/null -X DELETE "$url:$wrong_admin_url"
+    it 'should return 200 for true passwd' curl_code 200 -o /dev/null -X DELETE "$admin_url"
+    it 'should delete the paste' curl_code 404 -o /dev/null "$url"
+}
+
+_test_long_mode() {
+    test_text="hello world"
+    start_test "uploading paste"
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fp=true "$localaddr"
+    url=$(jq -r '.url' "$tmp_file")
+    path=${url##*/}
+    it 'should return a long path' [ "${#path}" -gt 20 ]
+
+    start_test "fetching paste"
+    it 'should fetch paste' curl_code 200 -o "$tmp_file" "$url"
+    it 'should return the original pas\e' [ "$(cat "$tmp_file")" = "$test_text" ]
+}
+
+_test_custom_path() {
+    test_text="hello world"
+    wrong_admin_url="this-is-a-wrong-admin-url"
+    name="$RANDOM"
+
+    start_test "uploading paste"
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fn="$name" "$localaddr"
+    url=$(jq -r '.url' "$tmp_file")
+    admin_url=$(jq -r '.admin' "$tmp_file")
+    path=${url##*/}
+    it 'should give the custom path' [ "$path" = "~$name" ]
+
+    start_test "fetching paste"
+    it 'should fetch paste' curl_code 200 -o "$tmp_file" "$url"
+    it 'should return the original paste' [ "$(cat "$tmp_file")" = "$test_text" ]
+
+    start_test "updating paste"
+    new_text="Hello new world"
+    it 'should return 403 for wrong passwd' curl_code 403 -o /dev/null -X PUT -Fc="$new_text" "$url:$wrong_admin_url"
+    it 'should return 200 for true passwd' curl_code 200 -o /dev/null -X PUT -Fc="$new_text" "$admin_url"
+    curl_code 200 -o "$tmp_file" "$url"
+    it 'should return the updated paste' [ "$(cat "$tmp_file")" = "$new_text" ]
+
+    start_test "deleting paste"
+    it 'should return 403 for wrong passwd' curl_code 403 -o /dev/null -X DELETE "$url:$wrong_admin_url"
+    it 'should return 200 for true passwd' curl_code 200 -o /dev/null -X DELETE "$admin_url"
+    it 'should delete the paste' curl_code 404 -o /dev/null "$url"
+}
+
+_test_custom_passwd() {
+    test_text="hello world"
+    wrong_admin_url="this-is-a-wrong-admin-url"
+    name="$RANDOM"
+    passwd="$RANDOM$RANDOM"
+
+    start_test "uploading paste"
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fn="$name" -Fs="$passwd" "$localaddr"
+    url=$(jq -r '.url' "$tmp_file")
+    admin_url=$(jq -r '.admin' "$tmp_file")
+    path=${url##*/}
+    admin_path=${admin_url##*/}
+    it 'should give the custom path' [ "$path" = "~$name" ]
+    it 'should give the custom passwd' [ "$admin_path" = "~$name:$passwd" ]
+
+    start_test "fetching paste"
+    it 'should fetch paste' curl_code 200 -o "$tmp_file" "$url"
+    it 'should return the original paste' [ "$(cat "$tmp_file")" = "$test_text" ]
+
+    start_test "updating paste"
+    new_text="Hello new world"
+    it 'should return 403 for wrong passwd' curl_code 403 -o /dev/null -X PUT -Fc="$new_text" "$url:$wrong_admin_url"
+    it 'should return 200 for true passwd' curl_code 200 -o /dev/null -X PUT -Fc="$new_text" "$admin_url"
+    curl_code 200 -o "$tmp_file" "$url"
+    it 'should return the updated paste' [ "$(cat "$tmp_file")" = "$new_text" ]
+
+    start_test "deleting paste"
+    it 'should return 403 for wrong passwd' curl_code 403 -o /dev/null -X DELETE "$url:$wrong_admin_url"
+    it 'should return 200 for true passwd' curl_code 200 -o /dev/null -X DELETE "$admin_url"
+    it 'should delete the paste' curl_code 404 -o /dev/null "$url"
+}
+
+_test_url_redirect() {
+    test_text="https://sharzy.in/"
+
+    start_test "uploading paste"
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" "$localaddr"
+    url=$(jq -r '.url' "$tmp_file")
+
+    start_test "URL redirect"
+    url_with_u="$localaddr/u/${url##*/}"
+    redirect_url=$(curl -o /dev/null -sS -w '%{redirect_url}' "$url_with_u")
+    it 'should make a redirect' [ "$redirect_url" = "$test_text" ]
+}
+
+_test_mime() {
+    test_text="hello world"
+
+    start_test "uploading paste"
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" "$localaddr"
+    url=$(jq -r '.url' "$tmp_file")
+
+    start_test "mimetype"
+    mimetype=$(curl -o /dev/null -sS -w '%{content_type}' "$url")
+    it 'should return text/plain for normal fetch' [ "$mimetype" = 'text/plain;charset=UTF-8' ]
+    mimetype=$(curl -o /dev/null -sS -w '%{content_type}' "$url.jpg")
+    it 'should return recognize .jpg extension' [ "$mimetype" = 'image/jpeg;charset=UTF-8' ]
+    mimetype=$(curl -o /dev/null -sS -w '%{content_type}' "$url?mime=random-mime")
+    it 'should know "mime" query string' [ "$mimetype" = 'random-mime;charset=UTF-8' ]
+}
+
+_test_highlight() {
+    test_text="hello world"
+
+    start_test "uploading paste"
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" "$localaddr"
+    url=$(jq -r '.url' "$tmp_file")
+
+    start_test "language highlight"
+    curl -o "$tmp_file" -sS "$url?lang=html"
+    it 'should return a language highlight powered by prismjs' \
+        grep -q 'language-html' "$tmp_file"
 }
 
 pgrep -f miniflare > /dev/null || die "no miniflare is running, please start one instance first"
 
-main
+if [ $# -gt 0 ]; then
+    test_chapters "$@"
+else
+    test_chapters primary long_mode custom_path url_redirect mime highlight custom_passwd
+fi
+
 conclude

@@ -8,7 +8,8 @@ const CHAR_GEN =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@"
 const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
-const SEP = "_"
+const ADMIN_PATH_LEN = 24
+const SEP = ":"
 const MAX_LEN = 5 * 1024 * 1024
 
 function decode(arrayBuffer) {
@@ -37,6 +38,8 @@ async function handleRequest(request) {
       return await handleDelete(request)
     } else if (request.method === "PUT") {
       return await handlePostOrPut(request, true)
+    } else {
+      throw new WorkerError(405, "method not allowed")
     }
   } catch (e) {
     console.log(e.stack)
@@ -66,7 +69,8 @@ async function handlePostOrPut(request, isPut) {
   const name = decode(form.get("n")) || undefined
   const isPrivate = form.get("p") !== undefined
   const isHuman = form.get("h") !== undefined // return a JSON or a human friendly page?
-  let expire =
+  const passwd = decode(form.get("s")) || undefined
+  const expire =
     form.has("e") && form.get("e").length > 0
       ? parseInt(decode(form.get("e")))
       : undefined
@@ -112,17 +116,17 @@ async function handlePostOrPut(request, isPut) {
   }
 
   if (isPut) {
-    const { short, digest } = parsePath(url.pathname)
+    const { short, passwd } = parsePath(url.pathname)
     const item = await PB.getWithMetadata(short)
     if (item.value === null) {
       throw new WorkerError(404, "not found")
     } else {
       const date = item.metadata.postedAt
-      if (digest !== (await hashWithSalt(item.metadata.postedAt + short))) {
-        throw new WorkerError(403, "bad handler")
+      if (passwd !== item.metadata.passwd) {
+        throw new WorkerError(403, "bad password")
       } else {
         return makeResponse(
-          await createPaste(content, isPrivate, expire, short, date),
+          await createPaste(content, isPrivate, expire, short, date, passwd),
         )
       }
     }
@@ -133,7 +137,7 @@ async function handlePostOrPut(request, isPut) {
       if ((await PB.get(short)) !== null)
         throw new WorkerError(400, `name '${name}' is already used`)
     }
-    return makeResponse(await createPaste(content, isPrivate, expire, short))
+    return makeResponse(await createPaste(content, isPrivate, expire, short, undefined, passwd))
   }
 }
 
@@ -175,12 +179,14 @@ async function handleGet(request) {
 
 async function handleDelete(request) {
   const url = new URL(request.url)
-  const { short, digest } = parsePath(url.pathname)
+  console.log(request.url)
+  const { short, passwd } = parsePath(url.pathname)
   const item = await PB.getWithMetadata(short)
+  console.log(item, passwd)
   if (item.value === null) {
     throw new WorkerError(404, "not found")
   } else {
-    if (digest !== (await hashWithSalt(item.metadata.postedAt + short))) {
+    if (passwd !== item.metadata.passwd) {
       throw new WorkerError(403, "bad handler")
     } else {
       await PB.delete(short)
@@ -189,11 +195,10 @@ async function handleDelete(request) {
   }
 }
 
-async function createPaste(content, isPrivate, expire, short, date) {
+async function createPaste(content, isPrivate, expire, short, date, passwd) {
   date = date || new Date().toISOString()
-
-  let short_len = RAND_LEN
-  if (isPrivate) short_len = PRIVATE_RAND_LEN
+  passwd = passwd || genRandStr(ADMIN_PATH_LEN)
+  const short_len = isPrivate ? PRIVATE_RAND_LEN : RAND_LEN
 
   if (short === undefined) {
     while (true) {
@@ -206,11 +211,11 @@ async function createPaste(content, isPrivate, expire, short, date) {
     expirationTtl: expire,
     metadata: {
       postedAt: date,
+      passwd: passwd
     },
   })
-  const digest = await hashWithSalt(date + short)
   let accessUrl = BASE_URL + short
-  const adminUrl = BASE_URL + short + SEP + digest
+  const adminUrl = BASE_URL + short + SEP + passwd
   return {
     url: accessUrl,
     admin: adminUrl,
@@ -220,6 +225,7 @@ async function createPaste(content, isPrivate, expire, short, date) {
 }
 
 function genRandStr(len) {
+  // TODO: switch to Web Crypto random generator
   let str = ""
   const numOfRand = CHAR_GEN.length
   for (let i = 0; i < len; i++) {
@@ -235,13 +241,14 @@ async function hashWithSalt(data) {
 }
 
 function parsePath(pathname) {
-  // Example of paths (SEP='_'). Note: query string is not processed here
-  // example.com/abcd
-  // example.com/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
-  // example.com/u/abcd
-  // example.com/u/abcd_3ffd2e7ff214989646e006bd9ad36c58d447065e
-  let role = "",
-    ext = ""
+  // Example of paths (SEP=':'). Note: query string is not processed here
+  // > example.com/~stocking
+  // > example.com/~stocking:uLE4Fhb/d3414adlW653Vx0VSVw=
+  // > example.com/abcd
+  // > example.com/abcd.jpg
+  // > example.com/u/abcd
+  // > example.com/abcd:3ffd2e7ff214989646e006bd9ad36c58d447065e
+  let role = "", ext = ""
   if (pathname[2] === "/") {
     role = pathname[1]
     pathname = pathname.slice(2)
@@ -252,8 +259,8 @@ function parsePath(pathname) {
     pathname = pathname.slice(0, startOfExt)
   }
   let endOfShort = pathname.indexOf(SEP)
-  if (endOfShort < 0) endOfShort = pathname.length // when there is no SEP, digest is left empty
+  if (endOfShort < 0) endOfShort = pathname.length // when there is no SEP, passwd is left empty
   const short = pathname.slice(1, endOfShort)
-  const digest = pathname.slice(endOfShort + 1)
-  return { role, short, digest, ext }
+  const passwd = pathname.slice(endOfShort + 1)
+  return { role, short, passwd, ext }
 }

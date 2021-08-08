@@ -34,7 +34,7 @@ export const helpHTML = `
 <pre><code>$ echo "make Cloudflare great again" | curl -Fc=@- ${BASE_URL}
 {
   "url": "${BASE_URL}qotL",
-  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
+  "admin": "${BASE_URL}qotL:yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
   "isPrivate": false
 }% </code> </pre>
 
@@ -43,7 +43,7 @@ export const helpHTML = `
 make Cloudflare great again </code></pre>
 
 <p>Delete the paste</p>
-<pre><code>$ curl -X DELETE ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
+<pre><code>$ curl -X DELETE ${BASE_URL}qotL:yNm3PTBA3+X1jjhdClJ6zyVMkfA=
 the paste will be deleted in seconds
 
 $ curl ${BASE_URL}qotL
@@ -53,7 +53,7 @@ not found% </code></pre>
 <pre><code>$ echo "make Cloudflare great again and again" | curl -X POST -Fc=@- ${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=
 {
   "url": "${BASE_URL}qotL",
-  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
+  "admin": "${BASE_URL}qotL:yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
   "isPrivate": false
 }% </code></pre>
 
@@ -67,7 +67,7 @@ not found% </code></pre>
 <pre><code>$ echo "make Cloudflare great again" | curl -Fc=@- -Fn=cloudflare ${BASE_URL}
 {
   "url": "${BASE_URL}~cloudflare",
-  "admin": "${BASE_URL}~cloudflare_vOcQS1yv0v1UmIJOnfEKMAElCqE=",
+  "admin": "${BASE_URL}~cloudflare:vOcQS1yv0v1UmIJOnfEKMAElCqE=",
   "isPrivate": false
 }</code></pre>
 
@@ -91,7 +91,7 @@ $ curl '${BASE_URL}qotL?mime=application/json' -v
 <pre><code>$ echo "make Cloudflare great again" | curl -Fc=@- -Fe=120 ${BASE_URL}
 {
   "url": "${BASE_URL}qotL",
-  "admin": "${BASE_URL}qotL_yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
+  "admin": "${BASE_URL}qotL:yNm3PTBA3+X1jjhdClJ6zyVMkfA=",
   "isPrivate": false,
   "expire": "120"
 }%

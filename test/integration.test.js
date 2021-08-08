@@ -25,4 +25,7 @@ describe("Test simple alert", async () => {
     const response = await worker.dispatchFetch(`${localAddr}/hello`)
     assert.strictEqual(response.status, 404)
   })
+
+  // due to bugs in Miniflare Formdata API, developing tests with javascript
+  // framework is suspended
 })

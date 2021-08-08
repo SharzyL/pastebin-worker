@@ -1,5 +1,4 @@
 export function parseFormdata(/** @type {Uint8Array} */ uint8Array) {
-  console.log(uint8Array)
   const parts = [...parseMimeMultipart(uint8Array)]
   let form = new Map()
   for (const part of parts) {
