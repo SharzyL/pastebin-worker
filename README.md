@@ -156,7 +156,7 @@ $ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
 
 ### **PUT** `/<name>:<passwd>`
 
-Update you paste. It accept the same parameters in form-data: 
+Update you paste of the name `<name>` and password `<passwd>`. It accept the parameters in form-data: 
 
 - `c`: mandatory. Same as `POST` method. 
 - `e`: optional. Same as `POST` method. Note that the deletion time is now recalculated. 
@@ -194,7 +194,7 @@ $ curl -X PUT -Fc="kawaii~" https://shz.al/~hitagi:fGsQ@SkGAcmVJHcWgKABNsYK
 
 ### DELETE `/<name>:<passwd>`
 
-Delete your paste. It may takes seconds to synchronize the deletion globally. 
+Delete the paste of name `<name>` and password `<passwd>`. It may takes seconds to synchronize the deletion globally. 
 
 If error occurs, the worker returns status code different than `200`: 
 
