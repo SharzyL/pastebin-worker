@@ -29,9 +29,9 @@ Modify IDs in `wrangler.toml` according your own account information (`account_i
 Deploy!
 
 ```shell
-$yarn install
-yarn build
-wrangler publish
+$ yarn install
+$ yarn build
+$ wrangler publish
 ```
 
 ## API Reference
