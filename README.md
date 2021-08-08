@@ -20,7 +20,7 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 
 You can enjoy part of features directly on the website (such as [shz.al](https://shz.al)). 
 
-It is recommended to directly use the HTTP API. See the chapter [API reference](/#api-reference) for details. 
+It is recommended to directly use the HTTP API. See the chapter [API reference](#api-reference) for details. 
 
 [pb](/scripts) is bash script to make it easier to use on command line. 
 
