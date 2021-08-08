@@ -36,11 +36,11 @@ $ wrangler publish
 
 ## API Reference
 
-### GET: `/`
+### GET `/`
 
 Return the index page. 
 
-### **GET**: `/<name>[.<ext>]`
+### **GET** `/<name>[.<ext>]`
 
 Fetch the paste with name `<name>`. By default it will return the raw content of the paste.  The `Content-Type` header is set to `text/plain;charset=UTF-8`. If `<ext>` is given, the worker will infer mime-type from `<ext>` and change `Content-Type`. This method accepts the following query string parameters: 
 
@@ -69,7 +69,7 @@ $ curl 'https://shz.al/~panty.jpg?mime=image/png' -w '%{content_type}' -o /dev/n
 image/png;charset=UTF-8
 ```
 
-### GET: `/u/<name>`
+### GET `/u/<name>`
 
 Redirect to the URL recorded in the paste of name `<name>`. 
 
@@ -86,7 +86,7 @@ $ firefox https://shz.al/u/i-p-
 $ curl -L https://shz.al/u/i-p-
 ```
 
-### **POST**: `/`
+### **POST** `/`
 
 Upload your paste. It accept parameters in form-data: 
 
@@ -146,7 +146,7 @@ $ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
 }
 ```
 
-### **PUT**: `/<name>:<passwd>`
+### **PUT** `/<name>:<passwd>`
 
 Update you paste. It accept the same parameters in form-data: 
 
@@ -184,7 +184,7 @@ $ curl -X PUT -Fc="kawaii~" https://shz.al/~hitagi:fGsQ@SkGAcmVJHcWgKABNsYK
 }
 ```
 
-### DELETE: `/<name>:<passwd>`
+### DELETE `/<name>:<passwd>`
 
 Delete your paste. It may takes seconds to synchronize the deletion globally. 
 
@@ -204,3 +204,4 @@ $ curl https://shz.al/~hitagi
 not found
 ```
 
+## Term of Uses

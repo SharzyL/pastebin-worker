@@ -2,7 +2,12 @@
 
 This is a wrapper script to make it easier to use our pastebin. 
 
-**Installation**: download `pb` to your `PATH` and `chmod +x` it. 
+**Installation**: download `pb` to your `PATH` and give it execution permission. For example: 
+
+```shell
+$ wget https://github.com/SharzyL/pastebin-worker/raw/master/scripts/pb
+$ install -Dm755 pb ~/.local/bin
+```
 
 **Usage**: 
 
