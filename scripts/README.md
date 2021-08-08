@@ -2,6 +2,8 @@
 
 This is a wrapper script to make it easier to use our pastebin. 
 
+**Requirements**: `bash`, `jq`, `getopt`, `curl`
+
 **Installation**: download `pb` to your `PATH` and give it execution permission. For example: 
 
 ```shell
