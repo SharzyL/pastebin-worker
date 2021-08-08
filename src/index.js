@@ -6,11 +6,12 @@ import { getType } from "mime/lite.js"
 
 const CHAR_GEN =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=@"
+const NAME_REGEX = /[a-zA-Z0-9+_\-\[\]*$=@,;]{3,}/
 const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
 const ADMIN_PATH_LEN = 24
 const SEP = ":"
-const MAX_LEN = 5 * 1024 * 1024
+const MAX_LEN = 10 * 1024 * 1024
 
 function decode(arrayBuffer) {
   return new TextDecoder().decode(arrayBuffer)
@@ -61,7 +62,11 @@ async function handlePostOrPut(request, isPut) {
     // because cloudflare runtime treat all formdata part as strings thus corrupting binary data,
     // we need to manually parse formdata
     const uint8Array = await request.arrayBuffer()
-    form = parseFormdata(uint8Array)
+    try {
+      form = parseFormdata(uint8Array)
+    } catch (e) {
+      return new WorkerError(400, "error occurs parsing formdata")
+    }
   } else {
     throw new WorkerError(400, "bad usage, please use formdata")
   }
@@ -96,10 +101,10 @@ async function handlePostOrPut(request, isPut) {
   }
 
   // check if name is legal
-  if (name !== undefined && !/[a-zA-Z0-9+-=@]{3,}/.test(name)) {
+  if (name !== undefined && !NAME_REGEX.test(name)) {
     throw new WorkerError(
       400,
-      "Name not satisfying regexp ~[a-zA-Z0-9+-=@]{3,}",
+      `Name not satisfying regexp ${NAME_REGEX}`,
     )
   }
 
@@ -135,7 +140,7 @@ async function handlePostOrPut(request, isPut) {
     if (name !== undefined) {
       short = "~" + name
       if ((await PB.get(short)) !== null)
-        throw new WorkerError(400, `name '${name}' is already used`)
+        throw new WorkerError(409, `name '${name}' is already used`)
     }
     return makeResponse(await createPaste(content, isPrivate, expire, short, undefined, passwd))
   }
