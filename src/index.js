@@ -71,7 +71,7 @@ async function handlePostOrPut(request, isPut) {
   const isHuman = form.get("h") !== undefined // return a JSON or a human friendly page?
   const passwd = decode(form.get("s")) || undefined
   const expire =
-    form.has("e") && form.get("e").length > 0
+    form.has("e") && form.get("e").byteLength > 0
       ? parseInt(decode(form.get("e")))
       : undefined
 
