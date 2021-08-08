@@ -16,6 +16,14 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 1. Specify the mimetype when fetching your paste
 1. Optional longer paste URL for better privacy
 
+## Usage
+
+You can enjoy part of features directly on the website (such as [shz.al](https://shz.al)). 
+
+It is recommended to directly use the HTTP API. See the chapter [API reference](/#api-reference) for details. 
+
+[pb](/scripts) is bash script to make it easier to use on command line. 
+
 ## Deploy
 
 You are free to deploy the pastebin on your own domain, if you host your domain on Cloudflare. 
@@ -203,5 +211,3 @@ the paste will be deleted in seconds
 $ curl https://shz.al/~hitagi
 not found
 ```
-
-## Term of Uses
