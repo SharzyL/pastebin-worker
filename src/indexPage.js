@@ -12,11 +12,15 @@ export const helpHTML = `
 <p>This is a pastebin deployed on Cloudflare workers, depending on Cloudflare KV storage. </p>
 <p><b>How to use</b>: paste any text here, and you can share it with a super short URL. </p>
 
-<form enctype="multipart/form-data">
+<form enctype="multipart/form-data" onsubmit="return validateForm(this)">
   <label>
     <textarea placeholder='Put your paste here' id="c" name='c' rows='20' style="width: 100%; font-family: monospace; font-size: 14px"></textarea>
   </label>
   <div style="display: flex; align-items: center">
+    <div>
+      <label for="f">Or choose a file to upload</label>
+      <input id="f" type="file" name="c">
+    </div>
     <div style="flex: 1">
       <input id="p" type="checkbox" name="p"/>
       <label for="p"> Private paste</label>
@@ -27,6 +31,26 @@ export const helpHTML = `
     <input type="submit" value="Submit" formaction="/" formmethod="POST"/>
   </div>
 </form>
+
+<script>
+  function validateForm(form) {
+    var textLen = c.value.length;
+    var fileLen = f.files.length;
+    if (textLen > 0 && fileLen > 0) {
+      alert("You can't paste both text and file");
+      return false;
+    } else if (textLen == 0 && fileLen == 0) {
+      alert("You have to paste something");
+      return false;
+    } else {
+      var controls = form.elements;
+      for (var i = 0, iLen = controls.length; i < iLen; i++) {
+        controls[i].disabled = controls[i].value == "";
+      }
+      return true;
+    }
+  }
+</script>
 
 <h2>Usage</h2>
 <p>Please refer to <a href='https://github.com/SharzyL/pastebin-worker#usage'>Github</a> for documentation. </p>
