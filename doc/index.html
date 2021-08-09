@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<head>
+    <meta charset='UTF-8'>
+    <title>Yet another pastebin</title>
+    <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css' />
+    <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
+    <script src='https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.js'></script>
+    <link rel='icon' href='${FAVICON_URL}' type='image/png' />
+    <style media='screen'>
+        .markdown-body tt, .markdown-body code {
+            font-family: monospace;
+            font-size: 90%
+        }
+
+        .markdown-body {
+            font-family: sans-serif;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        :root {
+            --color-bg: #ffffff;
+            --color-bg-secondary: #f4f4f4;
+            --color-border: #ddd;
+            --color-shadowed: #f7f7f7;
+            --color-green: #2ea44f;
+            --color-green-disabled: #94d3a2;
+
+            --color-text-light: #888;
+            --color-text-secondary: #444;
+            --color-text-stress: #000;
+            --color-text: #222;
+            --color-text-white: white;
+        }
+
+        #paste-input-panel, #paste-setting-panel, #paste-uploaded-panel {
+            border: 1px var(--color-border) solid;
+            margin: 0.5rem 0;
+        }
+
+        #paste-header {
+            background-color: var(--color-shadowed);
+            display: flex;
+            border-bottom: 1px var(--color-border) 1px;
+        }
+
+        #paste-header > div:last-child {
+            border-bottom: 1px var(--color-border) solid;
+            flex: 1;
+        }
+
+        .paste-header-tabs {
+            display: flex;
+        }
+
+        .paste-tab {
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-block;
+            padding: 0.6rem 0.5rem 0.7rem;
+            background-color: inherit;
+            color: var(--color-text-secondary);
+            font-weight: 400;
+            border: 1px transparent solid;
+            border-bottom-color: var(--color-border);
+            border-right-color: var(--color-border);
+        }
+
+        .paste-tab-active {
+            border-bottom-color: transparent;
+            background-color: var(--color-bg);
+            color: var(--color-text-stress);
+            font-weight: 600;
+        }
+
+        .paste-tab:last-child {
+            border-right-color: transparent;
+        }
+
+        .paste-tab-active:last-child {
+            border-right-color: var(--color-border);
+        }
+
+        .paste-tab-page {
+            display: none;
+        }
+
+        .paste-tab-page.paste-tab-page-active {
+            display: inherit;
+        }
+
+        #paste-textarea {
+            width: 100%;
+            font-family: monospace;
+            font-size: 12px;
+            border: none;
+            outline: none;
+            resize: vertical;
+        }
+
+        #paste-file-upload {
+            width: 0;
+            height: 0;
+            opacity: 0;
+            overflow: hidden;
+            position: absolute;
+            z-index: -1;
+        }
+
+        #paste-file-upload + label {
+            cursor: pointer;
+            height: 100%;
+        }
+
+        #paste-uploaded-panel, #paste-setting-panel {
+            padding: 1rem;
+        }
+
+        #paste-uploaded-panel > h2, #paste-setting-panel > h2 {
+            margin: 0;
+            border: none;
+        }
+
+        #paste-file-line {
+            margin: 1rem;
+        }
+
+        .label-line {
+            display: block;
+            margin: 0.3rem 0;
+        }
+
+        .small-label {
+            display: block;
+            color: var(--color-text-light);
+            font-size: 12px;
+        }
+
+        .radio-label {
+            font-size: 14px;
+        }
+
+        .paste-setting-text-panel {
+            margin: 0.8rem 0;
+        }
+
+        .paste-setting-text-panel > input {
+            border: 1px var(--color-border) solid;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .paste-setting-text-panel > input::placeholder {
+            color: var(--color-text-light)
+        }
+
+        .paste-url-input {
+            display: inline-block;
+            border: 1px var(--color-border) solid;
+            font-family: monospace;
+            background-color: var(--color-bg);
+            font-size: 12px;
+            border-radius: 2px;
+        }
+
+        .text-input-prefix {
+            padding-left: 0.5rem;
+            color: var(--color-text-light);
+            user-select: none;
+        }
+
+        .text-input-content {
+            border: none;
+            border-left: 1px var(--color-border) solid;
+            color: var(--color-text);
+            background-color: inherit;
+            padding: 0.1rem;
+            outline: none;
+        }
+
+        input:not(:checked) ~ .paste-url-input {
+            display: none;
+        }
+
+        #submit-button {
+            color: var(--color-text-white);
+            font-size: 12px;
+            padding: 0.4rem 1rem;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--color-green-disabled);
+        }
+
+        #submit-button.submit-button-enabled {
+            background-color: var(--color-green);
+        }
+
+        #paste-uploaded-panel > input[type="text"] {
+            margin-top: 0.7rem;
+            width: 100%;
+            border: 1px var(--color-border) solid;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+<div class='container-lg px-3 my-5 markdown-body'>
+    <h1>Yet Another Pastebin</h1>
+    <p>This is an open sourced pastebin deployed on Cloudflare workers. </p>
+    <p><b>How to use</b>: paste any text here, submit, then share it with URL. </p>
+    <p>Want to know more? See <a href='https://github.com/SharzyL/pastebin-worker'>Github</a> for more information. </p>
+
+    <div id='paste-input-panel'>
+        <div id='paste-header'>
+            <div class='paste-header-tabs'>
+                <div class='paste-tab paste-tab-active' id='paste-tab-edit'>Edit paste</div>
+                <label for='paste-file-upload' id='paste-tab-file' class='paste-tab'>
+                    <input type='file' placeholder='' id='paste-file-upload'>
+                    <label for='paste-file-upload'>Upload file</label>
+                </label>
+            </div>
+            <div></div>
+        </div>
+        <div class='paste-tab-page paste-tab-page-active' id='paste-edit'>
+            <textarea placeholder='Put your paste here' id='paste-textarea' name='c' rows='20'></textarea>
+        </div>
+        <div class='paste-tab-page' id='paste-file-show'>
+            <p id='paste-file-line'>
+                <code class='file-name'></code>: <span class='file-size'></span>
+            </p>
+        </div>
+    </div>
+
+    <div id='paste-setting-panel'>
+        <h2>Settings</h2>
+        <div id='paste-expiration-panel' class='paste-setting-text-panel'>
+            <input list='expiration-choices' type='number' min='60' step='1' name='paste-expiration'
+                   id='paste-expiration-input' placeholder='Expiration (secs)'>
+            <datalist id='expiration-choices'>
+                <option value='60'></option>
+                <option value='300'></option>
+                <option value='3600'></option>
+                <option value='86400'></option>
+            </datalist>
+            <label class='small-label' for='paste-expiration-input'>Delete your paste after a period of time. </label>
+        </div>
+        <div id='paste-passwd-panel' class='paste-setting-text-panel'>
+            <input type='text' name='paste-expiration' id='paste-passwd-input' placeholder='Password'>
+            <label class='small-label' for='paste-passwd-input'>Delete or update your paste with password. Randomly
+                generated by default. </label>
+        </div>
+        <div class='label-line'>
+            <input type='radio' name='url-type' id='paste-url-short-radio' checked>
+            <label for='paste-url-short-radio' class='radio-label'>Generate a short random URL</label>
+            <span class='small-label'>Example: https://shz.al/BxWH</span>
+        </div>
+        <div class='label-line'>
+            <input type='radio' name='url-type' id='paste-url-long-radio'>
+            <label for='paste-url-long-radio' class='radio-label'>Generate a long random URL</label>
+            <span class='small-label'>Example: https://shz.al/5HQWYNmjA4h44SmybeThXXAm</span>
+        </div>
+        <div class='label-line'>
+            <input type='radio' name='url-type' id='paste-url-custom-radio'>
+            <label for='paste-url-custom-radio' class='radio-label'>Set by your own</label>
+            <div class='paste-url-input'>
+                <span class='text-input-prefix'>https://shz.al/~</span>
+                <input type='text' class='text-input-content' id='paste-custom-url-input' name='custom-url'>
+            </div>
+            <span class='small-label'>Example: https://shz.al/~stocking</span>
+        </div>
+    </div>
+    <div id='paste-uploaded-panel'>
+        <h2>Uploaded paste</h2>
+        <input id='uploaded-url' type='text' class='uploaded-table-text' readonly>
+        <label for='uploaded-url' class='small-label'>URL</label>
+        <input id='uploaded-admin-url' type='text' class='uploaded-table-text' readonly>
+        <label for='uploaded-admin-url' class='small-label'>Admin URL</label>
+        <input class='uploaded-table-text' type='text' id='uploaded-expiration'>
+        <label for='uploaded-expiration' class='small-label'>Expiration</label>
+    </div>
+    <button id='submit-button'>Upload</button>
+    <script>
+      function copyTextFromInput(input) {
+        if (input.constructor === String) input = document.getElementById(input)
+        input.focus()
+        input.select()
+        try {
+          document.execCommand('copy')
+        } catch (err) {
+          alert('Failed to copy content')
+        }
+      }
+
+      const formatSize = (size) => {
+        if (!size) return '0'
+        if (size < 1024) {
+          return `${size} Bytes`
+        } else if (size < 1024 * 1024) {
+          return `${(size / 1024).toFixed(2)} KB`
+        } else if (size < 1024 * 1024 * 1024) {
+          return `${(size / 1024 / 1024).toFixed(2)} MB`
+        } else {
+          return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
+        }
+      }
+
+      // monitor input changes and enable/disable submit button
+      let pasteNotEmpty = false, expirationNotShort = true, urlIsOK = true
+
+      const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;]{3,}$/
+      const submitButton = $('#submit-button')
+
+      function updateSubmitButton() {
+        const submitOK = pasteNotEmpty && expirationNotShort && urlIsOK
+        if (submitOK) {
+          submitButton.addClass('submit-button-enabled')
+        } else {
+          submitButton.removeClass('submit-button-enabled')
+        }
+      }
+
+      $('#paste-tab-file').on('input', event => {
+        const files = event.target.files
+        if (files.length === 0) return
+        pasteNotEmpty = true
+        updateSubmitButton()
+        const file = files[0]
+        $('#paste-tab-edit').removeClass('paste-tab-active')
+        $('#paste-tab-file').addClass('paste-tab-active')
+        $('#paste-file-show').addClass('paste-tab-page-active')
+        $('#paste-edit').removeClass('paste-tab-page-active')
+        const fileLine = $('#paste-file-line')
+        fileLine.children('.file-name').text(file.name)
+        fileLine.children('.file-size').text(formatSize(file.size))
+      })
+      $('#paste-tab-edit').on('click', () => {
+        $('#paste-tab-file').removeClass('paste-tab-active')
+        $('#paste-tab-edit').addClass('paste-tab-active')
+        $('#paste-edit').addClass('paste-tab-page-active')
+        $('#paste-file-show').removeClass('paste-tab-page-active')
+        pasteNotEmpty = $('#paste-textarea').prop('value').length > 0
+        updateSubmitButton()
+      })
+
+      $('#paste-textarea').on('input', obj => {
+        pasteNotEmpty = obj.target.value.length > 0
+        updateSubmitButton()
+      })
+
+      $('#paste-expiration-input').on('input', obj => {
+        const expiration = obj.target.value
+        expirationNotShort = expiration.length === 0 || parseInt(expiration) >= 60
+        updateSubmitButton()
+      })
+
+      $('input[name="url-type"],#paste-custom-url-input').on('input', () => {
+        const isCustomUrl = $('#paste-url-custom-radio').prop('checked')
+        const customUrl = $('#paste-custom-url-input').prop('value')
+        console.log(isCustomUrl, customUrl)
+        urlIsOK = !isCustomUrl || !!customUrl.match(NAME_REGEX)
+        updateSubmitButton()
+      })
+
+      // submit the form
+      submitButton.on('click', () => {
+        if (submitButton.hasClass('submit-button-enabled')) {
+          let fd = new FormData()
+          if ($('#paste-tab-edit').hasClass('paste-tab-active')) {
+            fd.append('c', $('#paste-textarea').prop('value'))
+          } else {
+            fd.append('c', $('#paste-file-upload').prop('files')[0])
+          }
+
+          if ($('#paste-url-custom-radio').prop('checked')) {
+            fd.append('n', $('#paste-custom-url-input').prop('value'))
+          } else if ($('#paste-url-long-radio').prop('checked')) {
+            fd.append('p', 'true')
+          }
+
+          const expiration = $('#paste-expiration-input').prop('value')
+          if (expiration.length > 0) {
+            fd.append('e', expiration)
+          }
+
+          const passwd = $('#paste-passwd-input').prop('value')
+          if (passwd.length > 0) {
+            fd.append('s', passwd)
+          }
+
+          $.post({
+            url: 'http://localhost:8787',
+            data: fd,
+            processData: false,
+            success: (data) => {
+              renderUploaded(data)
+            },
+            error: (e) => {
+              alert(JSON.stringify(e, null, 2))
+            },
+          })
+        }
+      })
+
+      function renderUploaded(uploaded) {
+        $('#paste-uploaded-panel').removeClass('hidden')
+        $('#uploaded-url').prop('value', uploaded.url)
+        $('#uploaded-admin-url').prop('value', uploaded.admin)
+        if (uploaded.expiration) {
+          $('#uploaded-expiration').prop('value', uploaded.expire)
+        }
+      }
+    </script>
+</div>
+</body>
