@@ -14,5 +14,5 @@ fi
 [ $# -gt 0 ] && files=("$@")
 
 for file in "${files[@]}"; do
-	echo "${args[@]}" "$file" -p "static/$file.html"
+	"${args[@]}" "$file" -p "static/$file.html"
 done
