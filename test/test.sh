@@ -9,6 +9,10 @@ die() {
     exit 1
 }
 
+err() {
+	printf "\x1b[0;37;31m%s\x1b[0m\n" "$@"
+}
+
 it() {
     num_tests=$((num_tests+1))
     printf "\x1b[0;37;32m> it %s\x1b[0m: " "$1"
@@ -26,8 +30,11 @@ it() {
 curl_code() {  # a wrapper of curl that checks status code
     expected_status_code="$1"
     shift
-    status_code=$(curl -sS -w '%{response_code' "$@" -o /dev/null) || return 1
-    [ "$status_code" != "$expected_status_code" ]
+    status_code=$(curl -sS -w '%{response_code}' "$@" -o /dev/null) || return 1
+    if [ "$status_code" != "$expected_status_code" ]; then
+    	err "status code $status_code, expected $expected_status_code"
+    	return 1
+	fi
 }
 
 start_test() {
@@ -101,6 +108,10 @@ _test_custom_path() {
     test_text="hello world"
     wrong_admin_url="this-is-a-wrong-admin-url"
     name="$RANDOM"
+    bad_name="///"
+
+    start_test "uploading paste of bad name"
+    it 'should upload paste' curl_code 400 -o "$tmp_file" -Fc="$test_text" -Fn="$bad_name" "$localaddr"
 
     start_test "uploading paste"
     it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fn="$name" "$localaddr"

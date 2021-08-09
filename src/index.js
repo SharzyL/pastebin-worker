@@ -6,7 +6,7 @@ import { getType } from "mime/lite.js"
 
 const CHAR_GEN =
   "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
-const NAME_REGEX = /[a-zA-Z0-9+_\-\[\]*$=@,;]{3,}/
+const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;]{3,}$/
 const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
 const ADMIN_PATH_LEN = 24
