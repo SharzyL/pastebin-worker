@@ -4,7 +4,7 @@
     <title>Yet another pastebin</title>
     <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css' />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.js"></script>
     <link rel='icon' href='${FAVICON_URL}' type='image/png' />
     <style media='screen'>
         .markdown-body {
@@ -198,15 +198,16 @@
     <button id='submit-button'>Upload</button>
     <script>
         let pasteNotEmpty = false, expirationNotShort = true, urlIsOK = true;
+
         const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;]{3,}$/
+        const submitButton = $('#submit-button')
 
         function updateSubmitButton() {
-          console.log(pasteNotEmpty, expirationNotShort, urlIsOK)
           const submitOK = pasteNotEmpty && expirationNotShort && urlIsOK
           if (submitOK) {
-            $('#submit-button').addClass('submit-button-enabled')
+            submitButton.addClass('submit-button-enabled')
           } else {
-            $('#submit-button').removeClass('submit-button-enabled')
+            submitButton.removeClass('submit-button-enabled')
           }
         }
 
@@ -227,6 +228,42 @@
           console.log(isCustomUrl, customUrl)
           urlIsOK = !isCustomUrl || !!customUrl.match(NAME_REGEX)
           updateSubmitButton()
+        })
+
+        submitButton.on('click', () => {
+          if (submitButton.hasClass('submit-button-enabled')) {
+            let fd = new FormData();
+            fd.append('c', $('#paste-textarea').prop('value'))
+
+            if ($('#paste-url-custom-radio').prop('checked')) {
+              fd.append('n', $('#paste-custom-url-input').prop('value'))
+            } else if ($('#paste-url-long-radio').prop('checked')) {
+              fd.append('p', 'true')
+            }
+
+            const expiration = $('#paste-expiration-input').prop('value')
+            if (expiration.length > 0) {
+              fd.append('e', expiration)
+            }
+
+            const passwd = $('#paste-passwd-input').prop('value')
+            if (passwd.length > 0) {
+              fd.append('s', passwd)
+            }
+
+            $.ajax({
+              url: 'http://localhost:8787',
+              data: fd,
+              processData: false,
+              type: 'POST',
+              success: (data) => {
+                alert(JSON.stringify(data, null, 2))
+              },
+              error: (e) => {
+                alert(JSON.stringify(e, null, 2))
+              }
+            })
+          }
         })
     </script>
 </div>
