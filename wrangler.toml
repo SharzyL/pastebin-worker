@@ -6,7 +6,6 @@ workers_dev = true
 zone_id = "2fc9ecfb4871050ddd87299674f3039c"
 webpack_config = "webpack.config.js"
 
-vars = { BASE_URL = 'https://shz.al/', FAVICON_URL = 'https://sharzy.in/favicon-32x32.png'}
 kv_namespaces = [
   { binding = "PB", id = "cc398e983a234aa19de5ea6af571a483", preview_id = "f56ae0043abd4bb4ab61c52071bd9c7f" },
 ]

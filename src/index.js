@@ -14,6 +14,8 @@ const ADMIN_PATH_LEN = 24
 const SEP = ":"
 const MAX_LEN = 10 * 1024 * 1024
 
+let BASE_URL = ""
+
 function decode(arrayBuffer) {
   return new TextDecoder().decode(arrayBuffer)
 }
@@ -66,6 +68,7 @@ async function handleNormalRequest(request) {
 async function handlePostOrPut(request, isPut) {
   const contentType = request.headers.get("content-type") || ""
   const url = new URL(request.url)
+  BASE_URL = url.origin
 
   // parse formdata
   let form = {}
@@ -224,8 +227,8 @@ async function createPaste(content, isPrivate, expire, short, date, passwd) {
       passwd: passwd
     },
   })
-  let accessUrl = BASE_URL + short
-  const adminUrl = BASE_URL + short + SEP + passwd
+  let accessUrl = BASE_URL + '/' + short
+  const adminUrl = BASE_URL + '/' + short + SEP + passwd
   return {
     url: accessUrl,
     admin: adminUrl,
