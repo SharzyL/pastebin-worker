@@ -254,21 +254,21 @@
         <div class='label-line'>
             <input type='radio' name='url-type' id='paste-url-short-radio' checked>
             <label for='paste-url-short-radio' class='radio-label'>Generate a short random URL</label>
-            <span class='small-label'>Example: https://shz.al/BxWH</span>
+            <span class='small-label text-substitute'>Example: {{BASE_URL}}/BxWH</span>
         </div>
         <div class='label-line'>
             <input type='radio' name='url-type' id='paste-url-long-radio'>
             <label for='paste-url-long-radio' class='radio-label'>Generate a long random URL</label>
-            <span class='small-label'>Example: https://shz.al/5HQWYNmjA4h44SmybeThXXAm</span>
+            <span class='small-label text-substitute'>Example: {{BASE_URL}}/5HQWYNmjA4h44SmybeThXXAm</span>
         </div>
         <div class='label-line'>
             <input type='radio' name='url-type' id='paste-url-custom-radio'>
             <label for='paste-url-custom-radio' class='radio-label'>Set by your own</label>
             <div class='paste-url-input'>
-                <span class='text-input-prefix'>https://shz.al/~</span>
+                <span class='text-input-prefix text-substitute'>{{BASE_URL}}/~</span>
                 <input type='text' class='text-input-content' id='paste-custom-url-input' name='custom-url'>
             </div>
-            <span class='small-label'>Example: https://shz.al/~stocking</span>
+            <span class='small-label text-substitute'>Example: {{BASE_URL}}/~stocking</span>
         </div>
     </div>
     <div id='paste-uploaded-panel' class='hidden'>
@@ -282,6 +282,11 @@
     </div>
     <button id='submit-button'>Upload</button>
     <script>
+      const baseURL = new URL(window.location.href).origin
+      for (const ele of $('.text-substitute')) {
+        ele.innerText = ele.innerText.replace('{{BASE_URL}}', origin)
+      }
+      
       function copyTextFromInput(input) {
         if (input.constructor === String) input = document.getElementById(input)
         input.focus()
