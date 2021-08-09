@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<head>
+    <meta charset='UTF-8'>
+    <title>Yet another pastebin</title>
+    <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css' />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+    <link rel='icon' href='${FAVICON_URL}' type='image/png' />
+    <style media='screen'>
+        .markdown-body {
+            font-family: sans-serif;
+        }
+        :root {
+            --color-bg: #ffffff;
+            --color-bg-secondary: #f4f4f4;
+            --color-border: #ddd;
+            --color-shadowed: #f7f7f7;
+            --color-green: #2ea44f;
+            --color-green-disabled: #94d3a2;
+
+            --color-text-light: #888;
+            --color-text-secondary: #444;
+            --color-text-stress: #000;
+            --color-text: #222;
+            --color-text-white: white;
+        }
+        #paste-input-panel {
+            width: 100%;
+            border: 1px var(--color-border) solid;
+        }
+        #paste-header {
+            background-color: var(--color-shadowed);
+            display: flex;
+            border-bottom: 1px var(--color-border) 1px;
+        }
+        #paste-header>div:last-child {
+            border-bottom: 1px var(--color-border) solid;
+            flex: 1;
+        }
+        .paste-header-tabs { display: flex; }
+        .paste-option-card {
+            font-size: 13px;
+            display: inline-block;
+            padding: 0.6rem 0.5rem 0.7rem;
+            background-color: inherit;
+            color: var(--color-text-secondary);
+            font-weight: 400;
+            border: 1px transparent solid;
+            border-bottom-color: var(--color-border);
+        }
+        .paste-option-card {
+            border-right-color: var(--color-border);
+        }
+        .paste-option-card-active {
+            border-bottom-color: transparent;
+            background-color: var(--color-bg);
+            color: var(--color-text-stress);
+            font-weight: 600;
+        }
+        .paste-option-card-inactive:last-child {
+            border-right-color: transparent;
+        }
+        #paste-textarea {
+            width: 100%;
+            font-family: monospace;
+            font-size: 12px;
+            border: none;
+            outline: none;
+            resize: vertical;
+        }
+
+        #paste-setting-panel {
+            margin-top: 0.5rem;
+            border: 1px var(--color-border) solid;
+            padding: 1rem;
+        }
+        #paste-setting-panel>h2 {
+            margin: 0;
+            border: none;
+        }
+
+        .label-line {
+            display: block;
+            margin: 0.3rem 0;
+        }
+        .small-label {
+            display: block;
+            color: var(--color-text-light);
+            font-size: 12px;
+        }
+        .radio-label {
+            font-size: 14px;
+        }
+        .paste-setting-text-panel {
+            margin: 0.8rem 0;
+        }
+        .paste-setting-text-panel>input {
+            border: 1px var(--color-border) solid;
+            outline: none;
+            font-size: 15px;
+        }
+        .paste-setting-text-panel>input::placeholder {
+            color: var(--color-text-light)
+        }
+        .paste-url-input {
+            display: inline-block;
+            border: 1px var(--color-border) solid;
+            font-family: monospace;
+            background-color: var(--color-bg);
+            font-size: 12px;
+            border-radius: 2px;
+        }
+        .text-input-prefix {
+            padding-left: 0.5rem;
+            color: var(--color-text-light);
+            user-select: none;
+        }
+        .text-input-content {
+            border: none;
+            border-left: 1px var(--color-border) solid;
+            color: var(--color-text);
+            background-color: inherit;
+            padding: 0.1rem;
+            outline: none;
+        }
+        input:not(:checked)~.paste-url-input {
+            display: none;
+        }
+
+        #submit-button {
+            color: var(--color-text-white);
+            font-size: 12px;
+            padding: 0.4rem 1rem;
+            margin-top: 0.3rem;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--color-green-disabled);
+        }
+        #submit-button.submit-button-enabled {
+            background-color: var(--color-green);
+        }
+    </style>
+</head>
+<body>
+<div class='container-lg px-3 my-5 markdown-body'>
+    <h1>Yet Another Pastebin</h1>
+    <p>This is an open sourced pastebin deployed on Cloudflare workers. </p>
+    <p><b>How to use</b>: paste any text here, submit, then share it with URL. </p>
+    <p>Want to know more? See <a href='https://github.com/SharzyL/pastebin-worker'>Github</a> for more information. </p>
+
+    <div id='paste-input-panel'>
+        <div id='paste-header'>
+            <div class='paste-header-tabs'>
+                <button class='paste-option-card paste-option-card-active'>Edit paste</button>
+                <button class='paste-option-card paste-option-card-inactive'>Upload file</button>
+            </div>
+            <div></div>
+        </div>
+        <textarea placeholder='Put your paste here' id='paste-textarea' name='c' rows='20'></textarea>
+    </div>
+
+    <div id='paste-setting-panel'>
+        <h2>Settings</h2>
+        <div id='paste-expiration-panel' class='paste-setting-text-panel'>
+            <input list='expiration-choices' type='number' min='60' step='1' name="paste-expiration" id="paste-expiration-input" placeholder='Expiration (secs)'>
+            <datalist id='expiration-choices'>
+                <option value='60'></option>
+                <option value='300'></option>
+                <option value='3600'></option>
+                <option value='86400'></option>
+            </datalist>
+            <label class='small-label' for='paste-expiration-input'>Delete your paste after a period of time. </label>
+        </div>
+        <div id='paste-passwd-panel' class='paste-setting-text-panel'>
+            <input type='text' name="paste-expiration" id="paste-passwd-input" placeholder='Password'>
+            <label class='small-label' for='paste-passwd-input'>Delete or update your paste with password. Randomly generated by default. </label>
+        </div>
+        <div class='label-line'>
+            <input type="radio" name="url-type" id='paste-url-short-radio' checked>
+            <label for='paste-url-short-radio' class='radio-label'>Generate a short random URL</label>
+            <span class='small-label'>Example: https://shz.al/BxWH</span>
+        </div>
+        <div class='label-line'>
+            <input type="radio" name="url-type" id='paste-url-long-radio'>
+            <label for='paste-url-long-radio' class='radio-label'>Generate a long random URL</label>
+            <span class='small-label'>Example: https://shz.al/5HQWYNmjA4h44SmybeThXXAm</span>
+        </div>
+        <div class='label-line'>
+            <input type="radio" name="url-type" id='paste-url-custom-radio'>
+            <label for='paste-url-custom-radio' class='radio-label'>Set by your own</label>
+            <div class='paste-url-input'>
+                <span class='text-input-prefix'>https://shz.al/~</span>
+                <input type="text" class='text-input-content' id='paste-custom-url-input' name='custom-url'>
+            </div>
+            <span class='small-label'>Example: https://shz.al/~stocking</span>
+        </div>
+    </div>
+    <button id='submit-button'>Upload</button>
+    <script>
+        let pasteNotEmpty = false, expirationNotShort = true, urlIsOK = true;
+        const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;]{3,}$/
+
+        function updateSubmitButton() {
+          console.log(pasteNotEmpty, expirationNotShort, urlIsOK)
+          const submitOK = pasteNotEmpty && expirationNotShort && urlIsOK
+          if (submitOK) {
+            $('#submit-button').addClass('submit-button-enabled')
+          } else {
+            $('#submit-button').removeClass('submit-button-enabled')
+          }
+        }
+
+        $('#paste-textarea').on('input', obj => {
+          pasteNotEmpty = obj.target.value.length > 0
+          updateSubmitButton()
+        })
+
+        $('#paste-expiration-input').on('input', obj => {
+          const expiration = obj.target.value
+          expirationNotShort = expiration.length === 0 || parseInt(expiration) >= 60
+          updateSubmitButton()
+        })
+
+        $('input[name="url-type"],#paste-custom-url-input').on('input', () => {
+          const isCustomUrl = $('#paste-url-custom-radio').prop('checked')
+          const customUrl = $('#paste-custom-url-input').prop('value')
+          console.log(isCustomUrl, customUrl)
+          urlIsOK = !isCustomUrl || !!customUrl.match(NAME_REGEX)
+          updateSubmitButton()
+        })
+    </script>
+</div>
+</body>
