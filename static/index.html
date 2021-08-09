@@ -486,6 +486,7 @@
       })
 
       function putPaste() {
+        $('#paste-uploaded-panel').addClass('hidden')
         let fd = new FormData()
         if (inputType === 'file') {
           fd.append('c', file)
@@ -511,6 +512,7 @@
       }
 
       function postPaste() {
+        $('#paste-uploaded-panel').addClass('hidden')
         let fd = new FormData()
         if (inputType === 'file') {
           fd.append('c', file)
