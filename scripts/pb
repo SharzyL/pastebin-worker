@@ -113,7 +113,10 @@ pb_post() {
 	eval set -- "$TEMP";
 
 	while [[ ${1:0:1} == - ]]; do
-		[[ $1 =~ ^-f|--|--file$ ]]  && { file="$2"; shift 2; break; };
+		[[ $1 =~ ^-f|--|--file$ ]]  && {
+			shift 1;
+			if [ -n "$2" ]; then file="$2"; shift 1; fi
+		};
 		[[ $1 =~ ^-c|--content$ ]]  && { content="$2"; shift 2; continue; };
 		[[ $1 =~ ^-e|--expire$ ]]   && { expire="$2"; shift 2; continue; };
 		[[ $1 =~ ^-n|--name$ ]]     && { name="$2"; shift 2; continue; };
@@ -137,9 +140,9 @@ pb_post() {
 	[ -n "$content" ] && args+=("-Fc=$content")
 	[ -n "$expire" ]  && args+=("-Fe=$expire")
 	[ -n "$name" ]    && args+=("-Fn=$name")
-	[ -n "$passwd" ]  && args+=("-Fs+=$passwd")
-	[ -n "$private" ] && args+=("-Fp+=true")
-	[ -n "$human" ]   && args+=("-Fh+=true")
+	[ -n "$passwd" ]  && args+=("-Fs=$passwd")
+	[ -n "$private" ] && args+=("-Fp=true")
+	[ -n "$human" ]   && args+=("-Fh=true")
 	[ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
 
 	# prepare curl
