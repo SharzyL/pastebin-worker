@@ -4,8 +4,8 @@
     <title>Yet another pastebin</title>
     <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css' />
     <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
-    <script src='https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.js'></script>
-    <link rel='icon' href='${FAVICON_URL}' type='image/png' />
+    <script src='https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js'></script>
+    <link rel='icon' href='https://sharzy.in/favicon-32x32.png' type='image/png' />
     <style media='screen'>
         .markdown-body tt, .markdown-body code {
             font-family: monospace;
@@ -271,7 +271,7 @@
             <span class='small-label'>Example: https://shz.al/~stocking</span>
         </div>
     </div>
-    <div id='paste-uploaded-panel'>
+    <div id='paste-uploaded-panel' class='hidden'>
         <h2>Uploaded paste</h2>
         <input id='uploaded-url' type='text' class='uploaded-table-text' readonly>
         <label for='uploaded-url' class='small-label'>URL</label>
@@ -390,7 +390,7 @@
           }
 
           $.post({
-            url: 'http://localhost:8787',
+            url: '/',
             data: fd,
             processData: false,
             success: (data) => {

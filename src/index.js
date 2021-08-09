@@ -1,7 +1,5 @@
-import { helpHTML } from "./indexPage.js"
 import { handleOptions } from './cors.js'
 import { makeHighlight } from "./highlight.js"
-import { makeUploadedPage } from "./uploadedPage.js"
 import { parseFormdata } from "./parseFormdata.js"
 import { getType } from "mime/lite.js"
 
@@ -13,6 +11,14 @@ const PRIVATE_RAND_LEN = 24
 const ADMIN_PATH_LEN = 24
 const SEP = ":"
 const MAX_LEN = 10 * 1024 * 1024
+
+const staticPageMap = new Map([
+  ['/', 'index'],
+  ['/index', 'index'],
+  ['/index.html', 'index'],
+  ['/tos', 'tos'],
+  ['/tos.html', 'tos'],
+])
 
 function decode(arrayBuffer) {
   return new TextDecoder().decode(arrayBuffer)
@@ -84,7 +90,6 @@ async function handlePostOrPut(request, isPut) {
   const content = form.get("c")
   const name = decode(form.get("n")) || undefined
   const isPrivate = form.get("p") !== undefined
-  const isHuman = form.get("h") !== undefined // return a JSON or a human friendly page?
   const passwd = decode(form.get("s")) || undefined
   const expire =
     form.has("e") && form.get("e").byteLength > 0
@@ -120,15 +125,9 @@ async function handlePostOrPut(request, isPut) {
   }
 
   function makeResponse(created) {
-    if (isHuman) {
-      return new Response(makeUploadedPage(created), {
-        headers: { "content-type": "text/html;charset=UTF-8" },
-      })
-    } else {
-      return new Response(JSON.stringify(created, null, 2), {
-        headers: { "content-type": "application/json;charset=UTF-8" },
-      })
-    }
+    return new Response(JSON.stringify(created, null, 2), {
+      headers: { "content-type": "application/json;charset=UTF-8" },
+    })
   }
 
   if (isPut) {
@@ -159,9 +158,10 @@ async function handlePostOrPut(request, isPut) {
 
 async function handleGet(request) {
   const url = new URL(request.url)
-  if (url.pathname === "/") {
-    return new Response(helpHTML, {
-      headers: { "content-type": "text/html;charset=UTF-8" },
+  if (staticPageMap.has(url.pathname)) {
+    const item = await PB.get(staticPageMap.get(url.pathname))
+    return new Response(item, {
+      headers: { "content-type": "text/html;charset=UTF-8" }
     })
   }
 

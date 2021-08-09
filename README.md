@@ -37,6 +37,7 @@ Modify IDs in `wrangler.toml` according your own account information (`account_i
 Deploy!
 
 ```shell
+$ ./scripts/deploy-static.sh
 $ yarn install
 $ yarn build
 $ wrangler publish
@@ -106,11 +107,9 @@ Upload your paste. It accept parameters in form-data:
 
 - `n`: optional. The customized **name** of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$=@,;`. 
 
-- `h`: optional. The flag of **human friendly output**. If specified to any value, it will return a web page instead of JSON. 
-
 - `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used. 
 
-`POST` method returns a JSON string by default, if no error occurs, example: 
+`POST` method returns a JSON string by default, if no error occurs, for example: 
 
   ```json
   {
@@ -161,7 +160,6 @@ Update you paste of the name `<name>` and password `<passwd>`. It accept the par
 - `c`: mandatory. Same as `POST` method. 
 - `e`: optional. Same as `POST` method. Note that the deletion time is now recalculated. 
 - `s`: optional. Same as `POST` method. 
-- `h`: optional. Same ss `POST` method. 
 
 The returning of `PUT` method is also the same as `POST` method. 
 
