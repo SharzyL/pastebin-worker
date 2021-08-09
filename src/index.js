@@ -1,6 +1,8 @@
 import { handleOptions } from './cors.js'
 import { makeHighlight } from "./highlight.js"
 import { parseFormdata } from "./parseFormdata.js"
+import { staticPageMap } from './staticPages.js'
+
 import { getType } from "mime/lite.js"
 
 const CHAR_GEN =
@@ -11,14 +13,6 @@ const PRIVATE_RAND_LEN = 24
 const ADMIN_PATH_LEN = 24
 const SEP = ":"
 const MAX_LEN = 10 * 1024 * 1024
-
-const staticPageMap = new Map([
-  ['/', 'index'],
-  ['/index', 'index'],
-  ['/index.html', 'index'],
-  ['/tos', 'tos'],
-  ['/tos.html', 'tos'],
-])
 
 function decode(arrayBuffer) {
   return new TextDecoder().decode(arrayBuffer)

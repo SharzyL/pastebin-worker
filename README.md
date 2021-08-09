@@ -37,10 +37,9 @@ Modify IDs in `wrangler.toml` according your own account information (`account_i
 Deploy!
 
 ```shell
-$ ./scripts/deploy-static.sh
-$ yarn install
-$ yarn build
-$ wrangler publish
+$ ./scripts/deploy-static.sh   # deploy the static pages to Cloudflare KV storage
+$ yarn install                 # install necessary packages
+$ wrangler publish             # build and publish to Cloudflare edge servers
 ```
 
 ## API Reference

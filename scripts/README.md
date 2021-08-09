@@ -1,4 +1,4 @@
-# `pb.sh`: paste everything easily
+## `pb`: paste everything easily
 
 This is a wrapper script to make it easier to use our pastebin. 
 
@@ -66,3 +66,18 @@ Options:
     -d, --dry               do a dry run, executing no 'curl' command at all
 ```
 
+## `deploy-static.sh`
+
+Deploy html files to Cloudflare KV storage. The map of KV storage key and web page is recorded in `src/staticPages.js`. Usage: 
+
+```shell
+deploy-static.sh [--preview] [<file-name-without-extension>...]
+```
+
+## `md2html.sh`
+
+Convert markdown to HTML, with a GitHub style CSS. Usage: 
+
+```shell
+md2html.sh <markdown-file> <html-file> <page-title> <favicon-url>
+```
