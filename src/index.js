@@ -1,4 +1,5 @@
 import { helpHTML } from "./indexPage.js"
+import { handleOptions } from './cors.js'
 import { makeHighlight } from "./highlight.js"
 import { makeUploadedPage } from "./uploadedPage.js"
 import { parseFormdata } from "./parseFormdata.js"
@@ -31,16 +32,12 @@ addEventListener("fetch", (event) => {
 
 async function handleRequest(request) {
   try {
-    if (request.method === "POST") {
-      return await handlePostOrPut(request, false)
-    } else if (request.method === "GET") {
-      return await handleGet(request)
-    } else if (request.method === "DELETE") {
-      return await handleDelete(request)
-    } else if (request.method === "PUT") {
-      return await handlePostOrPut(request, true)
+    if (request.method === "OPTION") {
+      return handleOptions(request)
     } else {
-      throw new WorkerError(405, "method not allowed")
+      const response = await handleNormalRequest(request)
+      response.headers.set("Access-Control-Allow-Origin", "*")
+      return response
     }
   } catch (e) {
     console.log(e.stack)
@@ -49,6 +46,20 @@ async function handleRequest(request) {
     } else {
       return new Response(e.message + "\n", { status: 500 })
     }
+  }
+}
+
+async function handleNormalRequest(request) {
+  if (request.method === "POST") {
+    return await handlePostOrPut(request, false)
+  } else if (request.method === "GET") {
+    return await handleGet(request)
+  } else if (request.method === "DELETE") {
+    return await handleDelete(request)
+  } else if (request.method === "PUT") {
+    return await handlePostOrPut(request, true)
+  } else {
+    throw new WorkerError(405, "method not allowed")
   }
 }
 
