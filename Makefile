@@ -32,27 +32,27 @@ preview: $(all_html_preview) $(js_preview)
 clean:
 	rm -f $(all_html) $(all_html_deploy) $(all_html_preview) $(js_deploy) $(js_preview)
 
-$(BUILD_DIR)/tos.html.liquid: static/tos.md
-	$(md2html) $^ $@ "Terms and Conditions"
+$(BUILD_DIR)/tos.html.liquid: static/tos.md $(md2html)
+	$(md2html) $< $@ "Terms and Conditions"
 
 $(BUILD_DIR)/index.html.liquid: static/index.html
 	@# no generation needed, simply copy
-	cp $^ $@
+	cp $< $@
 
 # convert liquid template to html file
-$(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF)
+$(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF) $(html_renderer)
 	$(html_renderer) -o $@ $<
 	@# remove indents to reduce size
 	sed -E -i 's/^\s+//g' $@
 
 # deploy html file to Cloudflare
-$(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html
-	$(deploy) $^
+$(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy)
+	$(deploy) $<
 	@mkdir -p $(dir $@)
 	@touch $@
 
 # deploy html file to Cloudflare preview
-$(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html
+$(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy)
 	$(deploy) --preview $^
 	@mkdir -p $(dir $@)
 	@touch $@

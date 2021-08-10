@@ -16,7 +16,7 @@ cat > "$html_file" <<-EOF
 <div class="container-lg px-3 my-5 markdown-body">
 EOF
 
-pandoc "$md_file" -o - >> "$html_file"
+yarn -s remark "$md_file" --use remark-html >> "$html_file"
 
 cat >> "$html_file" <<-EOF
 </div>
