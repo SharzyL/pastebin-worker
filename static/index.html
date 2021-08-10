@@ -505,9 +505,7 @@
           success: (data) => {
             renderUploaded(data)
           },
-          error: (e) => {
-            alert(JSON.stringify(e, null, 2))
-          },
+          error: handleError
         })
       }
 
@@ -533,9 +531,7 @@
           success: (data) => {
             renderUploaded(data)
           },
-          error: (e) => {
-            alert(JSON.stringify(e, null, 2))
-          },
+          error: handleError
         })
       }
 
@@ -549,9 +545,7 @@
           success: () => {
             alert('Delete successfully')
           },
-          error: (e) => {
-            alert(JSON.stringify(e, null, 2))
-          },
+          error: handleError
         })
       }
 
@@ -562,6 +556,14 @@
         if (uploaded.expire) {
           $('#uploaded-expiration').prop('value', uploaded.expire)
         }
+      }
+
+      function handleError(error) {
+        console.log(error)
+        const status = error.status || ''
+        let statusText = error.statusText === 'error' ? 'Unknown error' : error.statusText
+        const responseText = error.responseText || ''
+        alert(`Error ${status}: ${statusText}\n${responseText}\nView your console for more information`)
       }
     </script>
 </div>
