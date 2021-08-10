@@ -1,0 +1,26 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - ci-test
+      - master
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v2
+      - name: setup
+        run: |
+          apt update
+          apt install pandoc
+          yarn install
+      - name: build
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          make deploy
+
