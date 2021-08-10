@@ -4,6 +4,12 @@ on:
     branches:
       - ci-test
       - master
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
 
 jobs:
   deploy:
