@@ -137,10 +137,10 @@ pb_post() {
 	# build arguments
 	declare -a args=("curl_code" "-sS" "$domain")
 	[ -n "$file" ]    && args+=("-Fc=@$file")
-	[ -n "$content" ] && args+=("-Fc=$content")
-	[ -n "$expire" ]  && args+=("-Fe=$expire")
-	[ -n "$name" ]    && args+=("-Fn=$name")
-	[ -n "$passwd" ]  && args+=("-Fs=$passwd")
+	[ -n "$content" ] && args+=("-Fc=\"$content\"")
+	[ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
+	[ -n "$name" ]    && args+=("-Fn=\"$name\"")
+	[ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
 	[ -n "$private" ] && args+=("-Fp=true")
 	[ -n "$human" ]   && args+=("-Fh=true")
 	[ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
@@ -211,9 +211,9 @@ pb_update() {
 	# build arguments
 	declare -a args=("curl_code" "-X" "PUT" "$domain/$name:$passwd")
 	[ -n "$file" ]    && args+=("-Fc=@$file")
-	[ -n "$content" ] && args+=("-Fc=$content")
-	[ -n "$expire" ]  && args+=("-Fe=$expire")
-	[ -n "$passwd" ]  && args+=("-Fs=$passwd")
+	[ -n "$content" ] && args+=("-Fc=\"$content\"")
+	[ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
+	[ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
 	[ -n "$human" ]   && args+=("-Fh=true")
 	[ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
 

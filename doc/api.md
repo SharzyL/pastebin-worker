@@ -71,7 +71,7 @@ Upload your paste. It accept parameters in form-data:
       "url": "https://shz.al/abcd", 
       "admin": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
       "expire": 100,
-      "isPrivate": false,
+      "isPrivate": false
   }
   ```
 
@@ -104,6 +104,15 @@ $ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
 {
   "url": "https://shz.al/~panty",
   "admin": "https://shz.al/~panty:12345678",
+  "isPrivate": false
+}
+
+# because `curl` takes some characters as filed separator, the fields should be 
+# quoted by double-quotes if the field contains semicolon or comma
+$ curl -Fc=@panty.jpg -Fn='"hi/hello;g,ood"' -Fs=12345678 https://shz.al
+{
+  "url": "http://shz.al/~hi/hello;g,ood",
+  "admin": "http://shz.al/~hi/hello;g,ood:QJhMKh5WR6z36QRAAn5Q5GZh",
   "isPrivate": false
 }
 ```
