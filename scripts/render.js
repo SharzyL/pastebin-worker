@@ -14,7 +14,7 @@ function parseArgs() {
 
 function getCommitHash() {
   const stdout = spawnSync('git', ['rev-parse', '--short=6', 'HEAD']).stdout
-  return stdout === null ? null : stdout.toString().trim()
+  return stdout === null ? 'unknown' : stdout.toString().trim()
 }
 
 function main() {
