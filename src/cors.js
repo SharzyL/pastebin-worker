@@ -8,8 +8,7 @@ export function handleOptions(request) {
   let headers = request.headers;
   if (
     headers.get("Origin") !== null &&
-    headers.get("Access-Control-Request-Method") !== null &&
-    headers.get("Access-Control-Request-Headers") !== null
+    headers.get("Access-Control-Request-Method") !== null
   ){
     let respHeaders = {
       ...corsHeaders,

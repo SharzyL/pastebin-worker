@@ -34,7 +34,7 @@ addEventListener("fetch", (event) => {
 
 async function handleRequest(request) {
   try {
-    if (request.method === "OPTION") {
+    if (request.method === "OPTIONS") {
       return handleOptions(request)
     } else {
       const response = await handleNormalRequest(request)
