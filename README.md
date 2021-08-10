@@ -28,8 +28,6 @@ It also provide a convenient HTTP API to use. See [API reference](doc/api.md) fo
 
 You are free to deploy the pastebin on your own domain, if you host your domain on Cloudflare. 
 
-First, install [wrangler](https://github.com/cloudflare/wrangler) and login your Cloudflare account.
-
 Requirements:
 1. *nix environment with bash and basic cli programs. If you are using Windows, try cygwin, WSL or something. 
 2. GNU make. 
@@ -39,11 +37,13 @@ Requirements:
 
 Create two KV namespaces in Cloudflare workers (one for production, one for test). Remember their IDs. If you do not need testing, simply create one.
 
-Modify IDs in `wrangler.toml` according to your own account information (`account_id`, `zone_id`, `kv_namespaces.id`, `kv_namespaces.preview_id` are what you need to modify). Refer to [Cloudflare doc](https://developers.cloudflare.com/workers/cli-wrangler/configuration) on how to find out these parameters.
+Clone the repository and enter the directory. Modify entries in `wrangler.toml` according to your own account information (`account_id`, `zone_id`, `kv_namespaces.id`, `kv_namespaces.preview_id` are what you need to modify). Refer to [Cloudflare doc](https://developers.cloudflare.com/workers/cli-wrangler/configuration) on how to find out these parameters.
+
+Modify the contents in `config.json` (which controls the generation of static pages): `BASE_URL` is the URL of your site (no trailing slash); `FAVICON` is the URL to the favicon you want to use on your site. 
 
 Deploy!
 
 ```shell
-$ yarn install                 # install necessary packages
-$ mkdir dist && make deploy    # store the static pages on Cloudflare KV storage
+$ yarn install
+$ mkdir dist && make deploy
 ```
