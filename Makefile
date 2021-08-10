@@ -14,13 +14,13 @@ DEPLOY_DIR = dist/deploy
 PREVIEW_DIR = dist/preview
 
 source_js_files = $(wildcard $(JS_DIR)/*.js)
-all_dist = $(addprefix $(BUILD_DIR)/,$(target_html_files))
+all_html = $(addprefix $(BUILD_DIR)/,$(target_html_files))
 all_html_deploy = $(addprefix $(DEPLOY_DIR)/, $(target_html_files))
 all_html_preview = $(addprefix $(PREVIEW_DIR)/, $(target_html_files))
 js_deploy = $(addprefix $(DEPLOY_DIR)/, $(target_js_file))
 js_preview = $(addprefix $(PREVIEW_DIR)/, $(target_js_file))
 
-all: $(all_dist)
+html: $(all_html)
 
 test:
 	./test/test.sh
@@ -30,7 +30,7 @@ deploy: $(all_html_deploy) $(js_deploy)
 preview: $(all_html_preview) $(js_preview)
 
 clean:
-	rm -f $(all_dist) $(all_html_deploy) $(all_html_preview) $(js_deploy) $(js_preview)
+	rm -f $(all_html) $(all_html_deploy) $(all_html_preview) $(js_deploy) $(js_preview)
 
 $(BUILD_DIR)/tos.html.liquid: static/tos.md
 	$(md2html) $^ $@ "Terms and Conditions"
@@ -40,7 +40,7 @@ $(BUILD_DIR)/index.html.liquid: static/index.html
 	cp $^ $@
 
 # convert liquid template to html file
-$(all_dist): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF)
+$(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF)
 	$(html_renderer) -o $@ $<
 	# remove indents to reduce size
 	sed -E -i 's/^\s+//g' $@
@@ -53,7 +53,7 @@ $(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html
 
 # deploy html file to Cloudflare preview
 $(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html
-	$(deploy) $^
+	$(deploy) --preview $^
 	@mkdir -p $(dir $@)
 	@touch $@
 
@@ -63,4 +63,4 @@ $(js_deploy): $(source_js_files)
 	@mkdir -p $(dir $@)
 	@touch $@
 
-.PHONY: all test deploy preview clean
+.PHONY: html test deploy preview clean
