@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 localaddr="http://localhost:8787"
 tmp_file=$(mktemp)
@@ -107,18 +107,19 @@ _test_long_mode() {
 _test_custom_path() {
     test_text="hello world"
     wrong_admin_url="this-is-a-wrong-admin-url"
-    name="$RANDOM"
-    bad_name="///"
+    name="$RANDOM"'+_-[]*$=@,;/'
+    bad_names=("a" "ab" "...")
 
     start_test "uploading paste of bad name"
-    it 'should upload paste' curl_code 400 -o "$tmp_file" -Fc="$test_text" -Fn="$bad_name" "$localaddr"
+    for bad_name in "${bad_names[@]}"; do
+		it 'should upload paste' curl_code 400 -o "$tmp_file" -Fc="$test_text" -Fn="$bad_name" "$localaddr"
+	done
 
     start_test "uploading paste"
-    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fn="$name" "$localaddr"
+    it 'should upload paste' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fn="\"$name\"" "$localaddr"
     url=$(jq -r '.url' "$tmp_file")
     admin_url=$(jq -r '.admin' "$tmp_file")
-    path=${url##*/}
-    it 'should give the custom path' [ "$path" = "~$name" ]
+    it 'should give the custom path' [ "$url" == "$localaddr/~$name" ]
 
     start_test "fetching paste"
     it 'should fetch paste' curl_code 200 -o "$tmp_file" "$url"

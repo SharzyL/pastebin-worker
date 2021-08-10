@@ -7,7 +7,7 @@ import { getType } from "mime/lite.js"
 
 const CHAR_GEN =
   "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
-const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;]{3,}$/
+const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;\/]{3,}$/
 const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
 const ADMIN_PATH_LEN = 24
@@ -247,12 +247,6 @@ function genRandStr(len) {
     str += CHAR_GEN.charAt(Math.floor(Math.random() * numOfRand))
   }
   return str
-}
-
-async function hashWithSalt(data) {
-  const text = new TextEncoder().encode(data + SALT)
-  const digest = await crypto.subtle.digest({ name: "SHA-1" }, text)
-  return btoa(String.fromCharCode(...new Uint8Array(digest)))
 }
 
 function parsePath(pathname) {
