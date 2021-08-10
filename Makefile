@@ -41,7 +41,7 @@ $(BUILD_DIR)/index.html.liquid: static/index.html
 
 # convert liquid template to html file
 $(all_dist): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF)
-	$(html_renderer) -o $@ $^
+	$(html_renderer) -o $@ $<
 	# remove indents to reduce size
 	sed -E -i 's/^\s+//g' $@
 
