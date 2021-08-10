@@ -496,6 +496,7 @@
           url: adminUrl,
           data: fd,
           processData: false,
+          contentType: 'multipart/form-data',
           success: (data) => {
             renderUploaded(data)
           },
@@ -522,6 +523,7 @@
           url: base_url,
           data: fd,
           processData: false,
+          contentType: 'multipart/form-data',
           success: (data) => {
             renderUploaded(data)
           },
