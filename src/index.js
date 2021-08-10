@@ -74,7 +74,7 @@ async function handlePostOrPut(request, isPut) {
 
   // parse formdata
   let form = {}
-  if (contentType.includes("form")) {
+  if (contentType.includes("multipart/form-data")) {
     // because cloudflare runtime treat all formdata part as strings thus corrupting binary data,
     // we need to manually parse formdata
     const uint8Array = await request.arrayBuffer()
@@ -84,7 +84,7 @@ async function handlePostOrPut(request, isPut) {
       return new WorkerError(400, "error occurs parsing formdata")
     }
   } else {
-    throw new WorkerError(400, "bad usage, please use formdata")
+    throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
   const content = form.get("c")
   const name = decode(form.get("n")) || undefined
@@ -92,7 +92,7 @@ async function handlePostOrPut(request, isPut) {
   const passwd = decode(form.get("s")) || undefined
   const expire =
     form.has("e") && form.get("e").byteLength > 0
-      ? parseInt(decode(form.get("e")))
+      ? decode(form.get("e"))
       : undefined
 
   // check if paste content is legal
@@ -104,13 +104,14 @@ async function handlePostOrPut(request, isPut) {
 
   // check if expiration is legal
   if (expire !== undefined) {
-    if (isNaN(expire)) {
-      throw new WorkerError(400, "cannot parse expire as an integer")
+    const expireInt = parseInt(expire)
+    if (isNaN(expireInt)) {
+      throw new WorkerError(400, `cannot parse expire ${expireInt} as an integer`)
     }
-    if (expire < 60) {
+    if (expireInt < 60) {
       throw new WorkerError(
         400,
-        "due to limitation of Cloudflare, expire should be a integer greater than 60",
+        `due to limitation of Cloudflare, expire should be a integer greater than 60, '${expireInt} given`,
       )
     }
   }
@@ -119,7 +120,7 @@ async function handlePostOrPut(request, isPut) {
   if (name !== undefined && !NAME_REGEX.test(name)) {
     throw new WorkerError(
       400,
-      `Name not satisfying regexp ${NAME_REGEX}`,
+      `Name ${name} not satisfying regexp ${NAME_REGEX}`,
     )
   }
 
@@ -133,11 +134,11 @@ async function handlePostOrPut(request, isPut) {
     const { short, passwd } = parsePath(url.pathname)
     const item = await PB.getWithMetadata(short)
     if (item.value === null) {
-      throw new WorkerError(404, "not found")
+      throw new WorkerError(404, $`paste of name '${short}' is not found`)
     } else {
       const date = item.metadata.postedAt
       if (passwd !== item.metadata.passwd) {
-        throw new WorkerError(403, "bad password")
+        throw new WorkerError(403, `incorrect password for paste '${short}`)
       } else {
         return makeResponse(
           await createPaste(content, isPrivate, expire, short, date, passwd),
@@ -171,7 +172,7 @@ async function handleGet(request) {
 
   // when paste is not found
   if (item.value === null) {
-    throw new WorkerError(404, "not found")
+    throw new WorkerError(404, `paste of name '${short}' not found`)
   }
 
   // handle URL redirection
@@ -199,10 +200,10 @@ async function handleDelete(request) {
   const item = await PB.getWithMetadata(short)
   console.log(item, passwd)
   if (item.value === null) {
-    throw new WorkerError(404, "not found")
+    throw new WorkerError(404, `paste of name '${short}' not found`)
   } else {
     if (passwd !== item.metadata.passwd) {
-      throw new WorkerError(403, "bad handler")
+      throw new WorkerError(403, `incorrect password for paste '${short}`)
     } else {
       await PB.delete(short)
       return new Response("the paste will be deleted in seconds")
