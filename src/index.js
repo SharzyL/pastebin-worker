@@ -74,7 +74,7 @@ async function handlePostOrPut(request, isPut) {
 
   // parse formdata
   let form = {}
-  if (contentType.includes("multipart/form-data")) {
+  if (contentType.includes("form")) {
     // because cloudflare runtime treat all formdata part as strings thus corrupting binary data,
     // we need to manually parse formdata
     const uint8Array = await request.arrayBuffer()
