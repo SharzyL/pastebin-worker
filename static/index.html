@@ -327,6 +327,8 @@
     <button id='submit-button'>Upload</button>
     <button id='delete-button' class='hidden'>Delete</button>
     <script>
+      const base_url = '{{BASE_URL}}'
+
       function copyTextFromInput(input) {
         if (input.constructor === String) input = document.getElementById(input)
         input.focus()
@@ -341,7 +343,7 @@
       function isAdminUrlLegal(url) {
         try {
           url = new URL(url)
-          return url.origin === origin && url.pathname.indexOf(':') >= 0
+          return url.origin === base_url && url.pathname.indexOf(':') >= 0
         } catch (e) {
           if (e instanceof TypeError) {
             return false;
@@ -517,7 +519,7 @@
         if (urlType === 'custom') fd.append('n', customName)
 
         $.post({
-          url: '/',
+          url: base_url,
           data: fd,
           processData: false,
           success: (data) => {
