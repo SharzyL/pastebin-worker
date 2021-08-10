@@ -35,7 +35,7 @@ clean:
 $(BUILD_DIR)/tos.html.liquid: static/tos.md
 	$(md2html) $^ $@ "Terms and Conditions"
 
-$(BUILD_DIR)/index.html.liquid: static/index.html.liquid
+$(BUILD_DIR)/index.html.liquid: static/index.html
 	# no generation needed, simply copy
 	cp $^ $@
 
