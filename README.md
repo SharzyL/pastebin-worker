@@ -31,17 +31,16 @@ You are free to deploy the pastebin on your own domain, if you host your domain 
 Requirements:
 1. *nix environment with bash and basic cli programs. If you are using Windows, try cygwin, WSL or something. 
 2. GNU make. 
-3. `pandoc` to convert Markdown to HTML. 
-4. `node` and `yarn`. 
-5. `wrangler`, the official cli program to manage Cloudflare workers.
+3. `node` and `yarn`. 
+4. `wrangler`, the official cli program to manage Cloudflare workers.
 
-Create two KV namespaces in Cloudflare workers (one for production, one for test). Remember their IDs. If you do not need testing, simply create one.
+Create two KV namespaces on Cloudflare workers dashboard (one for production, one for test). Remember their IDs. If you do not need testing, simply create one.
 
-Clone the repository and enter the directory. Modify entries in `wrangler.toml` according to your own account information (`account_id`, `zone_id`, `kv_namespaces.id`, `kv_namespaces.preview_id` are what you need to modify). Refer to [Cloudflare doc](https://developers.cloudflare.com/workers/cli-wrangler/configuration) on how to find out these parameters.
+Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`. Modify entries in `wrangler.toml` according to your own account information (`account_id`, `zone_id`, `kv_namespaces.id`, `kv_namespaces.preview_id` are what you need to modify). Refer to [Cloudflare doc](https://developers.cloudflare.com/workers/cli-wrangler/configuration) on how to find out these parameters.
 
 Modify the contents in `config.json` (which controls the generation of static pages): `BASE_URL` is the URL of your site (no trailing slash); `FAVICON` is the URL to the favicon you want to use on your site. 
 
-Deploy!
+Deploy and enjoy!
 
 ```shell
 $ yarn install
