@@ -35,7 +35,7 @@ Requirements:
 2. GNU make. 
 3. `pandoc` to convert Markdown to HTML. 
 4. `node` and `yarn`. 
-5. `wrangler`, which is the official cli program to manage Cloudflare workers. 
+5. `wrangler`, the official cli program to manage Cloudflare workers.
 
 Create two KV namespaces in Cloudflare workers (one for production, one for test). Remember their IDs. If you do not need testing, simply create one.
 
@@ -46,5 +46,4 @@ Deploy!
 ```shell
 $ yarn install                 # install necessary packages
 $ mkdir dist && make deploy    # store the static pages on Cloudflare KV storage
-$ wrangler publish             # build, then publish to Cloudflare edge servers
 ```
