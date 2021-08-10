@@ -7,13 +7,23 @@
     <script src='https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js'></script>
     <link rel='icon' href='{{FAVICON}}' type='image/png' />
     <style media='screen'>
-        .markdown-body tt, .markdown-body code {
-            font-family: monospace;
-            font-size: 90%
+        body {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+            align-items: center;
         }
 
         .markdown-body {
             font-family: sans-serif;
+            flex: 1;
+            width: 100%;
+            max-width: 1012px;
+        }
+
+        .markdown-body tt, .markdown-body code {
+            font-family: monospace;
+            font-size: 90%
         }
 
         .hidden {
@@ -227,7 +237,7 @@
         }
 
         #delete-button.enabled {
-            color:var(--color-red);
+            color: var(--color-red);
             cursor: pointer;
         }
 
@@ -242,10 +252,17 @@
             border: 1px var(--color-border) solid;
             outline: none;
         }
+
+        footer {
+            color: var(--color-text-light);
+            font-size: 12px;
+            width: 100%;
+            max-width: 1012px;
+        }
     </style>
 </head>
 <body>
-<div class='container-lg px-3 my-5 markdown-body'>
+<div class='px-3 my-5 markdown-body'>
     <h1>Yet Another Pastebin</h1>
     <p>This is an open sourced pastebin deployed on Cloudflare workers. </p>
     <p><b>How to use</b>: paste any text here, submit, then share it with URL. </p>
@@ -326,10 +343,16 @@
     </div>
     <button id='submit-button'>Upload</button>
     <button id='delete-button' class='hidden'>Delete</button>
-    <footer>
-        <p>This is good</p>
-    </footer>
 </div>
+<footer class='px-3 my-2 text-center'>
+    <p>
+        <a href='/tos' class='d-inline-block'>Terms & Conditions</a>
+        -
+        <span class='d-inline-block'>Deployed on {{ "now" | date: "%Y-%m-%d %H:%M" }}</span>
+        -
+        <span class='d-inline-block'>Commit: {{COMMIT_HASH_6}}</span>
+    </p>
+</footer>
 <script>
   const base_url = '{{BASE_URL}}'
 
