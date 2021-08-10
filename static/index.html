@@ -266,7 +266,7 @@
     <h1>Yet Another Pastebin</h1>
     <p>This is an open sourced pastebin deployed on Cloudflare workers. </p>
     <p><b>How to use</b>: paste any text here, submit, then share it with URL. </p>
-    <p>Want to know more? See <a href='https://github.com/SharzyL/pastebin-worker'>Github</a> for more information. </p>
+    <p>Want to know more? See <a href='{{REPO}}'>Github</a> for more information. </p>
 
     <div id='paste-input-panel'>
         <div id='paste-header'>
@@ -350,7 +350,7 @@
         -
         <span class='d-inline-block'>Deployed on {{ "now" | date: "%Y-%m-%d %H:%M" }}</span>
         -
-        <span class='d-inline-block'>Commit: {{COMMIT_HASH_6}}</span>
+        <a class='d-inline-block' href='{{REPO}}/commit/{{COMMIT_HASH_6}}'>Commit: {{COMMIT_HASH_6}}</a>
     </p>
 </footer>
 <script>
