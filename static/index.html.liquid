@@ -5,7 +5,7 @@
     <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css' />
     <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
     <script src='https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js'></script>
-    <link rel='icon' href='https://sharzy.in/favicon-32x32.png' type='image/png' />
+    <link rel='icon' href='{{FAVICON}}' type='image/png' />
     <style media='screen'>
         .markdown-body tt, .markdown-body code {
             font-family: monospace;
@@ -327,14 +327,6 @@
     <button id='submit-button'>Upload</button>
     <button id='delete-button' class='hidden'>Delete</button>
     <script>
-      const baseURL = new URL(window.location.href).origin
-      for (const ele of $('.text-substitute')) {
-        ele.innerText = ele.innerText.replace('{{BASE_URL}}', baseURL)
-      }
-      for (const ele of $('.value-substitute')) {
-        ele.value = ele.value.replace('{{BASE_URL}}', baseURL)
-      }
-
       function copyTextFromInput(input) {
         if (input.constructor === String) input = document.getElementById(input)
         input.focus()
@@ -349,7 +341,7 @@
       function isAdminUrlLegal(url) {
         try {
           url = new URL(url)
-          return url.origin === baseURL && url.pathname.indexOf(':') >= 0
+          return url.origin === origin && url.pathname.indexOf(':') >= 0
         } catch (e) {
           if (e instanceof TypeError) {
             return false;

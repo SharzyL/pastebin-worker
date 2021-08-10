@@ -2,8 +2,6 @@
 # deploy the static pages on Cloudflare workers
 # add argument --preview to deploy on preview namespace
 
-declare -a files=('tos' 'index')
-
 declare -a args=('wrangler' 'kv:key' 'put' '--binding=PB')
 
 if [ "$1" == '--preview' ]; then
@@ -11,8 +9,9 @@ if [ "$1" == '--preview' ]; then
 	shift
 fi
 
-[ $# -gt 0 ] && files=("$@")
+declare -a files=("$@")
 
 for file in "${files[@]}"; do
-	"${args[@]}" "$file" -p "static/$file.html"
+	file_base=$(basename "$file")
+	"${args[@]}" "${file_base%.html}" -p "$file"
 done

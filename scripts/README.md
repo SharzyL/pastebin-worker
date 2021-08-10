@@ -71,7 +71,7 @@ Options:
 Deploy html files to Cloudflare KV storage. The map of KV storage key and web page is recorded in `src/staticPages.js`. Usage: 
 
 ```shell
-deploy-static.sh [--preview] [<file-name-without-extension>...]
+deploy-static.sh [--preview] [<file-name>...]
 ```
 
 ## `md2html.sh`
@@ -79,5 +79,5 @@ deploy-static.sh [--preview] [<file-name-without-extension>...]
 Convert markdown to HTML, with a GitHub style CSS. Usage: 
 
 ```shell
-md2html.sh <markdown-file> <html-file> <page-title> <favicon-url>
+md2html.sh <markdown-file> <html-file> <page-title>
 ```
