@@ -1,4 +1,8 @@
-## `pb`: paste everything easily
+# Scripts of pastebin-worker
+
+This directory contains a set of scripts that facilitate the usage and development of pastebin-worker. 
+
+## `pb`: paste things on command line
 
 This is a wrapper script to make it easier to use our pastebin. 
 
@@ -81,3 +85,11 @@ Convert markdown to HTML, with a GitHub style CSS. Usage:
 ```shell
 md2html.sh <markdown-file> <html-file> <page-title>
 ```
+
+## `post-commit`
+
+A git hook that deploy the code after each commit on `master` branch. 
+
+## `render.js`
+
+A wrapper to render [LiquidJS](https://liquidjs.com) template file. 
