@@ -40,19 +40,19 @@ $(BUILD_DIR)/index.html.liquid: static/index.html
 	cp $< $@
 
 # convert liquid template to html file
-$(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF) $(html_renderer)
+$(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF)
 	$(html_renderer) -o $@ $<
 	@# remove indents to reduce size
 	sed -E -i 's/^\s+//g' $@
 
 # deploy html file to Cloudflare
-$(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy)
+$(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html
 	$(deploy) $<
 	@mkdir -p $(dir $@)
 	@touch $@
 
 # deploy html file to Cloudflare preview
-$(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy)
+$(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html
 	$(deploy) --preview $^
 	@mkdir -p $(dir $@)
 	@touch $@
