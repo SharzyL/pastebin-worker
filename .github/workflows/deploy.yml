@@ -32,7 +32,6 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: setup
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
         run: yarn
 
       - name: build
