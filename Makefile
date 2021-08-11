@@ -1,13 +1,14 @@
 CONF = config.json
 BUILD_DIR = dist
 JS_DIR = src
+JS_LOCK = yarn.lock
 
 target_html_files = index.html tos.html
 
 # script path
-html_renderer = node scripts/render.js -c $(CONF)
+html_renderer = scripts/render.js
 md2html = scripts/md2html.sh
-deploy = scripts/deploy-static.sh
+deploy_static = scripts/deploy-static.sh
 
 # stub directories to record when files are uploaded
 DEPLOY_DIR = dist/deploy
@@ -40,25 +41,25 @@ $(BUILD_DIR)/index.html.liquid: static/index.html
 	cp $< $@
 
 # convert liquid template to html file
-$(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF)
-	$(html_renderer) -o $@ $<
+$(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF) $(html_renderer)
+	node $(html_renderer) -c $(CONF)  -o $@ $<
 	@# remove indents to reduce size
 	sed -E -i 's/^\s+//g' $@
 
 # deploy html file to Cloudflare
-$(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html
-	$(deploy) $<
+$(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy_static)
+	$(deploy_static) $<
 	@mkdir -p $(dir $@)
 	@touch $@
 
 # deploy html file to Cloudflare preview
-$(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html
-	$(deploy) --preview $^
+$(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy_static)
+	$(deploy_static) --preview $^
 	@mkdir -p $(dir $@)
 	@touch $@
 
 # because wrangler will always build before publish, we cannot do cache here
-$(js_deploy): $(source_js_files)
+$(js_deploy): $(source_js_files) $(JS_LOCK)
 	yarn wrangler publish
 	@mkdir -p $(dir $@)
 	@touch $@
