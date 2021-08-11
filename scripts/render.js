@@ -23,9 +23,10 @@ function main() {
   const conf = JSON.parse(fs.readFileSync(args.config).toString())
   conf.COMMIT_HASH_6 = getCommitHash()
   conf.DEPLOY_DATE = new Date().toString()
+  console.log(conf)
 
   const engine = new Liquid()
-  const rendered = engine.renderFileSync(args.file, conf)
+  const rendered = engine.renderFileSync(args.file, {}, { globals: conf })
   fs.writeFileSync(args.output, rendered)
 }
 

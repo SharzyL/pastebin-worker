@@ -36,7 +36,7 @@ clean:
 $(BUILD_DIR)/tos.html.liquid: static/tos.md $(md2html)
 	$(md2html) $< $@ "Terms and Conditions"
 
-$(BUILD_DIR)/index.html.liquid: static/index.html
+$(BUILD_DIR)/index.html.liquid: static/index.html static/index.js static/style.css
 	@# no generation needed, simply copy
 	cp $< $@
 
