@@ -39,6 +39,7 @@
             --color-bg-secondary: #f4f4f4;
             --color-border: #ddd;
             --color-shadowed: #f7f7f7;
+
             --color-green: #2ea44f;
             --color-green-active: #258540;
             --color-green-disabled: #94d3a2;
@@ -87,7 +88,7 @@
         }
 
         .paste-tab:hover {
-            color: var(--color-text-light)
+            color: var(--color-text)
         }
 
         .paste-tab.enabled {
@@ -220,11 +221,16 @@
 
         #submit-button, #delete-button {
             font-size: 12px;
-            padding: 0.4rem 1rem;
             border: none;
             border-radius: 5px;
             color: var(--color-text-white);
             cursor: not-allowed;
+        }
+
+        @media (max-width: 544px) {
+            .long-button {
+                width: 100%;
+            }
         }
 
         #submit-button {
@@ -353,8 +359,8 @@
         <input class='uploaded-table-text' type='text' id='uploaded-expiration' readonly>
         <label for='uploaded-expiration' class='small-label'>Expiration</label>
     </div>
-    <button id='submit-button'>Upload</button>
-    <button id='delete-button' class='hidden'>Delete</button>
+    <button id='submit-button' class='long-button px-3 py-2 my-1'>Upload</button>
+    <button id='delete-button' class='long-button hidden px-3 py-2 my-1'>Delete</button>
 </div>
 <footer class='px-3 my-2 text-center'>
     <p>
