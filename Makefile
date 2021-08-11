@@ -59,7 +59,7 @@ $(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html
 
 # because wrangler will always build before publish, we cannot do cache here
 $(js_deploy): $(source_js_files)
-	wrangler publish
+	yarn wrangler publish
 	@mkdir -p $(dir $@)
 	@touch $@
 

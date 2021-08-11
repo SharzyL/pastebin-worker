@@ -41,6 +41,5 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
           mkdir dist
-          echo "./node_modules/.bin" >> $GITHUB_PATH
           make deploy
 
