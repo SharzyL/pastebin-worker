@@ -367,13 +367,26 @@
         <a href='/tos' class='d-inline-block'>Terms & Conditions</a>
         -
         <span class='d-inline-block'>
-            Deployed on {{ "now" | date: "%Y-%m-%d %H:%M" }}
+            Deployed on <span id='deploy-date'></span>
             (<a href='{{REPO}}/tree/{{COMMIT_HASH_6}}'>{{COMMIT_HASH_6}}</a>)
         </span>
     </p>
 </footer>
 <script>
   const base_url = '{{BASE_URL}}'
+  const deploy_date = new Date('{{DEPLOY_DATE}}')
+
+  function getDateString(date) {
+    console.log(date)
+    const year = date.getFullYear()
+    const month = date.getMonth().toString().padStart(2, '0')
+    const day = date.getDay().toString().padStart(2, '0')
+    const hour = date.getHours().toString().padStart(2, '0')
+    const minute = date.getMinutes().toString().padStart(2, '0')
+    const second = date.getSeconds().toString().padStart(2, '0')
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+  }
+  $('#deploy-date').text(getDateString(deploy_date))
 
   function copyTextFromInput(input) {
     if (input.constructor === String) input = document.getElementById(input)
