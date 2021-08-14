@@ -254,9 +254,14 @@ input:not(:checked) ~ #paste-admin-url-input {
     color: var(--color-text-white);
 }
 
-#paste-uploaded-panel > input {
+.paste-uploaded-copy-group {
     margin-top: 0.7rem;
     width: 100%;
+    display: flex;
+}
+
+.paste-uploaded-copy-group > input {
+    flex: auto;
     border: 1px var(--color-border) solid;
     outline: none;
 }

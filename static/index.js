@@ -1,3 +1,18 @@
+function copyTextFromInput(input) {
+  if (input.constructor === String) {
+    input = document.getElementById(input)
+    button = input.parentNode.querySelector('button')
+  }
+  input.focus()
+  input.select()
+  try {
+    document.execCommand('copy')
+    button.textContent = 'Copied!'
+  } catch (err) {
+    alert('Failed to copy content')
+  }
+}
+
 window.addEventListener('load', () => {
   const base_url = '{{BASE_URL}}'
   const deploy_date = new Date('{{DEPLOY_DATE}}')
@@ -14,17 +29,6 @@ window.addEventListener('load', () => {
   }
 
   $('#deploy-date').text(getDateString(deploy_date))
-
-  function copyTextFromInput(input) {
-    if (input.constructor === String) input = document.getElementById(input)
-    input.focus()
-    input.select()
-    try {
-      document.execCommand('copy')
-    } catch (err) {
-      alert('Failed to copy content')
-    }
-  }
 
   function isAdminUrlLegal(url) {
     try {

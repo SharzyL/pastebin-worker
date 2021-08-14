@@ -6,6 +6,7 @@ title="$3"
 
 cat > "$html_file" <<-EOF
 <!DOCTYPE html>
+<html>
 <head>
   <meta charset='UTF-8'>
   <title>$title</title>
@@ -21,4 +22,5 @@ yarn -s remark "$md_file" --use remark-html >> "$html_file"
 cat >> "$html_file" <<-EOF
 </div>
 </body>
+</html>
 EOF

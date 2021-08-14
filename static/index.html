@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset='UTF-8'>
     <title>Yet another pastebin</title>
@@ -84,12 +85,20 @@
     </div>
     <div id='paste-uploaded-panel' class='hidden'>
         <h2>Uploaded paste</h2>
-        <input id='uploaded-url' type='text' class='uploaded-table-text' readonly>
+        <div class='paste-uploaded-copy-group'>
+            <input id='uploaded-url' type='text' class='uploaded-table-text' readonly>
+            <button onclick='copyTextFromInput("uploaded-url")'>Copy</button>          
+        </div>
         <label for='uploaded-url' class='small-label'>URL</label>
-        <input id='uploaded-admin-url' type='text' class='uploaded-table-text' readonly>
+        <div class='paste-uploaded-copy-group'>
+            <input id='uploaded-admin-url' type='text' class='uploaded-table-text' readonly>
+            <button onclick='copyTextFromInput("uploaded-admin-url")'>Copy</button>
+        </div>
         <label for='uploaded-admin-url' class='small-label'>Admin URL</label>
-        <input class='uploaded-table-text' type='text' id='uploaded-expiration' readonly>
-        <label for='uploaded-expiration' class='small-label'>Expiration</label>
+        <div class='paste-uploaded-copy-group'>
+            <input id='uploaded-expiration' type='text' class='uploaded-table-text' readonly>
+            <button onclick='copyTextFromInput("uploaded-expiration")'>Copy</button>
+        </div>
     </div>
     <button id='submit-button' class='long-button px-3 py-2 my-1'>Upload</button>
     <button id='delete-button' class='long-button hidden px-3 py-2 my-1'>Delete</button>
@@ -108,3 +117,4 @@
   {% render 'static/index.js' %}
 </script>
 </body>
+</html>
