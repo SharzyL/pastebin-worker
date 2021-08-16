@@ -134,7 +134,7 @@ async function handlePostOrPut(request, isPut) {
     const { short, passwd } = parsePath(url.pathname)
     const item = await PB.getWithMetadata(short)
     if (item.value === null) {
-      throw new WorkerError(404, $`paste of name '${short}' is not found`)
+      throw new WorkerError(404, `paste of name '${short}' is not found`)
     } else {
       const date = item.metadata.postedAt
       if (passwd !== item.metadata.passwd) {
