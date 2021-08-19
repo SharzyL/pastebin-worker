@@ -149,7 +149,7 @@ body {
 .small-label {
     display: block;
     color: var(--color-text-light);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .radio-label {

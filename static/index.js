@@ -179,7 +179,7 @@ window.addEventListener('load', () => {
   })
 
   function putPaste() {
-    $('#paste-uploaded-panel').addClass('hidden')
+    prepareUploading()
     let fd = new FormData()
     if (inputType === 'file') {
       fd.append('c', file)
@@ -204,7 +204,7 @@ window.addEventListener('load', () => {
   }
 
   function postPaste() {
-    $('#paste-uploaded-panel').addClass('hidden')
+    prepareUploading()
     let fd = new FormData()
     if (inputType === 'file') {
       fd.append('c', file)
@@ -231,6 +231,7 @@ window.addEventListener('load', () => {
   }
 
   function deletePaste() {
+    prepareUploading()
     let fd = new FormData()
     $.ajax({
       method: 'DELETE',
@@ -244,6 +245,11 @@ window.addEventListener('load', () => {
     })
   }
 
+  function prepareUploading() {
+    $('#submit-button').removeClass('enabled')
+    $('#paste-uploaded-panel input').prop('value', '')
+  }
+
   function renderUploaded(uploaded) {
     $('#paste-uploaded-panel').removeClass('hidden')
     $('#uploaded-url').prop('value', uploaded.url)
@@ -251,6 +257,7 @@ window.addEventListener('load', () => {
     if (uploaded.expire) {
       $('#uploaded-expiration').prop('value', uploaded.expire)
     }
+    updateButtons()
   }
 
   function handleError(error) {
