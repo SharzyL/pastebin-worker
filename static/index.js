@@ -246,6 +246,7 @@ window.addEventListener('load', () => {
   }
 
   function prepareUploading() {
+    resetCopyButtons()
     $('#submit-button').removeClass('enabled')
     $('#paste-uploaded-panel input').prop('value', '')
   }
@@ -258,6 +259,24 @@ window.addEventListener('load', () => {
       $('#uploaded-expiration').prop('value', uploaded.expire)
     }
     updateButtons()
+  }
+
+  $('.copy-bottom').on('click', event => {
+    const button = event.target
+    const input = button.parentElement.firstElementChild
+    input.focus()
+    input.select()
+    try {
+      document.execCommand('copy')
+      resetCopyButtons()
+      button.textContent = 'Copied'
+    } catch (err) {
+      alert('Failed to copy content')
+    }
+  })
+
+  function resetCopyButtons() {
+    $('.copy-bottom').text('Copy')
   }
 
   function handleError(error) {
