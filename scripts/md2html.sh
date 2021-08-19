@@ -6,6 +6,7 @@ title="$3"
 
 cat > "$html_file" <<-EOF
 <!DOCTYPE html>
+<html lang='en'>
 <head>
   <meta charset='UTF-8'>
   <title>$title</title>
@@ -14,6 +15,7 @@ cat > "$html_file" <<-EOF
   <link rel="icon" href="{{FAVICON}}" type="image/png"/>
 </head>
 <div class="container-lg px-3 my-5 markdown-body">
+</html>
 EOF
 
 yarn -s remark "$md_file" --use remark-html >> "$html_file"
