@@ -261,7 +261,7 @@ window.addEventListener('load', () => {
     updateButtons()
   }
 
-  $('.copy-bottom').on('click', event => {
+  $('.copy-button').on('click', event => {
     const button = event.target
     const input = button.parentElement.firstElementChild
     input.focus()
@@ -276,7 +276,7 @@ window.addEventListener('load', () => {
   })
 
   function resetCopyButtons() {
-    $('.copy-bottom').text('Copy')
+    $('.copy-button').text('Copy')
   }
 
   function handleError(error) {

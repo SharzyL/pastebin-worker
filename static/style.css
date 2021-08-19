@@ -270,7 +270,7 @@ input:not(:checked) ~ #paste-admin-url-input {
     padding-left: 0.3rem;
 }
 
-.copy-bottom {
+.copy-button {
     padding: 0 0.5rem;
     border: none;
     background-color: var(--color-green);
@@ -280,7 +280,7 @@ input:not(:checked) ~ #paste-admin-url-input {
     transition: background-color 0.15s;
 }
 
-.copy-bottom:hover {
+.copy-button:hover {
     background-color: var(--color-green-active);
 }
 
