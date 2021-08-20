@@ -71,7 +71,7 @@ window.addEventListener('load', () => {
 
     if (pasteNotEmpty && expirationNotShort && nameValid && adminUrlValid) {
       submitButton.addClass('enabled')
-      submitButton.removeProp('title')
+      submitButton.prop('title', '')
     } else {
       submitButton.removeClass('enabled')
       if (!pasteNotEmpty) {
@@ -93,7 +93,7 @@ window.addEventListener('load', () => {
 
     if (adminUrlValid) {
       deleteButton.addClass('enabled')
-      submitButton.removeProp('title')
+      submitButton.prop('title', '')
     } else {
       deleteButton.removeClass('enabled')
       submitButton.prop('title', `The admin URL should start with ${base_url} and contain a colon`)
