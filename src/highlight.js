@@ -3,6 +3,8 @@ String.prototype.escapeHtml = function () {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
+    "\"": "&quot",
+    "'": "&#x27"
   }
   return this.replace(/[&<>]/g, function (tag) {
     return tagsToReplace[tag] || tag
