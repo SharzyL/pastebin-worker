@@ -24,12 +24,17 @@ It also provide a convenient HTTP API to use. See [API reference](doc/api.md) fo
 
 [pb](/scripts) is bash script to make it easier to use on command line. 
 
+## Limitations
+
+1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 100,000 reads and 1000 writes, 1000 deletes per day. 
+2. Because Cloudflare put a limit of CPU time per request, uploading large file will drain out the limit and result in an error. According to test, the file size is bounded to roughly 1.1 MB for free-tier plan. 
+
 ## Deploy
 
-You are free to deploy the pastebin on your own domain, if you host your domain on Cloudflare. 
+You are free to deploy the pastebin on your own domain if you host your domain on Cloudflare. 
 
 Requirements:
-1. *nix environment with bash and basic cli programs. If you are using Windows, try cygwin, WSL or something. 
+1. \*nix environment with bash and basic cli programs. If you are using Windows, try cygwin, WSL or something. 
 2. GNU make. 
 3. `node` and `yarn`. 
 4. `wrangler`, the official cli program to manage Cloudflare workers.
