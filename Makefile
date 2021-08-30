@@ -15,6 +15,7 @@ DEPLOY_DIR = dist/deploy
 PREVIEW_DIR = dist/preview
 
 source_js_files = $(wildcard $(JS_DIR)/*.js)
+target_js_file = dist/worker.js
 all_html = $(addprefix $(BUILD_DIR)/,$(target_html_files))
 all_html_deploy = $(addprefix $(DEPLOY_DIR)/, $(target_html_files))
 all_html_preview = $(addprefix $(PREVIEW_DIR)/, $(target_html_files))
