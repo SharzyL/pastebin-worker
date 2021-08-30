@@ -33,10 +33,10 @@ preview: $(all_html_preview) $(js_preview)
 clean:
 	rm -f $(all_html) $(all_html_deploy) $(all_html_preview) $(js_deploy) $(js_preview)
 
-$(BUILD_DIR)/tos.html.liquid: static/tos.md $(md2html)
+$(BUILD_DIR)/tos.html.liquid: frontend/tos.md $(md2html)
 	$(md2html) $< $@ "Terms and Conditions"
 
-$(BUILD_DIR)/index.html.liquid: static/index.html static/index.js static/style.css
+$(BUILD_DIR)/index.html.liquid: frontend/index.html frontend/index.js frontend/style.css
 	@# no generation needed, simply copy
 	cp $< $@
 
