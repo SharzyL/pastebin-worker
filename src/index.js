@@ -103,15 +103,16 @@ async function handlePostOrPut(request, isPut) {
   }
 
   // check if expiration is legal
+  let expirationSeconds = undefined
   if (expire !== undefined) {
-    const expireInt = parseInt(expire)
-    if (isNaN(expireInt)) {
-      throw new WorkerError(400, `cannot parse expire ${expireInt} as an integer`)
+    expirationSeconds = parseExpiration(expire)
+    if (isNaN(expirationSeconds)) {
+      throw new WorkerError(400, `cannot parse expire ${expirationSeconds} as an number`)
     }
-    if (expireInt < 60) {
+    if (expirationSeconds < 60) {
       throw new WorkerError(
         400,
-        `due to limitation of Cloudflare, expire should be a integer greater than 60, '${expireInt} given`,
+        `due to limitation of Cloudflare, expire should be a integer greater than 60, '${expirationSeconds}' given`,
       )
     }
   }
@@ -141,7 +142,7 @@ async function handlePostOrPut(request, isPut) {
         throw new WorkerError(403, `incorrect password for paste '${short}`)
       } else {
         return makeResponse(
-          await createPaste(content, isPrivate, expire, short, date, passwd),
+          await createPaste(content, isPrivate, expirationSeconds, short, date, passwd),
         )
       }
     }
@@ -152,7 +153,7 @@ async function handlePostOrPut(request, isPut) {
       if ((await PB.get(short)) !== null)
         throw new WorkerError(409, `name '${name}' is already used`)
     }
-    return makeResponse(await createPaste(content, isPrivate, expire, short, undefined, passwd))
+    return makeResponse(await createPaste(content, isPrivate, expirationSeconds, short, undefined, passwd))
   }
 }
 
@@ -273,4 +274,15 @@ function parsePath(pathname) {
   const short = pathname.slice(1, endOfShort)
   const passwd = pathname.slice(endOfShort + 1)
   return { role, short, passwd, ext }
+}
+
+function parseExpiration(expirationStr) {
+  let expirationSeconds = parseFloat(expirationStr)
+  const lastChar = expirationStr[expirationStr.length - 1]
+  if (lastChar === 'm') expirationSeconds *= 60
+  else if (lastChar === 'h') expirationSeconds *= 3600
+  else if (lastChar === 'd') expirationSeconds *= 3600 * 24
+  else if (lastChar === 'w') expirationSeconds *= 3600 * 24 * 7
+  else if (lastChar === 'M') expirationSeconds *= 3600 * 24 * 7 * 30
+  return expirationSeconds
 }
