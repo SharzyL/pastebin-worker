@@ -56,7 +56,7 @@ Upload your paste. It accept parameters in form-data:
 
 - `c`: mandatory. The **content** of your paste, text of binary. It should be no larger than 10 MB. 
 
-- `e`: optional. The **expiration** time of the paste (in seconds). After this period of time, the paste is permanently deleted. It should be no smaller than 60 due to the limitation if Cloudflare KV storage. 
+- `e`: optional. The **expiration** time of the paste. After this period of time, the paste is permanently deleted. It should be an integer or a float point number suffixed with an optional unit (seconds by default). Supported units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `M` (months). For example, `360.24` means 360.25 seconds; `25d` is interpreted as 25 days. It should be no smaller than 60 seconds due to the limitation of Cloudflare KV storage. 
 
 - `s`: optional. The **password** which allows you to modify and delete the paste. If not specified, the worker will generate a random string as password. 
 
