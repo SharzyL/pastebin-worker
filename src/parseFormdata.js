@@ -14,7 +14,8 @@ export function parseFormdata(uint8Array, boundary) {
   }
 
   function parseName(line) {
-    return /name="(.+?)"/.exec(decoder.decode(line))[1]
+    const captured = /name="(.+?)"/.exec(decoder.decode(line))
+    return captured ? captured[1] : null
   }
 
   function getLineType(line) {
@@ -58,7 +59,7 @@ export function parseFormdata(uint8Array, boundary) {
         status = 1
         bodyStartIdx = lineEnd + 2
       } else {
-        currentName = parseName(line)
+        currentName = parseName(line) || currentName
       }
     } else {
       const lineType = getLineType(line)
