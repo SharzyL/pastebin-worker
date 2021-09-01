@@ -195,7 +195,7 @@ window.addEventListener('load', () => {
       url: adminUrl,
       data: fd,
       processData: false,
-      contentType: 'multipart/form-data',
+      contentType: false,
       success: (data) => {
         renderUploaded(data)
       },
@@ -222,7 +222,7 @@ window.addEventListener('load', () => {
       url: base_url,
       data: fd,
       processData: false,
-      contentType: 'multipart/form-data',
+      contentType: false,
       success: (data) => {
         renderUploaded(data)
       },
@@ -285,5 +285,6 @@ window.addEventListener('load', () => {
     let statusText = error.statusText === 'error' ? 'Unknown error' : error.statusText
     const responseText = error.responseText || ''
     alert(`Error ${status}: ${statusText}\n${responseText}\nView your console for more information`)
+    $('#submit-button').addClass('enabled')
   }
 })
