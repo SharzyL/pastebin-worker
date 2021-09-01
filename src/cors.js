@@ -27,3 +27,9 @@ export function handleOptions(request) {
     })
   }
 }
+
+export function corsWrapResponse(response) {
+  if (response.headers !== undefined)
+    response.headers.set("Access-Control-Allow-Origin", "*")
+  return response
+}

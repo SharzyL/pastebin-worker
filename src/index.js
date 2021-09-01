@@ -1,6 +1,6 @@
-import { handleOptions } from './cors.js'
+import { handleOptions, corsWrapResponse } from './cors.js'
 import { makeHighlight } from "./highlight.js"
-import { parseFormdata } from "./parseFormdata.js"
+import { parseFormdata, getBoundary } from "./parseFormdata.js"
 import { staticPageMap } from './staticPages.js'
 
 import { getType } from "mime/lite.js"
@@ -38,7 +38,7 @@ async function handleRequest(request) {
       return handleOptions(request)
     } else {
       const response = await handleNormalRequest(request)
-      if (response.status !== 301) {  // because Cloudflare do not allow modifying redirect headers
+      if (response.status !== 301 && response.headers !== undefined) {  // because Cloudflare do not allow modifying redirect headers
         response.headers.set("Access-Control-Allow-Origin", "*")
       }
       return response
@@ -46,9 +46,9 @@ async function handleRequest(request) {
   } catch (e) {
     console.log(e.stack)
     if (e instanceof WorkerError) {
-      return new Response(e.message + "\n", { status: e.statusCode })
+      return corsWrapResponse(new Response(e.message + "\n", { status: e.statusCode }))
     } else {
-      return new Response(e.message + "\n", { status: 500 })
+      return corsWrapResponse(new Response(e.message + "\n", { status: 500 }))
     }
   }
 }
@@ -77,9 +77,9 @@ async function handlePostOrPut(request, isPut) {
   if (contentType.includes("multipart/form-data")) {
     // because cloudflare runtime treat all formdata part as strings thus corrupting binary data,
     // we need to manually parse formdata
-    const uint8Array = await request.arrayBuffer()
+    const uint8Array = new Uint8Array(await request.arrayBuffer())
     try {
-      form = parseFormdata(uint8Array)
+      form = parseFormdata(uint8Array, getBoundary(contentType))
     } catch (e) {
       return new WorkerError(400, "error occurs parsing formdata")
     }
