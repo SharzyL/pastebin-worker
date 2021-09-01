@@ -27,7 +27,7 @@ It also provide a convenient HTTP API to use. See [API reference](doc/api.md) fo
 ## Limitations
 
 1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 100,000 reads and 1000 writes, 1000 deletes per day. 
-2. Because Cloudflare put a limit of CPU time per request, uploading large file will drain out the limit and result in an error. According to test, the file size is bounded to roughly 1.1 MB for free-tier plan. 
+2. Due to the size limit of Cloudflare KV storage, the size of each paste should be smaller than 25 MB. 
 
 ## Deploy
 

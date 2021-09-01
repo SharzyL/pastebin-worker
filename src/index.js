@@ -12,7 +12,7 @@ const RAND_LEN = 4
 const PRIVATE_RAND_LEN = 24
 const ADMIN_PATH_LEN = 24
 const SEP = ":"
-const MAX_LEN = 10 * 1024 * 1024
+const MAX_LEN = 25 * 1024 * 1024
 
 let BASE_URL = ""
 
