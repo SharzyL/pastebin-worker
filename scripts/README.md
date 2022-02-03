@@ -15,27 +15,29 @@ $ wget https://github.com/SharzyL/pastebin-worker/raw/master/scripts/pb
 $ install -Dm755 pb ~/.local/bin
 ```
 
+**Zsh completion**: download `_pb` in a folder within your zsh `fpath` 
+
 **Usage**: 
 
-```shell
+```text
 $ pb -h
 Usage:
-  pb.sh [-h|--help]
+  pb [-h|--help]
     print this help message
 
-  pb.sh [p|post] [OPTIONS] [-f] FILE
+  pb [p|post] [OPTIONS] [-f] FILE
     upload your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
     read the paste from stdin.
 
-  pb.sh [u|update] NAME[:PASSWD]
+  pb [u|update] NAME[:PASSWD]
     Update your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
     read the paste from stdin. If 'PASSWD' is not given, try to read password
     from the history file.
 
-  pb.sh [g|get] [OPTIONS] NAME[.EXT]
+  pb [g|get] [OPTIONS] NAME[.EXT]
     fetch the paste with name 'NAME' and extension 'EXT'
 
-  pb.sh [d|delete] [OPTIONS] NAME
+  pb [d|delete] [OPTIONS] NAME
     delete the paste with name 'NAME'
 
 Options:
@@ -44,7 +46,6 @@ Options:
     -e, --expire SECONDS    the expiration time of the paste (in seconds)
     -n, --name NAME         the name of the paste
     -s, --passwd PASSWD     the password
-    -h, --human             return a human-friendly web page
     -p, --private           make the generated paste name longer for better privacy
     -x, --clip              clip the url to the clipboard
 
@@ -53,7 +54,6 @@ Options:
     -c, --content CONTENT   the content of the paste
     -e, --expire SECONDS    the expiration time of the paste (in seconds)
     -s, --passwd PASSWD     the password
-    -h, --human             return a human-friendly web page
     -x, --clip              clip the url to the clipboard
 
   get options:

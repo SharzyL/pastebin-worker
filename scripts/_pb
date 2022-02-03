@@ -1,0 +1,74 @@
+#compdef pb
+
+local -a root_args=(
+    '(-d --dry)'{-d,--dry}'[dry run]'
+    '(-v --verbose)'{-v,--verbose}'[verbose]'
+    '(-h --help)'{-h,--help}'[print help]'
+    '1:command:->commands'
+    '*::arguments:->arguments'
+)
+
+_arguments -s $root_args && return 0
+
+case "$state" in
+(commands)
+    cmdlist=(
+        {p,post}":Post paste"
+        {u,update}":Update paste"
+        {d,delete}":Delete paste"
+        {g,get}":Get paste"
+    )
+    _describe -t pb-commands 'pb.sh command' cmdlist
+    ;;
+(arguments)
+    local -a common_args=(
+        '(-d --dry)'{-d,--dry}'[dry run]'
+        '(-v --verbose)'{-v,--verbose}'[verbose]'
+    )
+
+    case ${line[1]} in
+    (p|post)
+        local -a args=(
+            '(-c --content -)'{-c,--content}'[Content of paste]'
+            '(-c --content -)-[Read the paste from stdin]'
+            '(-c --content -)*:paste from file:_files'
+            '(-e --expire)'{-e,--expire}'[Expiration time]:expiration'
+            '(-n --name)'{-n,--name}'[Name]:Name of paste'
+            '(-s --passwd)'{-s,--passwd}'[Password]:Password of paste'
+            '(-p --private)'{-p,--private}'[Make generated paste name longer for privacy]'
+            '(-x --clip)'{-x,--clip}'[Clip the url to the clipboard]'
+        )
+        _arguments -s $args $common_args
+        ;;
+
+    (u|update)
+        local -a args=(
+            '(-f -c --file --content -)'{-c,--content}'[Read the paste from file]'
+            '(-f -c --file --content -)'{-f,--file}'[Content of the paste]:paste from file:_files'
+            '*:paste name'
+
+            '(-e --expire)'{-e,--expire}'[Expiration time]:expiration'
+            '(-s --passwd)'{-s,--passwd}'[Password]:Password of paste'
+            '(-x --clip)'{-x,--clip}'[Clip the url to the clipboard]'
+        )
+        _arguments -s $args $common_args
+        ;;
+
+    (g|get)
+        local -a args=(
+            '*:paste name'
+
+            '(-l --lang)'{-l,--lang}'[Highlight with language in a web page]:language'
+            '(-m --mine)'{-m,--mine}'[Content of the paste]:mimetype'
+            '(-o --output)'{-o,--output}'[Output the paste in file]:file:_files'
+            '(-u --url)'{-u,--url}'[Make a 302 redirection]'
+        )
+        _arguments -s $args $common_args
+        ;;
+
+    (d|delete)
+        _arguments -s $common_args
+        ;;
+    esac
+esac
+
