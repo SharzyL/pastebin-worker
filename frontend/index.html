@@ -14,9 +14,9 @@
 <body>
 <div class='px-3 my-5 markdown-body'>
     <h1>Yet Another Pastebin</h1>
-    <p>This is an open sourced pastebin deployed on Cloudflare workers. </p>
-    <p><b>How to use</b>: paste any text here, submit, then share it with URL. </p>
-    <p>Want to know more? Have a look on <a href='{{REPO}}'>Github</a>. </p>
+    <p>This is an open source pastebin deployed on Cloudflare Workers. </p>
+    <p><b>Usage</b>: paste any text here, submit, then share it with URL. </p>
+    <p>Refer to <a href='{{REPO}}'>GitHub</a> for more details.</p>
 
     <div id='paste-input-panel'>
         <div id='paste-header'>
@@ -45,10 +45,12 @@
             <input list='expiration-choices' type='number' min='60' step='1' name='paste-expiration'
                    id='paste-expiration-input' placeholder='Expiration (secs)'>
             <datalist id='expiration-choices'>
-                <option value='60'></option>
-                <option value='300'></option>
-                <option value='3600'></option>
-                <option value='86400'></option>
+                <option value='60'>1 minute</option>
+                <option value='300'>5 minutes</option>
+                <option value='3600'>1 hour</option>
+                <option value='86400'>1 day</option>
+                <option value='604800'>1 week</option>
+                <option value='2592000'>1 month</option>
             </datalist>
             <label class='small-label' for='paste-expiration-input'>Delete your paste after a period of time. </label>
         </div>
