@@ -38,7 +38,7 @@ async function handleRequest(request) {
       return handleOptions(request)
     } else {
       const response = await handleNormalRequest(request)
-      if (response.status !== 301 && response.headers !== undefined) {  // because Cloudflare do not allow modifying redirect headers
+      if (response.status !== 302 && response.headers !== undefined) {  // because Cloudflare do not allow modifying redirect headers
         response.headers.set("Access-Control-Allow-Origin", "*")
       }
       return response
