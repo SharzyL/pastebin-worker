@@ -17,6 +17,8 @@ $ install -Dm755 pb ~/.local/bin
 
 **Zsh completion**: download `_pb` in a folder within your zsh `fpath` 
 
+**fish completion**: download `pb.fish` in a folder within your fish `fish_complete_path` 
+
 **Usage**: 
 
 ```text
