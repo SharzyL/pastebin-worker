@@ -178,7 +178,7 @@ async function handleGet(request) {
 
   // handle URL redirection
   if (role === "u") {
-    return Response.redirect(decode(item.value), 301)
+    return Response.redirect(decode(item.value), 302)
   }
 
   // handle language highlight

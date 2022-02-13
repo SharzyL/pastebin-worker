@@ -37,7 +37,7 @@ image/png;charset=UTF-8
 
 Redirect to the URL recorded in the paste of name `<name>`. 
 
-If error occurs, the worker returns status code different than `301`: 
+If error occurs, the worker returns status code different than `302`:
 
 - `404`: the paste of given name is not found. 
 - `500`: unexpected exception. You may report this to the author to give it a fix. 
