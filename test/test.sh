@@ -212,12 +212,26 @@ _test_highlight() {
         grep -q 'language-html' "$tmp_file"
 }
 
+_test_suggest() {
+  url_text="http://example.com/a?x=y"
+  non_url_text="if (x = 1) x++"
+  it 'should upload url paste' curl_code 200 -o "$tmp_file" -Fc="$url_text" "$localaddr"
+  it 'should suggest /u/ url' grep -q '"suggestUrl": .*/u/' "$tmp_file"
+  it 'should upload non-url paste' curl_code 200 -o "$tmp_file" -Fc="$non_url_text" "$localaddr"
+  it 'should not contain suggestUrl' grep -q '"suggestUrl": null' "$tmp_file"
+
+  tmp_jpg_file="$(mktemp --suffix .jpg)"
+  echo "guruguruguruguru" >"$tmp_jpg_file"
+  it 'should upload non-url paste' curl_code 200 -o "$tmp_file" -Fc=@"$tmp_jpg_file" "$localaddr"
+  it 'should suggest .jpg url' grep -q '"suggestUrl": .*\.jpg' "$tmp_file"
+}
+
 pgrep -f miniflare > /dev/null || die "no miniflare is running, please start one instance first"
 
 if [ $# -gt 0 ]; then
     test_chapters "$@"
 else
-    test_chapters primary long_mode custom_path url_redirect mime highlight custom_passwd
+    test_chapters primary long_mode custom_path url_redirect mime highlight custom_passwd suggest
 fi
 
 conclude

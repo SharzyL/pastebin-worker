@@ -1,3 +1,5 @@
+const contentDispositionPrefix = 'Content-Disposition: form-data'
+
 export function parseFormdata(uint8Array, boundary) {
   // return an array of {fields: {...: ...}, content: Int8Array}
 
@@ -21,6 +23,13 @@ export function parseFormdata(uint8Array, boundary) {
       fields[match[1]] = match[2]
     }
     return fields
+  }
+
+  function isContentDisposition(line) {
+    for (let i = 0; i < contentDispositionPrefix.length; i++) {
+      if (line[i] !== contentDispositionPrefix.charCodeAt(i)) return false
+    }
+    return true
   }
 
   function getLineType(line) {
@@ -63,7 +72,7 @@ export function parseFormdata(uint8Array, boundary) {
       if (line.length === 0) {  // encounter end of headers
         status = 1
         bodyStartIdx = lineEnd + 2
-      } else {
+      } else if (isContentDisposition(line)) {
         currentPart.fields = parseFields(line)
       }
     } else {

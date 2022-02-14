@@ -86,7 +86,8 @@ async function handlePostOrPut(request, isPut) {
   } else {
     throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
-  const content = form.get("c").content
+  const content = form.get("c") && form.get("c").content
+  const filename = form.get("c") && form.get("c").fields.filename
   const name = form.get("n") && decode(form.get("n").content)
   const isPrivate = form.get("p") !== undefined
   const passwd = form.get("s") && decode(form.get("s").content)
@@ -142,7 +143,7 @@ async function handlePostOrPut(request, isPut) {
         throw new WorkerError(403, `incorrect password for paste '${short}`)
       } else {
         return makeResponse(
-          await createPaste(content, isPrivate, expirationSeconds, short, date, passwd),
+          await createPaste(content, isPrivate, expirationSeconds, short, date, passwd, filename),
         )
       }
     }
@@ -153,7 +154,9 @@ async function handlePostOrPut(request, isPut) {
       if ((await PB.get(short)) !== null)
         throw new WorkerError(409, `name '${name}' is already used`)
     }
-    return makeResponse(await createPaste(content, isPrivate, expirationSeconds, short, undefined, passwd))
+    return makeResponse(await createPaste(
+      content, isPrivate, expirationSeconds, short, undefined, passwd, filename
+    ))
   }
 }
 
@@ -212,7 +215,7 @@ async function handleDelete(request) {
   }
 }
 
-async function createPaste(content, isPrivate, expire, short, date, passwd) {
+async function createPaste(content, isPrivate, expire, short, date, passwd, filename) {
   date = date || new Date().toISOString()
   passwd = passwd || genRandStr(ADMIN_PATH_LEN)
   const short_len = isPrivate ? PRIVATE_RAND_LEN : RAND_LEN
@@ -235,6 +238,7 @@ async function createPaste(content, isPrivate, expire, short, date, passwd) {
   const adminUrl = BASE_URL + '/' + short + SEP + passwd
   return {
     url: accessUrl,
+    suggestUrl: suggestUrl(content, filename, short),
     admin: adminUrl,
     isPrivate: isPrivate,
     expire: expire,
@@ -285,4 +289,27 @@ function parseExpiration(expirationStr) {
   else if (lastChar === 'w') expirationSeconds *= 3600 * 24 * 7
   else if (lastChar === 'M') expirationSeconds *= 3600 * 24 * 7 * 30
   return expirationSeconds
+}
+
+function suggestUrl(content, filename, short) {
+  function isUrl(text) {
+    try {
+      new URL(text)
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+
+  if (isUrl(decode(content))) {
+    return `${BASE_URL}/u/${short}`
+  }
+  if (filename) {
+    const dotIdx = filename.lastIndexOf('.')
+    if (dotIdx > 0) {
+      const ext = filename.slice(dotIdx + 1)
+      return `${BASE_URL}/${short}.${ext}`
+    }
+  }
+  return null
 }
