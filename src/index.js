@@ -86,13 +86,13 @@ async function handlePostOrPut(request, isPut) {
   } else {
     throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
-  const content = form.get("c")
-  const name = decode(form.get("n")) || undefined
+  const content = form.get("c").content
+  const name = form.get("n") && decode(form.get("n").content)
   const isPrivate = form.get("p") !== undefined
-  const passwd = decode(form.get("s")) || undefined
+  const passwd = form.get("s") && decode(form.get("s").content)
   const expire =
-    form.has("e") && form.get("e").byteLength > 0
-      ? decode(form.get("e"))
+    form.has("e") && form.get("e").content.byteLength > 0
+      ? decode(form.get("e").content)
       : undefined
 
   // check if paste content is legal

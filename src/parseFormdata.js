@@ -1,4 +1,6 @@
 export function parseFormdata(uint8Array, boundary) {
+  // return an array of {fields: {...: ...}, content: Int8Array}
+
   boundary = '--' + boundary
   function readLine(idx) {
     // return the index before the next '\r\n' occurs after idx
@@ -13,14 +15,17 @@ export function parseFormdata(uint8Array, boundary) {
     return uint8Array.length
   }
 
-  function parseName(line) {
-    const captured = /name="(.+?)"/.exec(decoder.decode(line))
-    return captured ? captured[1] : null
+  function parseFields(line) {
+    let fields = {}
+    for (const match of decoder.decode(line).matchAll(/\b(\w+)="(.+?)"/g)) {
+      fields[match[1]] = match[2]
+    }
+    return fields
   }
 
   function getLineType(line) {
     // type: 0 (normal), 1 (boundary), 2 (end)
-    if (line.length > 0)
+    if (line.length === 0) return 0
     if (line.length === boundary.length) {
       for (let i = 0; i < boundary.length; i++) {
         if (line[i] !== boundary.charCodeAt(i)) return 0
@@ -47,7 +52,7 @@ export function parseFormdata(uint8Array, boundary) {
   let lineStart = readLine(0) + 2
   if (isNaN(lineStart)) return parts
   let bodyStartIdx = 0
-  let currentName = null
+  let currentPart = {fields: {}, content: null}
 
   while (true) {
     const lineEnd = readLine(lineStart);
@@ -55,18 +60,18 @@ export function parseFormdata(uint8Array, boundary) {
 
     // start reading the body
     if (status === 0) {
-      if (line.length === 0) {
+      if (line.length === 0) {  // encounter end of headers
         status = 1
         bodyStartIdx = lineEnd + 2
       } else {
-        currentName = parseName(line) || currentName
+        currentPart.fields = parseFields(line)
       }
     } else {
       const lineType = getLineType(line)
-      if (lineType > 0) {
-        if (currentName !== null)
-          parts.set(currentName, uint8Array.subarray(bodyStartIdx, lineStart - 2))
-        currentName = null
+      if (lineType !== 0) {  // current line is boundary or EOF
+        currentPart.content = uint8Array.subarray(bodyStartIdx, lineStart - 2)
+        parts.set(currentPart.fields.name, currentPart)
+        currentPart = {fields: {}, content: null}
         status = 0
       }
       if (lineType === 2 || lineEnd === uint8Array.length) break
