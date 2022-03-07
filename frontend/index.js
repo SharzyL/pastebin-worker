@@ -3,7 +3,6 @@ window.addEventListener('load', () => {
   const deploy_date = new Date('{{DEPLOY_DATE}}')
 
   function getDateString(date) {
-    console.log(date)
     const year = date.getFullYear()
     const month = (date.getMonth() + 1).toString().padStart(2, '0')
     const day = date.getDate().toString().padStart(2, '0')
@@ -280,7 +279,6 @@ window.addEventListener('load', () => {
   }
 
   function handleError(error) {
-    console.log(error)
     const status = error.status || ''
     let statusText = error.statusText === 'error' ? 'Unknown error' : error.statusText
     const responseText = error.responseText || ''
