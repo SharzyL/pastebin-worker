@@ -17,6 +17,7 @@ export async function makeMarkdown(content) {
 <head>
   <title>Yet another pastebin</title>
   <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
   <link href='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/themes/prism.css' rel='stylesheet' />
   <link href='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-numbers/prism-line-numbers.css' rel='stylesheet' />
   <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css'>
