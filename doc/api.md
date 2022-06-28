@@ -6,7 +6,7 @@ Return the index page.
 
 ## **GET** `/<name>[.<ext>]`
 
-Fetch the paste with name `<name>`. By default it will return the raw content of the paste.  The `Content-Type` header is set to `text/plain;charset=UTF-8`. If `<ext>` is given, the worker will infer mime-type from `<ext>` and change `Content-Type`. This method accepts the following query string parameters: 
+Fetch the paste with name `<name>`. By default, it will return the raw content of the paste.  The `Content-Type` header is set to `text/plain;charset=UTF-8`. If `<ext>` is given, the worker will infer mime-type from `<ext>` and change `Content-Type`. This method accepts the following query string parameters: 
 
 - `?lang=<lang>`: optional. returns a web page with syntax highlight powered by prism.js. 
 
@@ -14,7 +14,7 @@ Fetch the paste with name `<name>`. By default it will return the raw content of
 
 Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`. 
 
-If error occurs, the worker returns status code different than `200`: 
+If error occurs, the worker returns status code different from `200`: 
 
 - `404`: the paste of given name is not found. 
 - `500`: unexpected exception. You may report this to the author to give it a fix. 
@@ -37,7 +37,7 @@ image/png;charset=UTF-8
 
 Return the web page to edit the paste of name `<name>` and password `<passwd>`.
 
-If error occurs, the worker returns status code different than `200`:
+If error occurs, the worker returns status code different from `200`:
 
 - `404`: the paste of given name is not found.
 - `500`: unexpected exception. You may report this to the author to give it a fix.
@@ -46,7 +46,7 @@ If error occurs, the worker returns status code different than `200`:
 
 Redirect to the URL recorded in the paste of name `<name>`. 
 
-If error occurs, the worker returns status code different than `302`:
+If error occurs, the worker returns status code different from `302`:
 
 - `404`: the paste of given name is not found. 
 - `500`: unexpected exception. You may report this to the author to give it a fix. 
@@ -64,6 +64,8 @@ $ curl -L https://shz.al/u/i-p-
 Return the HTML converted from the markdown file stored in the paste of name `<name>`. The markdown conversion follows GitHub Flavored Markdown (GFM) Spec, supported by [remark-gfm](https://github.com/remarkjs/remark-gfm). 
 
 Syntax highlighting is supported by [prims.js](https://prismjs.com/). LaTeX mathematics is supported by [MathJax](https://www.mathjax.org).
+
+If error occurs, the worker returns status code different from `200`:
 
 - `404`: the paste of given name is not found.
 - `500`: unexpected exception. You may report this to the author to give it a fix.
@@ -142,7 +144,7 @@ Upload your paste. It accept parameters in form-data:
   - `expire`: optional. The expiration seconds. 
   - `isPrivate`: mandatory. Whether the paste is in private mode. 
 
-If error occurs, the worker returns status code different than `200`: 
+If error occurs, the worker returns status code different from `200`: 
 
 - `400`: your request is in bad format. 
 - `409`: the name is already used. 
@@ -171,8 +173,8 @@ $ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
 # quoted by double-quotes if the field contains semicolon or comma
 $ curl -Fc=@panty.jpg -Fn='"hi/hello;g,ood"' -Fs=12345678 https://shz.al
 {
-  "url": "http://shz.al/~hi/hello;g,ood",
-  "admin": "http://shz.al/~hi/hello;g,ood:QJhMKh5WR6z36QRAAn5Q5GZh",
+  "url": "https://shz.al/~hi/hello;g,ood",
+  "admin": "https://shz.al/~hi/hello;g,ood:QJhMKh5WR6z36QRAAn5Q5GZh",
   "isPrivate": false
 }
 ```
@@ -187,7 +189,7 @@ Update you paste of the name `<name>` and password `<passwd>`. It accept the par
 
 The returning of `PUT` method is also the same as `POST` method. 
 
-If error occurs, the worker returns status code different than `200`: 
+If error occurs, the worker returns status code different from `200`: 
 
 - `400`: your request is in bad format. 
 - `403`: your password is not correct. 
@@ -216,9 +218,9 @@ $ curl -X PUT -Fc="kawaii~" https://shz.al/~hitagi:fGsQ@SkGAcmVJHcWgKABNsYK
 
 ## DELETE `/<name>:<passwd>`
 
-Delete the paste of name `<name>` and password `<passwd>`. It may takes seconds to synchronize the deletion globally. 
+Delete the paste of name `<name>` and password `<passwd>`. It may take seconds to synchronize the deletion globally. 
 
-If error occurs, the worker returns status code different than `200`: 
+If error occurs, the worker returns status code different from `200`: 
 
 - `403`: your password is not correct. 
 - `404`: the paste of given name is not found. 

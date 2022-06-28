@@ -7,23 +7,21 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 **Features**:
 
 1. Share your paste with as short as 4 characters
-2. Customize the paste URL as you want
-3. Make changes to uploaded paste
-4. Delete your paste after uploading
-5. Let your paste deleted from the server after a period of time
-6. Syntax highlighting powered by Prism
-7. Display markdown file as HTML
-8. Redirect to custom URL
-9. Specify the mimetype when fetching your paste
-10. Optional longer paste URL for better privacy
+2. Customize the paste URL
+4. **Update** and **delete** your paste as you want
+5. **Expire** your paste after a period of time
+6. **Syntax highlighting** powered by PrismJS
+7. Display **markdown** file as HTML
+8. Customizable 302 redirection
+9. Specify mimetype
 
 ## Usage
 
-You can post, update, delete your paste directly on the website (such as [shz.al](https://shz.al)). 
+1. You can post, update, delete your paste directly on the website (such as [shz.al](https://shz.al)). 
 
-It also provide a convenient HTTP API to use. See [API reference](doc/api.md) for details. You can easily call API via command line (using `curl` or anything else). 
+2. It also provides a convenient HTTP API to use. See [API reference](doc/api.md) for details. You can easily call API via command line (using `curl` or anything else). 
 
-[pb](/scripts) is bash script to make it easier to use on command line. 
+3. [pb](/scripts) is bash script to make it easier to use on command line. 
 
 ## Limitations
 
