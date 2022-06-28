@@ -52,11 +52,9 @@ $ curl -L https://shz.al/u/i-p-
 
 ## GET `/a/<name>`
 
-Return the HTML converted from the markdown file stored in the paste of name `<name>`. The markdown conversion follows GitHub Flavored Markdown (GFM) Spec, supported by [remark-gfm](https://github.com/remarkjs/remark-gfm).
+Return the HTML converted from the markdown file stored in the paste of name `<name>`. The markdown conversion follows GitHub Flavored Markdown (GFM) Spec, supported by [remark-gfm](https://github.com/remarkjs/remark-gfm). 
 
-Notice: there is no syntax highlighting and LaTeX support yet.
-
-If error occurs, the worker returns status code different than `302`:
+Syntax highlighting is supported by [prims.js](https://prismjs.com/). LaTeX mathematics is supported by [MathJax](https://www.mathjax.org).
 
 - `404`: the paste of given name is not found.
 - `500`: unexpected exception. You may report this to the author to give it a fix.
