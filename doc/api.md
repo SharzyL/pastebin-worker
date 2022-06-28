@@ -50,6 +50,54 @@ $ firefox https://shz.al/u/i-p-
 $ curl -L https://shz.al/u/i-p-
 ```
 
+## GET `/a/<name>`
+
+Return the HTML converted from the markdown file stored in the paste of name `<name>`. The markdown conversion follows GitHub Flavored Markdown (GFM) Spec, supported by [remark-gfm](https://github.com/remarkjs/remark-gfm).
+
+Notice: there is no syntax highlighting and LaTeX support yet.
+
+If error occurs, the worker returns status code different than `302`:
+
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
+
+Usage example:
+
+```md
+# Header 1
+This is the content of `test.md`
+
+<script>
+alert("Script should be removed")
+</script>
+
+## Header 2
+
+| abc | defghi |
+:-: | -----------:
+bar | baz
+
+**Bold**, `Monospace`, *Italics*, ~~Strikethrough~~, [URL](https://github.com)
+
+- A
+ - A1
+ - A2
+- B
+
+![Panty](https://shz.al/~panty.jpg)
+
+1. first
+2. second
+
+> Quotation
+```
+
+```shell
+$ curl -Fc=test.md -Fn=test https://shz.al
+
+$ firefox https://shz.al/a/~test
+```
+
 ## **POST** `/`
 
 Upload your paste. It accept parameters in form-data: 

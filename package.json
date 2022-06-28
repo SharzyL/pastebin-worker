@@ -27,6 +27,11 @@
   },
   "dependencies": {
     "mime": "^2.5.2",
-    "mime-db": "^1.49.0"
+    "mime-db": "^1.49.0",
+    "rehype-stringify": "^9.0.3",
+    "remark-gfm": "^3.0.1",
+    "remark-parse": "^10.0.1",
+    "remark-rehype": "^10.1.0",
+    "unified": "^10.1.2"
   }
 }

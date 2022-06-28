@@ -4,6 +4,7 @@ import { parseFormdata, getBoundary } from "./parseFormdata.js"
 import { staticPageMap } from './staticPages.js'
 
 import { getType } from "mime/lite.js"
+import {makeMarkdown} from "./markdown.js";
 
 const CHAR_GEN =
   "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
@@ -182,6 +183,12 @@ async function handleGet(request) {
   // handle URL redirection
   if (role === "u") {
     return Response.redirect(decode(item.value), 302)
+  }
+  if (role === "a") {
+    const md = await makeMarkdown(decode(item.value))
+    return new Response(md, {
+      headers: { "content-type": `text/html;charset=UTF-8` },
+    })
   }
 
   // handle language highlight
