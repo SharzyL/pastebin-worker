@@ -163,6 +163,7 @@ async function handlePostOrPut(request, isPut) {
 
 async function handleGet(request) {
   const url = new URL(request.url)
+  const { role, short, ext, passwd } = parsePath(url.pathname)
   if (staticPageMap.has(url.pathname)) {
     const item = await PB.get(staticPageMap.get(url.pathname))
     return new Response(item, {
@@ -170,7 +171,14 @@ async function handleGet(request) {
     })
   }
 
-  const { role, short, ext } = parsePath(url.pathname)
+  // return the editor for admin URL
+  if (passwd.length > 0) {
+    const item = await PB.get('index')
+    return new Response(item, {
+      headers: { "content-type": "text/html;charset=UTF-8" }
+    })
+  }
+
   const mime = url.searchParams.get("mime") || getType(ext) || "text/plain"
 
   const item = await PB.getWithMetadata(short, { type: "arrayBuffer" })

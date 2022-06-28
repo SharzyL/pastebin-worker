@@ -33,6 +33,15 @@ $ curl 'https://shz.al/~panty.jpg?mime=image/png' -w '%{content_type}' -o /dev/n
 image/png;charset=UTF-8
 ```
 
+## GET `/<name>:<passwd>`
+
+Return the web page to edit the paste of name `<name>` and password `<passwd>`.
+
+If error occurs, the worker returns status code different than `200`:
+
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
+
 ## GET `/u/<name>`
 
 Redirect to the URL recorded in the paste of name `<name>`. 

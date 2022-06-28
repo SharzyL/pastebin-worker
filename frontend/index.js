@@ -1,3 +1,23 @@
+const SEP = ':'
+
+function parsePath(pathname) {
+  let role = "", ext = ""
+  if (pathname[2] === "/") {
+    role = pathname[1]
+    pathname = pathname.slice(2)
+  }
+  let startOfExt = pathname.indexOf(".")
+  if (startOfExt >= 0) {
+    ext = pathname.slice(startOfExt)
+    pathname = pathname.slice(0, startOfExt)
+  }
+  let endOfShort = pathname.indexOf(SEP)
+  if (endOfShort < 0) endOfShort = pathname.length // when there is no SEP, passwd is left empty
+  const short = pathname.slice(1, endOfShort)
+  const passwd = pathname.slice(endOfShort + 1)
+  return { role, short, passwd, ext }
+}
+
 window.addEventListener('load', () => {
   const base_url = '{{BASE_URL}}'
   const deploy_date = new Date('{{DEPLOY_DATE}}')
@@ -285,4 +305,22 @@ window.addEventListener('load', () => {
     alert(`Error ${status}: ${statusText}\n${responseText}\nView your console for more information`)
     $('#submit-button').addClass('enabled')
   }
+
+  function initAdmin() {
+    const { role, short, passwd, ext } = parsePath(location.pathname)
+    if (passwd.length > 0) {
+      $('#paste-url-admin-radio').attr('checked', true)
+      $('#paste-admin-url-input').val(location.href)
+      $.ajax({
+        url: "/" + short,
+        success: paste => {
+          pasteEditArea.val(paste)
+          updateButtons()
+        },
+        error: handleError,
+      })
+    }
+  }
+
+  initAdmin()
 })
