@@ -90,12 +90,17 @@ bar | baz
 2. second
 
 > Quotation
+
+$$
+\int_{-\infty}^{\infty} e^{-x^2} = \sqrt{\pi}
+$$
+
 ```
 
 ```shell
-$ curl -Fc=test.md -Fn=test https://shz.al
+$ curl -Fc=test.md -Fn=test-md https://shz.al
 
-$ firefox https://shz.al/a/~test
+$ firefox https://shz.al/a/~test-md
 ```
 
 ## **POST** `/`
