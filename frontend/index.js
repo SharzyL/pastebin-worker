@@ -309,8 +309,11 @@ window.addEventListener('load', () => {
   function initAdmin() {
     const { role, short, passwd, ext } = parsePath(location.pathname)
     if (passwd.length > 0) {
-      $('#paste-url-admin-radio').attr('checked', true)
+      $('#paste-url-admin-radio').click()
       $('#paste-admin-url-input').val(location.href)
+      urlType = 'admin'
+      adminUrl = location.href
+      updateButtons()
       $.ajax({
         url: "/" + short,
         success: paste => {
