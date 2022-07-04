@@ -1,32 +1,12 @@
+import { WorkerError, parsePath, parseExpiration, genRandStr, decode, params } from "./common.js";
 import { handleOptions, corsWrapResponse } from './cors.js'
 import { makeHighlight } from "./highlight.js"
 import { parseFormdata, getBoundary } from "./parseFormdata.js"
 import { staticPageMap } from './staticPages.js'
+import { makeMarkdown } from "./markdown.js";
+import conf from '../config.json'
 
 import { getType } from "mime/lite.js"
-import {makeMarkdown} from "./markdown.js";
-
-const CHAR_GEN =
-  "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
-const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;\/]{3,}$/
-const RAND_LEN = 4
-const PRIVATE_RAND_LEN = 24
-const ADMIN_PATH_LEN = 24
-const SEP = ":"
-const MAX_LEN = 25 * 1024 * 1024
-
-let BASE_URL = ""
-
-function decode(arrayBuffer) {
-  return new TextDecoder().decode(arrayBuffer)
-}
-
-class WorkerError extends Error {
-  constructor(statusCode, ...params) {
-    super(...params)
-    this.statusCode = statusCode
-  }
-}
 
 addEventListener("fetch", (event) => {
   const { request } = event
@@ -71,7 +51,6 @@ async function handleNormalRequest(request) {
 async function handlePostOrPut(request, isPut) {
   const contentType = request.headers.get("content-type") || ""
   const url = new URL(request.url)
-  BASE_URL = url.origin
 
   // parse formdata
   let form = {}
@@ -100,7 +79,7 @@ async function handlePostOrPut(request, isPut) {
   // check if paste content is legal
   if (content === undefined) {
     throw new WorkerError(400, "cannot find content in formdata")
-  } else if (content.length > MAX_LEN) {
+  } else if (content.length > params.MAX_LEN) {
     throw new WorkerError(413, "payload too large")
   }
 
@@ -120,10 +99,10 @@ async function handlePostOrPut(request, isPut) {
   }
 
   // check if name is legal
-  if (name !== undefined && !NAME_REGEX.test(name)) {
+  if (name !== undefined && !params.NAME_REGEX.test(name)) {
     throw new WorkerError(
       400,
-      `Name ${name} not satisfying regexp ${NAME_REGEX}`,
+      `Name ${name} not satisfying regexp ${params.NAME_REGEX}`,
     )
   }
 
@@ -232,8 +211,8 @@ async function handleDelete(request) {
 
 async function createPaste(content, isPrivate, expire, short, date, passwd, filename) {
   date = date || new Date().toISOString()
-  passwd = passwd || genRandStr(ADMIN_PATH_LEN)
-  const short_len = isPrivate ? PRIVATE_RAND_LEN : RAND_LEN
+  passwd = passwd || genRandStr(params.ADMIN_PATH_LEN)
+  const short_len = isPrivate ? params.PRIVATE_RAND_LEN : params.RAND_LEN
 
   if (short === undefined) {
     while (true) {
@@ -249,8 +228,8 @@ async function createPaste(content, isPrivate, expire, short, date, passwd, file
       passwd: passwd
     },
   })
-  let accessUrl = BASE_URL + '/' + short
-  const adminUrl = BASE_URL + '/' + short + SEP + passwd
+  let accessUrl = conf.BASE_URL + '/' + short
+  const adminUrl = conf.BASE_URL + '/' + short + params.SEP + passwd
   return {
     url: accessUrl,
     suggestUrl: suggestUrl(content, filename, short),
@@ -258,52 +237,6 @@ async function createPaste(content, isPrivate, expire, short, date, passwd, file
     isPrivate: isPrivate,
     expire: expire,
   }
-}
-
-function genRandStr(len) {
-  // TODO: switch to Web Crypto random generator
-  let str = ""
-  const numOfRand = CHAR_GEN.length
-  for (let i = 0; i < len; i++) {
-    str += CHAR_GEN.charAt(Math.floor(Math.random() * numOfRand))
-  }
-  return str
-}
-
-function parsePath(pathname) {
-  // Example of paths (SEP=':'). Note: query string is not processed here
-  // > example.com/~stocking
-  // > example.com/~stocking:uLE4Fhb/d3414adlW653Vx0VSVw=
-  // > example.com/abcd
-  // > example.com/abcd.jpg
-  // > example.com/u/abcd
-  // > example.com/abcd:3ffd2e7ff214989646e006bd9ad36c58d447065e
-  let role = "", ext = ""
-  if (pathname[2] === "/") {
-    role = pathname[1]
-    pathname = pathname.slice(2)
-  }
-  let startOfExt = pathname.indexOf(".")
-  if (startOfExt >= 0) {
-    ext = pathname.slice(startOfExt)
-    pathname = pathname.slice(0, startOfExt)
-  }
-  let endOfShort = pathname.indexOf(SEP)
-  if (endOfShort < 0) endOfShort = pathname.length // when there is no SEP, passwd is left empty
-  const short = pathname.slice(1, endOfShort)
-  const passwd = pathname.slice(endOfShort + 1)
-  return { role, short, passwd, ext }
-}
-
-function parseExpiration(expirationStr) {
-  let expirationSeconds = parseFloat(expirationStr)
-  const lastChar = expirationStr[expirationStr.length - 1]
-  if (lastChar === 'm') expirationSeconds *= 60
-  else if (lastChar === 'h') expirationSeconds *= 3600
-  else if (lastChar === 'd') expirationSeconds *= 3600 * 24
-  else if (lastChar === 'w') expirationSeconds *= 3600 * 24 * 7
-  else if (lastChar === 'M') expirationSeconds *= 3600 * 24 * 7 * 30
-  return expirationSeconds
 }
 
 function suggestUrl(content, filename, short) {
@@ -317,13 +250,13 @@ function suggestUrl(content, filename, short) {
   }
 
   if (isUrl(decode(content))) {
-    return `${BASE_URL}/u/${short}`
+    return `${conf.BASE_URL}/u/${short}`
   }
   if (filename) {
     const dotIdx = filename.lastIndexOf('.')
     if (dotIdx > 0) {
       const ext = filename.slice(dotIdx + 1)
-      return `${BASE_URL}/${short}.${ext}`
+      return `${conf.BASE_URL}/${short}.${ext}`
     }
   }
   return null

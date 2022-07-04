@@ -8,7 +8,8 @@
   "type": "module",
   "scripts": {
     "test": "webpack --mode=development && mocha",
-    "build": "webpack --mode=production"
+    "build": "webpack --mode=production",
+    "serve": "miniflare"
   },
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",

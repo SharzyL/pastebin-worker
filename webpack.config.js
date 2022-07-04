@@ -1,19 +1,20 @@
-let config = {
+let basicConfig = {
   target: "webworker",
   entry: {
     worker: "./src/index.js",
   },
   devtool: "inline-nosources-source-map",
+  plugins: []
 }
 
 export default (env, argv) => {
   if (argv && argv.mode === "development") {
-    config.devtool = "inline-nosources-source-map"
-    config.mode = "development"
+    basicConfig.devtool = "inline-nosources-source-map"
+    basicConfig.mode = "development"
   } else {
-    config.devtool = false
-    config.mode = "production"
+    basicConfig.devtool = false
+    basicConfig.mode = "production"
   }
 
-  return config
+  return basicConfig
 }
