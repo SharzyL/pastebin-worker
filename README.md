@@ -50,3 +50,40 @@ Deploy and enjoy!
 $ yarn install
 $ mkdir dist && make deploy
 ```
+
+## Auth
+
+If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `config.json`:
+
+```json
+{
+  "basicAuth": {
+    "enabled": true,
+    "passwd": {
+      "admin1": "this-is-passwd-1",
+      "admin2": "this-is-passwd-2"
+    }
+  }
+}
+```
+
+Now every access to PUT or POST request, and every access to the index page, requires an HTTP basic auth with the user-password pair listed above. For example: 
+
+```shell
+$ curl example-pb.com
+HTTP basic auth is required
+
+$ curl -Fc=@/path/to/file example-pb.com
+HTTP basic auth is required
+
+$ curl -u admin1:wrong-passwd -Fc=@/path/to/file example-pb.com
+Error 401: incorrect passwd for basic auth
+
+$ curl -u admin1:this-is-passwd-1 -Fc=@/path/to/file example-pb.com
+{
+  "url": "https://example-pb.com/YCDX",
+  "suggestUrl": null,
+  "admin": "https://example-pb.com/YCDX:Sij23HwbMjeZwKznY3K5trG8",
+  "isPrivate": false
+}
+```

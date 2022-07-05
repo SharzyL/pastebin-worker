@@ -9,7 +9,7 @@
   "scripts": {
     "test": "webpack --mode=development && mocha",
     "build": "webpack --mode=production",
-    "serve": "miniflare"
+    "serve": "miniflare --live-reload"
   },
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
@@ -27,6 +27,7 @@
     "webpack-cli": "^4.7.2"
   },
   "dependencies": {
+    "assert": "^2.0.0",
     "mime": "^2.5.2",
     "mime-db": "^1.49.0",
     "rehype-stringify": "^9.0.3",
