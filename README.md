@@ -53,7 +53,7 @@ $ mkdir dist && make deploy
 
 ## Auth
 
-If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `config.json`:
+If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `config.json` (other configurations contained in the outmost brace):
 
 ```json
 {
