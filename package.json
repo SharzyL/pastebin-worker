@@ -14,7 +14,7 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/wrangler": "^1.19.0",
+    "wrangler": "^2.8.1",
     "argparse": "^2.0.1",
     "eslint": "^7.32.0",
     "liquidjs": "^9.25.1",
