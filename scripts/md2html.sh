@@ -14,8 +14,8 @@ cat > "$html_file" <<-EOF
   <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
   <link rel="icon" href="{{FAVICON}}" type="image/png"/>
 </head>
+<body>
 <div class="container-lg px-3 my-5 markdown-body">
-</html>
 EOF
 
 yarn -s remark "$md_file" --use remark-html >> "$html_file"
@@ -23,4 +23,5 @@ yarn -s remark "$md_file" --use remark-html >> "$html_file"
 cat >> "$html_file" <<-EOF
 </div>
 </body>
+</html>
 EOF
