@@ -61,7 +61,7 @@ $(all_html_preview): $(PREVIEW_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy_static)
 
 # because wrangler will always build before publish, we cannot do cache here
 $(js_deploy): $(source_js_files) $(JS_LOCK)
-	yarn wrangler publish
+	yarn wrangler publish src/index.js
 	@mkdir -p $(dir $@)
 	@touch $@
 
