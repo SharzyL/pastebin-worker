@@ -45,7 +45,7 @@ $(BUILD_DIR)/index.html.liquid: frontend/index.html frontend/index.js frontend/s
 $(all_html): $(BUILD_DIR)/%.html: $(BUILD_DIR)/%.html.liquid $(CONF) $(html_renderer)
 	node $(html_renderer) -c $(CONF)  -o $@ $<
 	@# remove indents to reduce size
-	sed -E -i 's/^\s+//g' $@
+	perl -pi -e 's/^\s+//g' $@
 
 # deploy html file to Cloudflare
 $(all_html_deploy): $(DEPLOY_DIR)/%.html: $(BUILD_DIR)/%.html $(deploy_static)
