@@ -4,7 +4,10 @@ import { makeHighlight } from "./highlight.js"
 import { parseFormdata, getBoundary } from "./parseFormdata.js"
 import { staticPageMap } from './staticPages.js'
 import { makeMarkdown } from "./markdown.js";
-import conf from '../config.json'
+import conf_production from '../config.json'
+import conf_preview from '../config.preview.json'
+
+const conf = globalThis.ENVIRONMENT === "preview" ? conf_preview : conf_preview
 
 import { getType } from "mime/lite.js"
 import {verifyAuth} from "./auth.js";
