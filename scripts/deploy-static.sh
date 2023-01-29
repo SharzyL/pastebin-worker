@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 # deploy the static pages on Cloudflare workers
 # add argument --preview to deploy on preview namespace
 

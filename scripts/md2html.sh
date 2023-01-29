@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 md_file="$1"
 html_file="$2"
