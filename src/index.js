@@ -7,7 +7,7 @@ import { makeMarkdown } from "./markdown.js";
 import conf_production from '../config.json'
 import conf_preview from '../config.preview.json'
 
-const conf = globalThis.ENVIRONMENT === "preview" ? conf_preview : conf_preview
+const conf = globalThis.ENVIRONMENT === "preview" ? conf_preview : conf_production
 
 import { getType } from "mime/lite.js"
 import {verifyAuth} from "./auth.js";
