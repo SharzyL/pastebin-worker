@@ -12,10 +12,13 @@ export async function makeMarkdown(content) {
     .use(rehypeStringify)
     .process(content)
 
+  const match = /<h1>(.+?)<\/h1>/.exec(convertedHtml)
+  const title = match ? match[1] : 'Untitled'
+
   return `<!DOCTYPE html>
 <html lang='en'>
 <head>
-  <title>Yet another pastebin</title>
+  <title>${title}</title>
   <meta charset='utf-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
   <link href='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/themes/prism.css' rel='stylesheet' />
