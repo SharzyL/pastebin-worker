@@ -3,24 +3,54 @@ import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
+import {toString} from 'mdast-util-to-string'
+
+import {escapeHtml} from './common.js'
+
+const descriptionLimit = 200
+const defaultTitle = "Untitled"
+
+function getMetadata(options) {
+  return (tree) => {
+    console.log(tree)
+
+    if (tree.children.length == 0) return
+
+    const firstChild = tree.children[0]
+    // if the document begins with a h1, set its content as the title
+    if (firstChild.type == 'heading' && firstChild.depth === 1) {
+      options.result.title = escapeHtml(toString(firstChild))
+
+      if (tree.children.length > 1) {
+        // description is set as the content of the second node
+        const secondChild = tree.children[1]
+        options.result.description = escapeHtml(toString(secondChild).slice(0, descriptionLimit))
+      }
+    } else {
+      // no title is set
+      // description is set as the content of the first node
+      options.result.description = escapeHtml(toString(firstChild).slice(0, descriptionLimit))
+    }
+  }
+}
 
 export async function makeMarkdown(content) {
-  const convertedHtml = await unified()
+  const metadata = { title: defaultTitle, description: "" }
+  const convertedHtml = unified()
     .use(remarkParse)
     .use(remarkGfm)
+    .use(getMetadata, { result: metadata })  // result is written to `metadata` variable
     .use(remarkRehype)
     .use(rehypeStringify)
-    .process(content)
-
-  const match = /<h1>(.+?)<\/h1>/.exec(convertedHtml)
-  const title = match ? match[1] : 'Untitled'
+    .processSync(content)
 
   return `<!DOCTYPE html>
 <html lang='en'>
 <head>
-  <title>${title}</title>
   <meta charset='utf-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
+  <title>${metadata.title}</title>
+  ${metadata.description.length > 0 ? `<meta name='description' content='${metadata.description}'>` : ""}
   <link href='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/themes/prism.css' rel='stylesheet' />
   <link href='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-numbers/prism-line-numbers.css' rel='stylesheet' />
   <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css'>
