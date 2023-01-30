@@ -36,5 +36,8 @@
     "remark-parse": "^10.0.1",
     "remark-rehype": "^10.1.0",
     "unified": "^10.1.2"
+  },
+  "resolutions": {
+    "micromark": "^3.1.0"
   }
 }
