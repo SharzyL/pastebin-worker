@@ -65,3 +65,16 @@ export function parseExpiration(expirationStr) {
   return expirationSeconds
 }
 
+export function escapeHtml(str) {
+  const tagsToReplace = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot",
+    "'": "&#x27"
+  }
+  return str.replace(/[&<>]/g, function (tag) {
+    return tagsToReplace[tag] || tag
+  })
+}
+

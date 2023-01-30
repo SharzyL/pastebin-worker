@@ -1,15 +1,4 @@
-String.prototype.escapeHtml = function () {
-  const tagsToReplace = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "\"": "&quot",
-    "'": "&#x27"
-  }
-  return this.replace(/[&<>]/g, function (tag) {
-    return tagsToReplace[tag] || tag
-  })
-}
+import { escapeHtml } from "./common.js"
 
 export function makeHighlight(content, lang) {
   return `<!DOCTYPE html>
@@ -23,7 +12,7 @@ export function makeHighlight(content, lang) {
   <link href='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-numbers/prism-line-numbers.css' rel='stylesheet' />
 </head>
 <body class='line-numbers'>
-<pre><code class='language-${lang.escapeHtml()}'>${content.escapeHtml()}</code></pre>
+<pre><code class='language-${escapeHtml(lang)}'>${escapeHtml(content)}</code></pre>
   <script src='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/components/prism-core.min.js'></script>
   <script src='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/line-numbers/prism-line-numbers.min.js'></script>
   <script src='https://cdn.jsdelivr.net/npm/prismjs@1.23.0/plugins/autoloader/prism-autoloader.min.js'></script>
