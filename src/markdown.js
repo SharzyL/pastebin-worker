@@ -12,8 +12,6 @@ const defaultTitle = "Untitled"
 
 function getMetadata(options) {
   return (tree) => {
-    console.log(tree)
-
     if (tree.children.length == 0) return
 
     const firstChild = tree.children[0]
