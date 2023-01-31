@@ -1,4 +1,4 @@
-# Pastebin based on Cloudflare Workers
+# Pastebin-worker
 
 This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al](https://shz.al). 
 
@@ -12,21 +12,21 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 5. **Expire** your paste after a period of time
 6. **Syntax highlighting** powered by PrismJS
 7. Display **markdown** file as HTML
-8. Customizable 302 redirection
-9. Specify mimetype
+8. Used as a URL shortener
+9. Customize returned mimetype
 
 ## Usage
 
 1. You can post, update, delete your paste directly on the website (such as [shz.al](https://shz.al)). 
 
-2. It also provides a convenient HTTP API to use. See [API reference](doc/api.md) for details. You can easily call API via command line (using `curl` or anything else). 
+2. It also provides a convenient HTTP API to use. See [API reference](doc/api.md) for details. You can easily call API via command line (using `curl` or similar tools). 
 
-3. [pb](/scripts) is bash script to make it easier to use on command line. 
+3. [pb](/scripts) is a bash script to make it easier to use on command line.
 
 ## Limitations
 
 1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 100,000 reads and 1000 writes, 1000 deletes per day. 
-2. Due to the size limit of Cloudflare KV storage, the size of each paste should be smaller than 25 MB. 
+2. Due to the size limit of Cloudflare KV storage, the size of each paste is bounded under 25 MB. 
 
 ## Deploy
 
@@ -36,11 +36,10 @@ Requirements:
 1. \*nix environment with bash and basic cli programs. If you are using Windows, try cygwin, WSL or something. 
 2. GNU make. 
 3. `node` and `yarn`. 
-4. `wrangler`, the official cli program to manage Cloudflare workers.
 
 Create two KV namespaces on Cloudflare workers dashboard (one for production, one for test). Remember their IDs. If you do not need testing, simply create one.
 
-Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`. Modify entries in `wrangler.toml` according to your own account information (`account_id`, routes, kv namespace ids are what you need to modify). Refer to [Cloudflare doc](https://developers.cloudflare.com/workers/cli-wrangler/configuration) on how to find out these parameters.
+Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`. Modify entries in `wrangler.toml` according to your own account information (`account_id`, routes, kv namespace ids are what you need to modify). The `env.preview` section can be safely removed if you do not need a testing deployment. Refer to [Cloudflare doc](https://developers.cloudflare.com/workers/cli-wrangler/configuration) on how to find out these parameters.
 
 Modify the contents in `config.json` (which controls the generation of static pages): `BASE_URL` is the URL of your site (no trailing slash); `FAVICON` is the URL to the favicon you want to use on your site. If you need testing, also modify `config.preview.json`.
 
@@ -48,12 +47,12 @@ Deploy and enjoy!
 
 ```shell
 $ yarn install
-$ mkdir dist && make deploy
+$ make deploy
 ```
 
 ## Auth
 
-If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `config.json` (other configurations contained in the outmost brace):
+If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `config.json` (other configurations also contained in the outmost brace):
 
 ```json
 {
