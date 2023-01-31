@@ -10,7 +10,7 @@ Fetch the paste with name `<name>`. By default, it will return the raw content o
 
 - `?lang=<lang>`: optional. returns a web page with syntax highlight powered by prism.js. 
 
-- `?mime=<mime>`: optional. specify the mime-type, suppressing the effect of `<ext>`. Not effect if `lang` is specified (in which case the mime-type is always `text/html`). 
+- `?mime=<mime>`: optional. specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`). 
 
 Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`. 
 
@@ -107,7 +107,7 @@ $$
 ```
 
 ```shell
-$ curl -Fc=test.md -Fn=test-md https://shz.al
+$ curl -Fc=@test.md -Fn=test-md https://shz.al
 
 $ firefox https://shz.al/a/~test-md
 ```
@@ -208,10 +208,10 @@ $ curl -X PUT -Fc="kawaii~" -Fe=500 https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYad
   "expire": 500
 }
 
-$ curl -X PUT -Fc="kawaii~" https://shz.al/~hitagi:fGsQ@SkGAcmVJHcWgKABNsYK
+$ curl -X PUT -Fc="kawaii~" https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv
 {
   "url": "https://shz.al/~hitagi",
-  "admin": "https://shz.al/~hitagi:fGsQ@SkGAcmVJHcWgKABNsYK",
+  "admin": "https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv",
   "isPrivate": false
 }
 ```
@@ -229,7 +229,7 @@ If error occurs, the worker returns status code different from `200`:
 Usage example: 
 
 ```shell
-$ curl -X DELETE https://shz.al/~hitagi:fGsQ@SkGAcmVJHcWgKABNsYK
+$ curl -X DELETE https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv
 the paste will be deleted in seconds
 
 $ curl https://shz.al/~hitagi
