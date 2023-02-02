@@ -4,7 +4,7 @@
 
 set -e
 
-declare -a args=('yarn' 'wrangler' 'kv:key' 'put' '--binding=bin')
+declare -a args=('yarn' 'wrangler' 'kv:key' 'put' '--binding=PB')
 
 if [ "$1" == '--preview' ]; then
 	args+=('--env' 'preview')
