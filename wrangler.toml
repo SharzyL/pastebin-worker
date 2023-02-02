@@ -1,23 +1,23 @@
-name = "pb"
+name = "bin"
 compatibility_date = "2023-01-28"
 
-account_id = "1ddaf86dbca12e8f4fcaa76f32bb707d"
+account_id = "b5572fa61d699317793af525e817e2c8"
 workers_dev = false
 main = "src/index.js"
 
 # config for default production environment
 vars = { ENVIRONMENT = "production" }
-route = { pattern = "shz.al", custom_domain = true }
+route = { pattern = "pyrux.in", custom_domain = true }
 kv_namespaces = [
-  { binding = "PB", id = "cc398e983a234aa19de5ea6af571a483" },
+  { binding = "bin", id = "ff7cec527ba3419bb031e956459aea6f" },
 ]
 
 [env.preview]
 vars = { ENVIRONMENT = "preview" }
-route = { pattern = "pb-preview.shz.al", custom_domain = true }
+route = { pattern = "pb-preview.pyrux.in", custom_domain = true }
 minify = false
 
 kv_namespaces = [
-  { binding = "PB", id = "f56ae0043abd4bb4ab61c52071bd9c7f" }
+  { binding = "bin", id = "ff7cec527ba3419bb031e956459aea6f" }
 ]
 
