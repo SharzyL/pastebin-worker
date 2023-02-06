@@ -110,6 +110,7 @@ pb_post() {
 		|| return 1
 	eval set -- "$TEMP";
 
+	local content expire name passwd private verbose clip dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 =~ ^-f|--|--file$ ]]  && {
 			shift 1;
@@ -178,6 +179,7 @@ pb_update() {
 		|| return 1
 	eval set -- "$TEMP";
 
+	local name_passwd file content expire passwd verbose clip dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
 		[[ $1 =~ ^-f|--file$ ]]    && { file="$2"; shift 2; continue; };
@@ -203,7 +205,7 @@ pb_update() {
 
 	# check arguments
 	[ -n "$content" ] && [ -n "$file" ] && _die "cannot set both 'content' and 'file'"
-  [ -n "$file" ] && [ ! -r "$file" ]  && _die "cannot read file '${file}'"
+	[ -n "$file" ] && [ ! -r "$file" ]  && _die "cannot read file '${file}'"
 
 	# build arguments
 	declare -a args=("curl_code" "-X" "PUT" "$domain/$name:$passwd")
@@ -249,6 +251,7 @@ pb_get() {
 		|| return 1
 	eval set -- "$TEMP";
 
+	local name lang mime output url verbose dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 == -- ]]             && { name="$2"; shift 2; break; };
 		[[ $1 =~ ^-l|--lang$ ]]    && { lang="$2"; shift 2; continue; };
@@ -295,6 +298,7 @@ pb_delete() {
 		|| return 1
 	eval set -- "$TEMP";
 
+	local name_passwd verbose dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
 		[[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
