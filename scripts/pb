@@ -41,12 +41,12 @@ main() {
 	action="$1"
 	shift
 	case "$action" in
-	p | post) pb_post "$@" ;;
-	u | update) pb_update "$@" ;;
-	d | delete) pb_delete "$@" ;;
-	g | get) pb_get "$@" ;;
-	-h | --help) usage ;;
-	*) _die "no action given. try '$script_name' -h for more information" ;;
+		p | post) pb_post "$@" ;;
+		u | update) pb_update "$@" ;;
+		d | delete) pb_delete "$@" ;;
+		g | get) pb_get "$@" ;;
+		-h | --help) usage ;;
+		*) _die "no action given. try '$script_name' -h for more information" ;;
 	esac
 }
 
@@ -109,7 +109,7 @@ pb_post() {
 	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") ||
 		return 1
 	eval set -- "$TEMP"
-
+	local content expire name passwd private verbose clip dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 =~ ^-f|--|--file$ ]] && {
 			shift 1
@@ -213,7 +213,7 @@ pb_update() {
 	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") ||
 		return 1
 	eval set -- "$TEMP"
-
+	local name_passwd file content expire passwd verbose clip dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 == -- ]] && {
 			name_passwd="$2"
@@ -316,7 +316,7 @@ pb_get() {
 	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") ||
 		return 1
 	eval set -- "$TEMP"
-
+	local name lang mime output url verbose dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 == -- ]] && {
 			name="$2"
@@ -390,7 +390,7 @@ pb_delete() {
 	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") ||
 		return 1
 	eval set -- "$TEMP"
-
+	local name_passwd verbose dry
 	while [[ ${1:0:1} == - ]]; do
 		[[ $1 == -- ]] && {
 			name_passwd="$2"
