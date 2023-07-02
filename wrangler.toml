@@ -7,9 +7,7 @@ main = "src/index.js"
 
 # config for default production environment
 vars = { ENVIRONMENT = "production" }
-route = [
-  { pattern = "pyrux.in", custom_domain = true }
-]
+#route = { pattern = "pyrux.in", custom_domain = true }
 kv_namespaces = [
   { binding = "PB", id = "9336958145104177b42cf954d37ca73b" },
 ]
