@@ -2,12 +2,12 @@ name = "bin"
 compatibility_date = "2023-01-28"
 
 account_id = "b5572fa61d699317793af525e817e2c8"
-workers_dev = false
+workers_dev = true
 main = "src/index.js"
 
 # config for default production environment
 vars = { ENVIRONMENT = "production" }
-route = { pattern = "bin.censor.workers.dev", custom_domain = true }
+#route = { pattern = "bin.censor.workers.dev", custom_domain = true }
 kv_namespaces = [
   { binding = "PB", id = "9336958145104177b42cf954d37ca73b" },
 ]
