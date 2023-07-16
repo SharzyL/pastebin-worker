@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-domain="https://pyrux.in"
+domain="https://bin.censor.workers.dev"
 hist_file="${XDG_CONFIG_DIR:-$HOME/.config}/pb_hist"
 
 script_name=${0##*/}
