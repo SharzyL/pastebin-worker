@@ -18,7 +18,7 @@ function parsePath(pathname) {
   return { role, short, passwd, ext }
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('DOMContentLoaded', () => {
   const base_url = '{{BASE_URL}}'
   const deploy_date = new Date('{{DEPLOY_DATE}}')
 
@@ -33,17 +33,6 @@ window.addEventListener('load', () => {
   }
 
   $('#deploy-date').text(getDateString(deploy_date))
-
-  function copyTextFromInput(input) {
-    if (input.constructor === String) input = document.getElementById(input)
-    input.focus()
-    input.select()
-    try {
-      document.execCommand('copy')
-    } catch (err) {
-      alert('Failed to copy content')
-    }
-  }
 
   function isAdminUrlLegal(url) {
     try {
@@ -71,35 +60,44 @@ window.addEventListener('load', () => {
     }
   }
 
-// monitor input changes and enable/disable submit button
-  let urlType = 'short', inputType = 'edit', expiration = '', passwd = ''
+  // monitor input changes and enable/disable submit button
+  let urlType = $('input[name="url-type"]:checked').val()
+  let inputType = 'edit'
+  let expiration = $('#paste-expiration-input').val()
+  let passwd = ''
   let customName = '', adminUrl = '', file = null
 
-  const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$=@,;/]{3,}$/
+  const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$@,;\/]{3,}$/
+  const EXPIRE_REGEX = /^\d+\s*[mhdwM]?$/
   const submitButton = $('#submit-button')
   const deleteButton = $('#delete-button')
   const pasteEditArea = $('#paste-textarea')
+  const submitErrMsg = $('#submit-error-msg')
+
+  function disableSubmitButton(reason) {
+    submitButton.removeClass('enabled')
+    submitErrMsg.text(reason)
+  }
 
   function updateButtons() {
     const pasteNotEmpty = inputType === 'edit'
       ? pasteEditArea.prop('value').length > 0
       : file !== null
-    const expirationValid = true  // TODO: verify it
+    const expirationValid = EXPIRE_REGEX.test(expiration)  // TODO: verify it
     const nameValid = urlType !== 'custom' || NAME_REGEX.test(customName)
     const adminUrlValid = urlType !== 'admin' || isAdminUrlLegal(adminUrl)
 
-    if (pasteNotEmpty && expirationValid && nameValid && adminUrlValid) {
-      submitButton.addClass('enabled')
-      submitButton.prop('title', '')
+    if (!pasteNotEmpty) {
+      disableSubmitButton('Paste is empty')
+    } else if (!expirationValid) {
+      disableSubmitButton(`Expiration “${expiration}” not valid`)
+    } else if (!nameValid) {
+      disableSubmitButton(`The customized URL should satisfy regex ${NAME_REGEX}`)
+    } else if (!adminUrlValid) {
+      disableSubmitButton(`Admin URL “${adminUrl}” not valid`)
     } else {
-      submitButton.removeClass('enabled')
-      if (!pasteNotEmpty) {
-        submitButton.prop('title', 'Cannot upload empty paste')
-      } else if (!expirationValid) {
-        submitButton.prop('title', 'Expiration should be more than 60 seconds')
-      } else if (!nameValid) {
-        submitButton.prop('title', `The customized URL should satisfy regex ${NAME_REGEX}`)
-      }
+      submitButton.addClass('enabled')
+      submitErrMsg.text('')
     }
 
     if (urlType === 'admin') {
@@ -115,8 +113,7 @@ window.addEventListener('load', () => {
       submitButton.prop('title', '')
     } else {
       deleteButton.removeClass('enabled')
-      submitButton.prop('title', `The admin URL should start with ${base_url} and contain a colon`)
-      deleteButton.prop('title', `The admin URL should start with ${base_url} and contain a colon`)
+      submitErrMsg.text(`The admin URL should start with “${base_url}” and contain a colon`)
     }
   }
 

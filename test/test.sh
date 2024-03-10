@@ -118,6 +118,27 @@ _test_long_mode() {
     it 'should return the original paste' [ "$(cat "$tmp_file")" = "$test_text" ]
 }
 
+_test_expire() {
+    test_text="hello world"
+    start_test "uploading paste"
+
+    it 'should accept ‘100m’ expiration' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fe=100m "$localaddr"
+    expire=$(jq -r '.expire' "$tmp_file")
+    it 'should return a correct expire' [ "$expire" = 6000 ]
+
+    it 'should accept ‘1000’ expiration' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fe=1000 "$localaddr"
+    expire=$(jq -r '.expire' "$tmp_file")
+    it 'should return a correct expire' [ "$expire" = 1000 ]
+
+    it 'should accept ‘100 m’ expiration' curl_code 200 -o "$tmp_file" -Fc="$test_text" -Fe="100 m" "$localaddr"
+    expire=$(jq -r '.expire' "$tmp_file")
+    it 'should return a correct expire' [ "$expire" = 6000 ]
+
+    it 'should reject illegal expiration' curl_code 400 -o "$tmp_file" -Fc="$test_text" -Fe=abc "$localaddr"
+    it 'should reject illegal expiration' curl_code 400 -o "$tmp_file" -Fc="$test_text" -Fe=1c "$localaddr"
+    it 'should reject illegal expiration' curl_code 400 -o "$tmp_file" -Fc="$test_text" -Fe=-100m "$localaddr"
+}
+
 _test_markdown() {
     test_text="#Hello"
     start_test "uploading paste"
@@ -291,7 +312,7 @@ pgrep -f workerd > /dev/null || die "no workerd is running, please start one ins
 if [ $# -gt 0 ]; then
     test_chapters "$@"
 else
-    test_chapters primary long_mode custom_path \
+    test_chapters primary expire long_mode custom_path \
         markdown url_redirect content_disposition \
         mime highlight custom_passwd suggest
 fi

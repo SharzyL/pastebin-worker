@@ -251,6 +251,14 @@ input:not(:checked) ~ #paste-admin-url-input {
     cursor: pointer;
 }
 
+#submit-error-msg {
+    font-size: 12px;
+    color: var(--color-red);
+    display: inline-block;
+    vertical-align: center;
+    margin-left: 1em;
+}
+
 #delete-button.enabled:hover {
     background-color: var(--color-red);
     color: var(--color-text-white);
