@@ -134,21 +134,22 @@ Upload your paste. It accept parameters in form-data:
 
 `POST` method returns a JSON string by default, if no error occurs, for example:
 
-  ```json
-  {
-      "url": "https://shz.al/abcd",
-      "admin": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
-      "expire": 100,
-      "isPrivate": false
-  }
-  ```
+```json
+{
+    "url": "https://shz.al/abcd",
+    "admin": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
+    "expire": 100,
+    "isPrivate": false
+}
+```
 
-  Explanation of the fields:
+Explanation of the fields:
 
-  - `url`: mandatory. The URL to fetch the paste. When using a customized name, it looks like `https//shz.al/~myname`.
-  - `admin`: mandatory. The URL to update and delete the paste, which is `url` suffixed by `~` and the password.
-  - `expire`: optional. The expiration seconds.
-  - `isPrivate`: mandatory. Whether the paste is in private mode.
+- `url`: String. The URL to fetch the paste. When using a customized name, it looks like `https//shz.al/~myname`.
+- `suggestUrl`: String or null. The URL that may carry filename or URL redirection.
+- `admin`: String. The URL to update and delete the paste, which is `url` suffixed by `~` and the password.
+- `expire`: String or null. The expiration seconds.
+- `isPrivate`: Bool. Whether the paste is in private mode.
 
 If error occurs, the worker returns status code different from `200`:
 
@@ -193,7 +194,7 @@ Update you paste of the name `<name>` and password `<passwd>`. It accept the par
 - `e`: optional. Same as `POST` method. Note that the deletion time is now recalculated.
 - `s`: optional. Same as `POST` method.
 
-The returning of `PUT` method is also the same as `POST` method.
+The returning of `PUT` method is the same as `POST` method.
 
 If error occurs, the worker returns status code different from `200`:
 

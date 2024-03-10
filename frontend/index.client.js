@@ -271,6 +271,9 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#paste-uploaded-panel').removeClass('hidden')
     $('#uploaded-url').prop('value', uploaded.url)
     $('#uploaded-admin-url').prop('value', uploaded.admin)
+    if (uploaded.suggestUrl) {
+      $('#uploaded-suggest-url').prop('value', uploaded.suggestUrl)
+    }
     if (uploaded.expire) {
       $('#uploaded-expiration').prop('value', uploaded.expire)
     }

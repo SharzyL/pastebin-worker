@@ -260,7 +260,7 @@ async function createPaste(env, content, isPrivate, expire, short, date, passwd,
     suggestUrl: suggestUrl(content, filename, short, env.BASE_URL),
     admin: adminUrl,
     isPrivate: isPrivate,
-    expire: expire,
+    expire: expire || null,
   }
 }
 
