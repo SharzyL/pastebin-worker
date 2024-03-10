@@ -84,18 +84,18 @@ window.addEventListener('load', () => {
     const pasteNotEmpty = inputType === 'edit'
       ? pasteEditArea.prop('value').length > 0
       : file !== null
-    const expirationNotShort = expiration.length === 0 || parseInt(expiration) >= 60
+    const expirationValid = true  // TODO: verify it
     const nameValid = urlType !== 'custom' || NAME_REGEX.test(customName)
     const adminUrlValid = urlType !== 'admin' || isAdminUrlLegal(adminUrl)
 
-    if (pasteNotEmpty && expirationNotShort && nameValid && adminUrlValid) {
+    if (pasteNotEmpty && expirationValid && nameValid && adminUrlValid) {
       submitButton.addClass('enabled')
       submitButton.prop('title', '')
     } else {
       submitButton.removeClass('enabled')
       if (!pasteNotEmpty) {
         submitButton.prop('title', 'Cannot upload empty paste')
-      } else if (!expirationNotShort) {
+      } else if (!expirationValid) {
         submitButton.prop('title', 'Expiration should be more than 60 seconds')
       } else if (!nameValid) {
         submitButton.prop('title', `The customized URL should satisfy regex ${NAME_REGEX}`)
@@ -180,7 +180,7 @@ window.addEventListener('load', () => {
     updateButtons()
   })
 
-// submit the form
+  // submit the form
   submitButton.on('click', () => {
     if (submitButton.hasClass('enabled')) {
       if (urlType === 'admin') {
