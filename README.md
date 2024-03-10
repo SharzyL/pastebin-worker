@@ -32,38 +32,29 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 
 You are free to deploy the pastebin on your own domain if you host your domain on Cloudflare. 
 
-Requirements:
-1. \*nix environment with bash and basic cli programs. If you are using Windows, try cygwin, WSL or something. 
-2. GNU make. 
-3. `node` and `yarn`. 
+1. Install `node` and `yarn`.
 
-Create two KV namespaces on Cloudflare workers dashboard (one for production, one for test). Remember their IDs. If you do not need testing, simply create one.
+2. Create a KV namespace on Cloudflare workers dashboard, remember its ID.
 
-Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`. Modify entries in `wrangler.toml` according to your own account information (`account_id`, routes, kv namespace ids are what you need to modify). The `env.preview` section can be safely removed if you do not need a testing deployment. Refer to [Cloudflare doc](https://developers.cloudflare.com/workers/cli-wrangler/configuration) on how to find out these parameters.
+3. Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`.
 
-Modify the contents in `config.json` (which controls the generation of static pages): `BASE_URL` is the URL of your site (no trailing slash); `FAVICON` is the URL to the favicon you want to use on your site. If you need testing, also modify `config.preview.json`.
+4. Modify entries in `wrangler.toml`. Its comments will tell you how.
 
-Deploy and enjoy!
+5. Deploy and enjoy!
 
 ```shell
 $ yarn install
-$ make deploy
+$ yarn deploy
 ```
 
 ## Auth
 
-If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `config.json` (other configurations also contained in the outmost brace):
+If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `wrangler.toml`.
 
-```json
-{
-  "basicAuth": {
-    "enabled": true,
-    "passwd": {
-      "admin1": "this-is-passwd-1",
-      "admin2": "this-is-passwd-2"
-    }
-  }
-}
+```toml
+[vars.BASIC_AUTH]
+user1 = "passwd1"
+user2 = "passwd2"
 ```
 
 Now every access to PUT or POST request, and every access to the index page, requires an HTTP basic auth with the user-password pair listed above. For example: 

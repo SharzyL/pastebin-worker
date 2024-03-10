@@ -7,7 +7,8 @@
   "main": "dist/worker.js",
   "type": "module",
   "scripts": {
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev --var BASE_URL:http://localhost:8787"
   },
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",

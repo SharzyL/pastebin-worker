@@ -1,20 +1,20 @@
 # TERMS AND CONDITIONS
 
->  TL;DR: **No fucking warranty at all, EXCEPT AS ENFORCED BY LAW**. 
+>  TL;DR: **No warranty at all, EXCEPT AS ENFORCED BY LAW**. 
 
 Last updated: 2021-08-08
 
 ## 1. Introduction
 
-Welcome to the pastebin maintained by **Sharzy** (“Company”, “we”, “our”, “us”)!
+Welcome to the pastebin maintained by **{{TOS_MAINTAINER}}** (“Company”, “we”, “our”, “us”)!
 
-These Terms of Service (“Terms”, “Terms of Service”) govern your use of our website located at **shz.al** (together or individually “Service”) operated by **Sharzy**.
+These Terms of Service (“Terms”, “Terms of Service”) govern your use of our website located at **{{BASE_URL}}** (together or individually “Service”) operated by **{{TOS_MAINTAINER}}**.
 
 Our Privacy Policy also governs your use of our Service and explains how we collect, safeguard and disclose information that results from your use of our web pages.
 
 Your agreement with us includes these Terms and our Privacy Policy (“Agreements”). You acknowledge that you have read and understood Agreements, and agree to be bound of them.
 
-If you do not agree with (or cannot comply with) Agreements, then you may not use the Service, but please let us know by emailing at **shz.al@sharzy.in** so we can try to find a solution. These Terms apply to all visitors, users and others who wish to access or use Service.
+If you do not agree with (or cannot comply with) Agreements, then you may not use the Service, but please let us know by emailing at **{{TOS_MAIL}}** so we can try to find a solution. These Terms apply to all visitors, users and others who wish to access or use Service.
 
 ## 2. Content
 
@@ -24,9 +24,9 @@ By posting Content on or through Service, You represent and warrant that: (i) Co
 
 You retain any and all of your rights to any Content you submit, post or display on or through Service and you are responsible for protecting those rights. We take no responsibility and assume no liability for Content you or any third party posts on or through Service. However, by posting Content using Service you grant us the right and license to use, modify, publicly perform, publicly display, reproduce, and distribute such Content on and through Service. You agree that this license includes the right for us to make your Content available to other users of Service, who may also use your Content subject to these Terms.
 
-Sharzy has the right but not the obligation to monitor and edit all Content provided by users.
+{{TOS_MAINTAINER}} has the right but not the obligation to monitor and edit all Content provided by users.
 
-In addition, Content found on or through this Service are the property of Sharzy or used with permission. You may not distribute, modify, transmit, reuse, download, repost, copy, or use said Content, whether in whole or in part, for commercial purposes or for personal gain, without express advance written permission from us.
+In addition, Content found on or through this Service are the property of {{TOS_MAINTAINER}} or used with permission. You may not distribute, modify, transmit, reuse, download, repost, copy, or use said Content, whether in whole or in part, for commercial purposes or for personal gain, without express advance written permission from us.
 
 ## 3. Prohibited Uses
 
@@ -70,13 +70,13 @@ We may use third-party Service Providers to monitor and analyze the use of our S
 
 ## 5. Intellectual Property
 
-Service and its original content (excluding Content provided by users), features and functionality are and will remain the exclusive property of Sharzy and its licensors. Service is protected by copyright, trademark, and other laws of  and foreign countries. Our trademarks may not be used in connection with any product or service without the prior written consent of Sharzy.
+Service and its original content (excluding Content provided by users), features and functionality are and will remain the exclusive property of {{TOS_MAINTAINER}} and its licensors. Service is protected by copyright, trademark, and other laws of  and foreign countries. Our trademarks may not be used in connection with any product or service without the prior written consent of {{TOS_MAINTAINER}}.
 
 ## 6. Copyright Policy
 
 We respect the intellectual property rights of others. It is our policy to respond to any claim that Content posted on Service infringes on the copyright or other intellectual property rights (“Infringement”) of any person or entity.
 
-If you are a copyright owner, or authorized on behalf of one, and you believe that the copyrighted work has been copied in a way that constitutes copyright infringement, please submit your claim via email to shz.al@sharzy.in, with the subject line: “Copyright Infringement” and include in your claim a detailed description of the alleged Infringement as detailed below, under “DMCA Notice and Procedure for Copyright Infringement Claims”
+If you are a copyright owner, or authorized on behalf of one, and you believe that the copyrighted work has been copied in a way that constitutes copyright infringement, please submit your claim via email to {{TOS_MAIL}} with the subject line: “Copyright Infringement” and include in your claim a detailed description of the alleged Infringement as detailed below, under “DMCA Notice and Procedure for Copyright Infringement Claims”
 
 You may be held accountable for damages (including costs and attorneys’ fees) for misrepresentation or bad-faith claims on the infringement of any Content found on and/or through Service on your copyright.
 
@@ -96,17 +96,17 @@ You may submit a notification pursuant to the Digital Millennium Copyright Act (
 
 7.6. a statement by you, made under penalty of perjury, that the above information in your notice is accurate and that you are the copyright owner or authorized to act on the copyright owner’s behalf.
 
-You can contact our Copyright Agent via email at shz.al@sharzy.in.
+You can contact our Copyright Agent via email at {{TOS_MAIL}}.
 
 ## 8. Error Reporting and Feedback
 
-You may provide us either directly at shz.al@sharzy.in or via third party sites and tools with information and feedback concerning errors, suggestions for improvements, ideas, problems, complaints, and other matters related to our Service (“Feedback”). You acknowledge and agree that: (i) you shall not retain, acquire or assert any intellectual property right or other right, title or interest in or to the Feedback; (ii) Company may have development ideas similar to the Feedback; (iii) Feedback does not contain confidential information or proprietary information from you or any third party; and (iv) Company is not under any obligation of confidentiality with respect to the Feedback. In the event the transfer of the ownership to the Feedback is not possible due to applicable mandatory laws, you grant Company and its affiliates an exclusive, transferable, irrevocable, free-of-charge, sub-licensable, unlimited and perpetual right to use (including copy, modify, create derivative works, publish, distribute and commercialize) Feedback in any manner and for any purpose.
+You may provide us either directly at {{TOS_MAIL}} or via third party sites and tools with information and feedback concerning errors, suggestions for improvements, ideas, problems, complaints, and other matters related to our Service (“Feedback”). You acknowledge and agree that: (i) you shall not retain, acquire or assert any intellectual property right or other right, title or interest in or to the Feedback; (ii) Company may have development ideas similar to the Feedback; (iii) Feedback does not contain confidential information or proprietary information from you or any third party; and (iv) Company is not under any obligation of confidentiality with respect to the Feedback. In the event the transfer of the ownership to the Feedback is not possible due to applicable mandatory laws, you grant Company and its affiliates an exclusive, transferable, irrevocable, free-of-charge, sub-licensable, unlimited and perpetual right to use (including copy, modify, create derivative works, publish, distribute and commercialize) Feedback in any manner and for any purpose.
 
 ## 9. Links To Other Web Sites
 
-Our Service may contain links to third party web sites or services that are not owned or controlled by Sharzy.
+Our Service may contain links to third party web sites or services that are not owned or controlled by {{TOS_MAINTAINER}}.
 
-Sharzy has no control over, and assumes no responsibility for the content, privacy policies, or practices of any third party web sites or services. We do not warrant the offerings of any of these entities/individuals or their websites.
+{{TOS_MAINTAINER}} has no control over, and assumes no responsibility for the content, privacy policies, or practices of any third party web sites or services. We do not warrant the offerings of any of these entities/individuals or their websites.
 
 YOU ACKNOWLEDGE AND AGREE THAT COMPANY SHALL NOT BE RESPONSIBLE OR LIABLE, DIRECTLY OR INDIRECTLY, FOR ANY DAMAGE OR LOSS CAUSED OR ALLEGED TO BE CAUSED BY OR IN CONNECTION WITH USE OF OR RELIANCE ON ANY SUCH CONTENT, GOODS OR SERVICES AVAILABLE ON OR THROUGH ANY SUCH THIRD PARTY WEB SITES OR SERVICES.
 
@@ -164,5 +164,5 @@ BY USING SERVICE OR OTHER SERVICES PROVIDED BY US, YOU ACKNOWLEDGE THAT YOU HAVE
 
 ## 18. Contact Us
 
-Please send your feedback, comments, requests for technical support by email: **shz.al@sharzy.in**.
+Please send your feedback, comments, requests for technical support by email: **{{TOS_MAIL}}**.
 

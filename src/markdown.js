@@ -32,7 +32,7 @@ function getMetadata(options) {
   }
 }
 
-export async function makeMarkdown(content) {
+export function makeMarkdown(content) {
   const metadata = { title: defaultTitle, description: "" }
   const convertedHtml = unified()
     .use(remarkParse)

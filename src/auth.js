@@ -1,5 +1,4 @@
 import { WorkerError } from "./common.js";
-import conf from '../config.json'
 
 function parseBasicAuth(request) {
   const Authorization = request.headers.get('Authorization');
@@ -27,25 +26,35 @@ function parseBasicAuth(request) {
   };
 }
 
-export function verifyAuth(request) {
-  if ('basicAuth' in conf && conf.basicAuth.enabled === true) {
-    if (request.headers.has('Authorization')) {
-      const { user, pass } = parseBasicAuth(request)
-      const passwdMap = conf.basicAuth.passwd
-      if (passwdMap[user] === undefined) {
-        throw new WorkerError(401, "user not found for basic auth")
-      } else if (passwdMap[user] !== pass) {
-        throw new WorkerError(401, "incorrect passwd for basic auth")
-      }
+// return true if auth passes or is not required,
+// return auth page if auth is required
+// throw WorkerError if auth failed
+export function verifyAuth(request, env) {
+  // pass auth if 'BASIC_AUTH' is not present
+  console.log(env)
+  if (!('BASIC_AUTH' in env)) return null
+
+  const passwdMap = new Map(Object.entries(env['BASIC_AUTH']))
+
+  // pass auth if 'BASIC_AUTH' is empty
+  if (passwdMap.size == 0) return null
+
+  if (request.headers.has('Authorization')) {
+    const { user, pass } = parseBasicAuth(request)
+    if (passwdMap.get(user) === undefined) {
+      throw new WorkerError(401, "user not found for basic auth")
+    } else if (passwdMap.get(user) !== pass) {
+      throw new WorkerError(401, "incorrect passwd for basic auth")
     } else {
-      return new Response('HTTP basic auth is required', {
-        status: 401,
-        headers: {
-          // Prompts the user for credentials.
-          'WWW-Authenticate': 'Basic realm="my scope", charset="UTF-8"',
-        },
-      });
+      return null
     }
+  } else {
+    return new Response('HTTP basic auth is required', {
+      status: 401,
+      headers: {
+        // Prompts the user for credentials.
+        'WWW-Authenticate': 'Basic realm="my scope", charset="UTF-8"',
+      },
+    });
   }
-  return null
 }

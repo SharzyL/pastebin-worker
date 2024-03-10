@@ -4,7 +4,12 @@ let basicConfig = {
     worker: "./src/index.js",
   },
   devtool: "inline-nosources-source-map",
-  plugins: []
+  plugins: [],
+  module: {
+    rules: [
+      { test: /frontend/, type: 'asset/source' },
+    ],
+  },
 }
 
 export default (env, argv) => {

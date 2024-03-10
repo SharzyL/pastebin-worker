@@ -5,7 +5,7 @@
     <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
     <link rel='icon' href='{{FAVICON}}' type='image/png' />
     <style media='screen'>
-        {% render 'frontend/style.css' %}
+        {{CSS}}
     </style>
 </head>
 <html lang='en'>
@@ -14,6 +14,7 @@
     <h1>Yet Another Pastebin</h1>
     <p>This is an open source pastebin deployed on Cloudflare Workers. </p>
     <p><b>Usage</b>: paste any text here, submit, then share it with URL. </p>
+    <p><b>Warning</b>: only for temporary share, files will be deleted without notice!</p>
     <p>Refer to <a href='{{REPO}}'>GitHub</a> for more details.</p>
 
     <div id='paste-input-panel'>
@@ -40,17 +41,9 @@
     <div id='paste-setting-panel'>
         <h2>Settings</h2>
         <div id='paste-expiration-panel' class='paste-setting-subitem-panel'>
-            <input list='expiration-choices' type='number' min='60' step='1' name='paste-expiration'
-                   id='paste-expiration-input' placeholder='Expiration (secs)'>
-            <datalist id='expiration-choices'>
-                <option value='60'>1 minute</option>
-                <option value='300'>5 minutes</option>
-                <option value='3600'>1 hour</option>
-                <option value='86400'>1 day</option>
-                <option value='604800'>1 week</option>
-                <option value='2592000'>1 month</option>
-            </datalist>
-            <label class='small-label' for='paste-expiration-input'>Delete your paste after a period of time. </label>
+            <input list='expiration-choices' type='text' min='60' step='1' name='paste-expiration'
+                   id='paste-expiration-input' placeholder='Expiration (secs)' value='7d'>
+            <label class='small-label' for='paste-expiration-input'>Delete your paste after a period of time. <br>Units: s (seconds), m (minutes), h (hours), d (days), M (months)</label>
         </div>
         <div id='paste-passwd-panel' class='paste-setting-subitem-panel'>
             <input type='text' spellcheck='false' name='paste-expiration' id='paste-passwd-input' placeholder='Password'>
@@ -106,16 +99,13 @@
 <footer class='px-3 my-2 text-center'>
     <p>
         <a href='{{BASE_URL}}/tos' class='d-inline-block'>Terms & Conditions</a>
-        -
-        <span class='d-inline-block'>
-            Deployed on <span id='deploy-date'></span>
-            (<a href='{{REPO}}/tree/{{COMMIT_HASH_6}}'>{{COMMIT_HASH_6}}</a>)
-        </span>
+        /
+        <a href='{{BASE_URL}}/api' class='d-inline-block'>API Documentation</a>
     </p>
 </footer>
 <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js'></script>
 <script>
-  {% render 'frontend/index.js' %}
+    {{INDEX_JS}}
 </script>
 </body>
 </html>
