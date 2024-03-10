@@ -1,4 +1,4 @@
-import { WorkerError, parsePath, parseExpiration, genRandStr, decode, params } from "./common.js";
+import { WorkerError, parsePath, parseExpiration, genRandStr, decode, params, encodeRFC5987ValueChars, getDispFilename } from "./common.js";
 import { handleOptions, corsWrapResponse } from './cors.js'
 import { makeHighlight } from "./highlight.js"
 import { parseFormdata, getBoundary } from "./parseFormdata.js"
@@ -76,7 +76,7 @@ async function handlePostOrPut(request, isPut) {
     throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
   const content = form.get("c") && form.get("c").content
-  const filename = form.get("c") && form.get("c").fields.filename
+  const filename = form.get("c") && getDispFilename(form.get("c").fields)
   const name = form.get("n") && decode(form.get("n").content)
   const isPrivate = form.get("p") !== undefined
   const passwd = form.get("s") && decode(form.get("s").content)
@@ -151,7 +151,8 @@ async function handlePostOrPut(request, isPut) {
 
 async function handleGet(request) {
   const url = new URL(request.url)
-  const { role, short, ext, passwd } = parsePath(url.pathname)
+  const { role, short, ext, passwd, filename } = parsePath(url.pathname)
+
   if (staticPageMap.has(url.pathname)) {
     // access to all static pages requires auth
     const authResponse = verifyAuth(request)
@@ -159,6 +160,9 @@ async function handleGet(request) {
       return authResponse
     }
     const item = await PB.get(staticPageMap.get(url.pathname))
+    if (!item) {
+      throw new WorkerError(500, `no static page of path ‘${url.pathname}’ in KV storage`)
+    }
     return new Response(item, {
       headers: { "content-type": "text/html;charset=UTF-8" }
     })
@@ -174,7 +178,12 @@ async function handleGet(request) {
 
   const mime = url.searchParams.get("mime") || getType(ext) || "text/plain"
 
+  const disp = url.searchParams.has("a") ? "attachment" : "inline"
+
   const item = await PB.getWithMetadata(short, { type: "arrayBuffer" })
+
+  // determine filename with priority: url path > meta
+  const returnFilename = filename || (item.metadata && item.metadata.filename)
 
   // when paste is not found
   if (item.value === null) {
@@ -185,6 +194,8 @@ async function handleGet(request) {
   if (role === "u") {
     return Response.redirect(decode(item.value), 302)
   }
+
+  // handle article (render as markdown)
   if (role === "a") {
     const md = await makeMarkdown(decode(item.value))
     return new Response(md, {
@@ -199,18 +210,23 @@ async function handleGet(request) {
       headers: { "content-type": `text/html;charset=UTF-8` },
     })
   } else {
-    return new Response(item.value, {
-      headers: { "content-type": `${mime};charset=UTF-8` },
-    })
+
+    // handle default
+    headers = { "content-type": `${mime};charset=UTF-8` }
+    if (returnFilename) {
+      encodedFilename = encodeRFC5987ValueChars(returnFilename)
+      headers["content-disposition"] = `${disp}; filename*=UTF-8''${encodedFilename}`
+    } else {
+      headers["content-disposition"] = `${disp}`
+    }
+    return new Response(item.value, { headers })
   }
 }
 
 async function handleDelete(request) {
   const url = new URL(request.url)
-  console.log(request.url)
   const { short, passwd } = parsePath(url.pathname)
   const item = await PB.getWithMetadata(short)
-  console.log(item, passwd)
   if (item.value === null) {
     throw new WorkerError(404, `paste of name '${short}' not found`)
   } else {
@@ -239,7 +255,8 @@ async function createPaste(content, isPrivate, expire, short, date, passwd, file
     expirationTtl: expire,
     metadata: {
       postedAt: date,
-      passwd: passwd
+      passwd: passwd,
+      filename: filename,
     },
   })
   let accessUrl = conf.BASE_URL + '/' + short
@@ -263,15 +280,11 @@ function suggestUrl(content, filename, short) {
     }
   }
 
-  if (isUrl(decode(content))) {
-    return `${conf.BASE_URL}/u/${short}`
-  }
   if (filename) {
-    const dotIdx = filename.lastIndexOf('.')
-    if (dotIdx > 0) {
-      const ext = filename.slice(dotIdx + 1)
-      return `${conf.BASE_URL}/${short}.${ext}`
-    }
+    return `${conf.BASE_URL}/${short}/${filename}`
+  } else if (isUrl(decode(content))) {
+    return `${conf.BASE_URL}/u/${short}`
+  } else {
+    return null
   }
-  return null
 }

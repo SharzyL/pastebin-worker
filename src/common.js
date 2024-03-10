@@ -35,23 +35,43 @@ export function parsePath(pathname) {
   // > example.com/~stocking:uLE4Fhb/d3414adlW653Vx0VSVw=
   // > example.com/abcd
   // > example.com/abcd.jpg
+  // > example.com/abcd/myphoto.jpg
   // > example.com/u/abcd
   // > example.com/abcd:3ffd2e7ff214989646e006bd9ad36c58d447065e
-  let role = "", ext = ""
-  if (pathname[2] === "/") {
-    role = pathname[1]
+  pathname = pathname.slice(1,)  // strip the leading slash
+
+  let role = "", ext = "", filename = undefined
+  if (pathname[1] === "/") {
+    role = pathname[0]
     pathname = pathname.slice(2)
   }
-  let startOfExt = pathname.indexOf(".")
-  if (startOfExt >= 0) {
-    ext = pathname.slice(startOfExt)
-    pathname = pathname.slice(0, startOfExt)
+
+  // parse filename
+  let startOfFilename = pathname.lastIndexOf("/")
+  if (startOfFilename >= 0) {
+    filename = pathname.slice(startOfFilename + 1)
+    pathname = pathname.slice(0, startOfFilename)
   }
+
+  // if having filename, parse ext from filename, else from remaining pathname
+  if (filename) {
+    let startOfExt = filename.indexOf(".")
+    if (startOfExt >= 0) {
+      ext = filename.slice(startOfExt)
+    }
+  } else {
+    let startOfExt = pathname.indexOf(".")
+    if (startOfExt >= 0) {
+      ext = pathname.slice(startOfExt)
+      pathname = pathname.slice(0, startOfExt)
+    }
+  }
+
   let endOfShort = pathname.indexOf(params.SEP)
   if (endOfShort < 0) endOfShort = pathname.length // when there is no SEP, passwd is left empty
-  const short = pathname.slice(1, endOfShort)
+  const short = pathname.slice(0, endOfShort)
   const passwd = pathname.slice(endOfShort + 1)
-  return { role, short, passwd, ext }
+  return { role, short, passwd, ext, filename }
 }
 
 export function parseExpiration(expirationStr) {
@@ -78,3 +98,33 @@ export function escapeHtml(str) {
   })
 }
 
+// Ref: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+export function encodeRFC5987ValueChars(str) {
+  return (
+    encodeURIComponent(str)
+      // The following creates the sequences %27 %28 %29 %2A (Note that
+      // the valid encoding of "*" is %2A, which necessitates calling
+      // toUpperCase() to properly encode). Although RFC3986 reserves "!",
+      // RFC5987 does not, so we do not need to escape it.
+      .replace(
+        /['()*]/g,
+        (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+      )
+      // The following are not required for percent-encoding per RFC5987,
+      // so we can allow for a little better readability over the wire: |`^
+      .replace(/%(7C|60|5E)/g, (str, hex) =>
+        String.fromCharCode(parseInt(hex, 16)),
+      )
+  );
+}
+
+// Decode the filename from a Content-Disposition fields
+export function getDispFilename(fields) {
+  if ('filename' in fields) {
+    return fields['filename']
+  } else if ('filename*' in fields) {
+    return decodeURIComponent(fields['filename*'])
+  } else {
+    return undefined
+  }
+}
