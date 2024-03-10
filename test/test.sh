@@ -4,15 +4,15 @@ localaddr="http://localhost:8787"
 tmp_file=$(mktemp)
 trap 'rm "$tmp_file"' EXIT
 
-die() {
-    echo "$@" >&2
-    exit 1
-}
-
 # declare colors
 C_RESET='\x1b[0m'
 C_RED='\x1b[0;37;31m'
 C_GREEN='\x1b[0;37;32m'
+
+die() {
+    printf "${C_RED}%s${C_RESET}\n" "$@" >&2
+    exit 1
+}
 
 err() {
    printf "${C_RED}%s${C_RESET}\n" "$@"
@@ -285,6 +285,8 @@ _test_suggest() {
   it 'should upload non-url paste' curl_code 200 -o "$tmp_file" -Fc=@"$tmp_jpg_file" "$localaddr"
   it 'should suggest .jpg url' grep -q '"suggestUrl": .*\.jpg' "$tmp_file"
 }
+
+pgrep -f workerd > /dev/null || die "no workerd is running, please start one instance with ‘yarn dev’"
 
 if [ $# -gt 0 ]; then
     test_chapters "$@"

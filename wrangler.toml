@@ -37,5 +37,3 @@ TOS_MAINTAINER = "Sharzy"
 # the email displayed in TOS
 TOS_MAIL = "pb@shz.al"
 
-[vars.BASIC_AUTH]
-user1 = "passwd1"
