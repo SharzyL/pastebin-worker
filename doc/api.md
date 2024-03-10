@@ -2,24 +2,30 @@
 
 ## GET `/`
 
-Return the index page. 
+Return the index page.
 
-## **GET** `/<name>[.<ext>]`
+## **GET** `/<name>[.<ext>]` or `/<name>/<filename>[.<ext>]`
 
-Fetch the paste with name `<name>`. By default, it will return the raw content of the paste.  The `Content-Type` header is set to `text/plain;charset=UTF-8`. If `<ext>` is given, the worker will infer mime-type from `<ext>` and change `Content-Type`. This method accepts the following query string parameters: 
+Fetch the paste with name `<name>`. By default, it will return the raw content of the paste.
 
-- `?lang=<lang>`: optional. returns a web page with syntax highlight powered by prism.js. 
+The `Content-Type` header is set to `text/plain;charset=UTF-8`. If `<ext>` is given, the worker will infer mime-type from `<ext>` and change `Content-Type`. This method accepts the following query string parameters:
 
-- `?mime=<mime>`: optional. specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`). 
+The `Content-Disposition` header is set to `inline` by default. But can be overriden by `?a` query string. If the paste is uploaded with filename, or `<filename>` is set in given request URL, `Content-Disposition` is appended with `filename*` indicating the filename (with `<ext>` if it exists).
 
-Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`. 
+- `?a=`: optional. Set `Content-Disposition` to `attachment` if present.
 
-If error occurs, the worker returns status code different from `200`: 
+- `?lang=<lang>`: optional. Returns a web page with syntax highlight powered by prism.js.
 
-- `404`: the paste of given name is not found. 
-- `500`: unexpected exception. You may report this to the author to give it a fix. 
+- `?mime=<mime>`: optional. Specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`).
 
-Usage example: 
+Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`.
+
+If error occurs, the worker returns status code different from `200`:
+
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
+
+Usage example:
 
 ```shell
 $ curl https://shz.al/i-p-
@@ -44,14 +50,14 @@ If error occurs, the worker returns status code different from `200`:
 
 ## GET `/u/<name>`
 
-Redirect to the URL recorded in the paste of name `<name>`. 
+Redirect to the URL recorded in the paste of name `<name>`.
 
 If error occurs, the worker returns status code different from `302`:
 
-- `404`: the paste of given name is not found. 
-- `500`: unexpected exception. You may report this to the author to give it a fix. 
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
 
-Usage example: 
+Usage example:
 
 ```shell
 $ firefox https://shz.al/u/i-p-
@@ -61,7 +67,7 @@ $ curl -L https://shz.al/u/i-p-
 
 ## GET `/a/<name>`
 
-Return the HTML converted from the markdown file stored in the paste of name `<name>`. The markdown conversion follows GitHub Flavored Markdown (GFM) Spec, supported by [remark-gfm](https://github.com/remarkjs/remark-gfm). 
+Return the HTML converted from the markdown file stored in the paste of name `<name>`. The markdown conversion follows GitHub Flavored Markdown (GFM) Spec, supported by [remark-gfm](https://github.com/remarkjs/remark-gfm).
 
 Syntax highlighting is supported by [prims.js](https://prismjs.com/). LaTeX mathematics is supported by [MathJax](https://www.mathjax.org).
 
@@ -114,23 +120,23 @@ $ firefox https://shz.al/a/~test-md
 
 ## **POST** `/`
 
-Upload your paste. It accept parameters in form-data: 
+Upload your paste. It accept parameters in form-data:
 
-- `c`: mandatory. The **content** of your paste, text of binary. It should be no larger than 10 MB. 
+- `c`: mandatory. The **content** of your paste, text of binary. It should be no larger than 10 MB. The `filename` in its `Content-Disposition` will be present when fetching the paste.
 
-- `e`: optional. The **expiration** time of the paste. After this period of time, the paste is permanently deleted. It should be an integer or a float point number suffixed with an optional unit (seconds by default). Supported units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `M` (months). For example, `360.24` means 360.25 seconds; `25d` is interpreted as 25 days. It should be no smaller than 60 seconds due to the limitation of Cloudflare KV storage. 
+- `e`: optional. The **expiration** time of the paste. After this period of time, the paste is permanently deleted. It should be an integer or a float point number suffixed with an optional unit (seconds by default). Supported units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `M` (months). For example, `360.24` means 360.25 seconds; `25d` is interpreted as 25 days. It should be no smaller than 60 seconds due to the limitation of Cloudflare KV storage.
 
-- `s`: optional. The **password** which allows you to modify and delete the paste. If not specified, the worker will generate a random string as password. 
+- `s`: optional. The **password** which allows you to modify and delete the paste. If not specified, the worker will generate a random string as password.
 
-- `n`: optional. The customized **name** of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$=@,;/`. 
+- `n`: optional. The customized **name** of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$=@,;/`.
 
-- `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used. 
+- `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used.
 
-`POST` method returns a JSON string by default, if no error occurs, for example: 
+`POST` method returns a JSON string by default, if no error occurs, for example:
 
   ```json
   {
-      "url": "https://shz.al/abcd", 
+      "url": "https://shz.al/abcd",
       "admin": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
       "expire": 100,
       "isPrivate": false
@@ -139,19 +145,19 @@ Upload your paste. It accept parameters in form-data:
 
   Explanation of the fields:
 
-  - `url`: mandatory. The URL to fetch the paste. When using a customized name, it looks like `https//shz.al/~myname`. 
-  - `admin`: mandatory. The URL to update and delete the paste, which is `url` suffixed by `~` and the password. 
-  - `expire`: optional. The expiration seconds. 
-  - `isPrivate`: mandatory. Whether the paste is in private mode. 
+  - `url`: mandatory. The URL to fetch the paste. When using a customized name, it looks like `https//shz.al/~myname`.
+  - `admin`: mandatory. The URL to update and delete the paste, which is `url` suffixed by `~` and the password.
+  - `expire`: optional. The expiration seconds.
+  - `isPrivate`: mandatory. Whether the paste is in private mode.
 
-If error occurs, the worker returns status code different from `200`: 
+If error occurs, the worker returns status code different from `200`:
 
-- `400`: your request is in bad format. 
-- `409`: the name is already used. 
-- `413`: the content is too large. 
-- `500`: unexpected exception. You may report this to the author to give it a fix. 
+- `400`: your request is in bad format.
+- `409`: the name is already used.
+- `413`: the content is too large.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
 
-Usage example: 
+Usage example:
 
 ```shell
 $ curl -Fc="kawaii" -Fe=300 -Fn=hitagi https://shz.al  # uploading some text
@@ -169,7 +175,7 @@ $ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
   "isPrivate": false
 }
 
-# because `curl` takes some characters as filed separator, the fields should be 
+# because `curl` takes some characters as filed separator, the fields should be
 # quoted by double-quotes if the field contains semicolon or comma
 $ curl -Fc=@panty.jpg -Fn='"hi/hello;g,ood"' -Fs=12345678 https://shz.al
 {
@@ -181,23 +187,23 @@ $ curl -Fc=@panty.jpg -Fn='"hi/hello;g,ood"' -Fs=12345678 https://shz.al
 
 ## **PUT** `/<name>:<passwd>`
 
-Update you paste of the name `<name>` and password `<passwd>`. It accept the parameters in form-data: 
+Update you paste of the name `<name>` and password `<passwd>`. It accept the parameters in form-data:
 
-- `c`: mandatory. Same as `POST` method. 
-- `e`: optional. Same as `POST` method. Note that the deletion time is now recalculated. 
-- `s`: optional. Same as `POST` method. 
+- `c`: mandatory. Same as `POST` method.
+- `e`: optional. Same as `POST` method. Note that the deletion time is now recalculated.
+- `s`: optional. Same as `POST` method.
 
-The returning of `PUT` method is also the same as `POST` method. 
+The returning of `PUT` method is also the same as `POST` method.
 
-If error occurs, the worker returns status code different from `200`: 
+If error occurs, the worker returns status code different from `200`:
 
-- `400`: your request is in bad format. 
-- `403`: your password is not correct. 
-- `404`: the paste of given name is not found. 
-- `413`: the content is too large. 
-- `500`: unexpected exception. You may report this to the author to give it a fix. 
+- `400`: your request is in bad format.
+- `403`: your password is not correct.
+- `404`: the paste of given name is not found.
+- `413`: the content is too large.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
 
-Usage example: 
+Usage example:
 
 ```shell
 $ curl -X PUT -Fc="kawaii~" -Fe=500 https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv
@@ -218,15 +224,15 @@ $ curl -X PUT -Fc="kawaii~" https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv
 
 ## DELETE `/<name>:<passwd>`
 
-Delete the paste of name `<name>` and password `<passwd>`. It may take seconds to synchronize the deletion globally. 
+Delete the paste of name `<name>` and password `<passwd>`. It may take seconds to synchronize the deletion globally.
 
-If error occurs, the worker returns status code different from `200`: 
+If error occurs, the worker returns status code different from `200`:
 
-- `403`: your password is not correct. 
-- `404`: the paste of given name is not found. 
-- `500`: unexpected exception. You may report this to the author to give it a fix. 
+- `403`: your password is not correct.
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
 
-Usage example: 
+Usage example:
 
 ```shell
 $ curl -X DELETE https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv
