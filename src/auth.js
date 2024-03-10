@@ -2,7 +2,6 @@ import { WorkerError } from "./common.js";
 
 function parseBasicAuth(request) {
   const Authorization = request.headers.get('Authorization');
-  console.log(Authorization)
 
   const [scheme, encoded] = Authorization.split(' ');
 
@@ -31,7 +30,6 @@ function parseBasicAuth(request) {
 // throw WorkerError if auth failed
 export function verifyAuth(request, env) {
   // pass auth if 'BASIC_AUTH' is not present
-  console.log(env)
   if (!('BASIC_AUTH' in env)) return null
 
   const passwdMap = new Map(Object.entries(env['BASIC_AUTH']))
