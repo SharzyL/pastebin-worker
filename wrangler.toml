@@ -37,3 +37,6 @@ TOS_MAINTAINER = "Sharzy"
 # the email displayed in TOS
 TOS_MAIL = "pb@shz.al"
 
+CACHE_STATIC_PAGE_AGE = 7200
+
+CACHE_PASTE_AGE = 600

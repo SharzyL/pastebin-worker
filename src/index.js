@@ -146,6 +146,21 @@ async function handlePostOrPut(request, env, ctx, isPut) {
   }
 }
 
+function staticPageCacheHeader(env) {
+  const age = env.CACHE_STATIC_PAGE_AGE
+  return age ? { "cache-control": `public, max-age=${age}` } : {}
+}
+
+function pasteCacheHeader(env) {
+  const age = env.CACHE_STATIC_PAGE_AGE
+  return age ? { "cache-control": `public, max-age=${age}` } : {}
+}
+
+function lastModifiedHeader(paste) {
+  const lastModified = paste.metadata.lastModified
+  return lastModified ? { 'last-modified': new Date(lastModified).toGMTString() } : {}
+}
+
 async function handleGet(request, env, ctx) {
   const url = new URL(request.url)
   const { role, short, ext, passwd, filename } = parsePath(url.pathname)
@@ -158,7 +173,7 @@ async function handleGet(request, env, ctx) {
       return authResponse
     }
     return new Response(staticPageContent, {
-      headers: { "content-type": "text/html;charset=UTF-8" }
+      headers: { "content-type": "text/html;charset=UTF-8", ...staticPageCacheHeader(env) }
     })
   }
 
@@ -176,13 +191,28 @@ async function handleGet(request, env, ctx) {
 
   const item = await env.PB.getWithMetadata(short, { type: "arrayBuffer" })
 
-  // determine filename with priority: url path > meta
-  const returnFilename = filename || (item.metadata && item.metadata.filename)
-
   // when paste is not found
   if (item.value === null) {
     throw new WorkerError(404, `paste of name '${short}' not found`)
   }
+
+  // check `if-modified-since`
+  const pasteLastModified = item.metadata.lastModified
+  const headerModifiedSince = request.headers.get('if-modified-since')
+  if (pasteLastModified && headerModifiedSince) {
+    let pasteLastModifiedMs = Date.parse(pasteLastModified)
+    pasteLastModifiedMs -= pasteLastModifiedMs % 1000 // deduct the milliseconds parts
+    const headerIfModifiedMs = Date.parse(headerModifiedSince)
+    if (pasteLastModifiedMs <= headerIfModifiedMs) {
+      return new Response(null, {
+        status: 304, // Not Modified
+        headers: lastModifiedHeader(item)
+      })
+    }
+  }
+
+  // determine filename with priority: url path > meta
+  const returnFilename = filename || item.metadata.filename
 
   // handle URL redirection
   if (role === "u") {
@@ -193,7 +223,7 @@ async function handleGet(request, env, ctx) {
   if (role === "a") {
     const md = makeMarkdown(decode(item.value))
     return new Response(md, {
-      headers: { "content-type": `text/html;charset=UTF-8` },
+      headers: { "content-type": `text/html;charset=UTF-8`, ...pasteCacheHeader(env), ...lastModifiedHeader(item) },
     })
   }
 
@@ -201,12 +231,12 @@ async function handleGet(request, env, ctx) {
   const lang = url.searchParams.get("lang")
   if (lang) {
     return new Response(makeHighlight(decode(item.value), lang), {
-      headers: { "content-type": `text/html;charset=UTF-8` },
+      headers: { "content-type": `text/html;charset=UTF-8`, ...pasteCacheHeader(env) , ...lastModifiedHeader(item)},
     })
   } else {
 
     // handle default
-    const headers = { "content-type": `${mime};charset=UTF-8` }
+    const headers = { "content-type": `${mime};charset=UTF-8`, ...pasteCacheHeader(env) , ...lastModifiedHeader(item)}
     if (returnFilename) {
       const encodedFilename = encodeRFC5987ValueChars(returnFilename)
       headers["content-disposition"] = `${disp}; filename*=UTF-8''${encodedFilename}`
@@ -233,8 +263,8 @@ async function handleDelete(request, env, ctx) {
   }
 }
 
-async function createPaste(env, content, isPrivate, expire, short, date, passwd, filename) {
-  date = date || new Date().toISOString()
+async function createPaste(env, content, isPrivate, expire, short, createDate, passwd, filename) {
+  createDate = createDate || new Date().toISOString()
   passwd = passwd || genRandStr(params.ADMIN_PATH_LEN)
   const short_len = isPrivate ? params.PRIVATE_RAND_LEN : params.RAND_LEN
 
@@ -248,9 +278,10 @@ async function createPaste(env, content, isPrivate, expire, short, date, passwd,
   await env.PB.put(short, content, {
     expirationTtl: expire,
     metadata: {
-      postedAt: date,
+      postedAt: createDate,
       passwd: passwd,
       filename: filename,
+      lastModified: new Date().toISOString(),
     },
   })
   let accessUrl = env.BASE_URL + '/' + short

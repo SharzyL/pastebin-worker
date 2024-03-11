@@ -307,6 +307,18 @@ _test_suggest() {
   it 'should suggest .jpg url' grep -q '"suggestUrl": .*\.jpg' "$tmp_file"
 }
 
+_test_cache_control() {
+  example_text="hello world"
+  it 'should upload url paste' curl_code 200 -o "$tmp_file" -Fc="$example_text" "$localaddr"
+
+  url=$(jq -r '.url' "$tmp_file")
+  cc=$(curl -o /dev/null -sS -w '%header{cache-control}' "$url")
+  echo "$cc" | grep "public, max-age=" > /dev/null
+  it 'should return cache-control for normal paste' [ "$?" = 0 ]
+
+  it 'should return 304' curl_code 304 -sS "$url" --header 'If-Modified-Since: Mon, 11 Mar 2030 00:00:00 GMT'
+}
+
 pgrep -f workerd > /dev/null || die "no workerd is running, please start one instance with ‘yarn dev’"
 
 if [ $# -gt 0 ]; then
@@ -314,7 +326,7 @@ if [ $# -gt 0 ]; then
 else
     test_chapters primary expire long_mode custom_path \
         markdown url_redirect content_disposition \
-        mime highlight custom_passwd suggest
+        mime highlight custom_passwd suggest cache_control
 fi
 
 conclude
