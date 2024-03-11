@@ -42,5 +42,3 @@ CACHE_STATIC_PAGE_AGE = 7200
 
 # Cache-Control max-age for static pages
 CACHE_PASTE_AGE = 600
-
-BLOCKED_COUNTRIES = [ "IN" ]

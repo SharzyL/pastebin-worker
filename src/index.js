@@ -36,11 +36,6 @@ async function handleRequest(request, env, ctx) {
 }
 
 async function handleNormalRequest(request, env, ctx) {
-  const country = request.headers.get("cf-ipcountry")
-  if (env.BLOCKED_COUNTRIES && country && env.BLOCKED_COUNTRIES.includes(country)) {
-    return new Response("Service is not available in your country", { status: 403 });
-  }
-
   if (request.method === "POST") {
     return await handlePostOrPut(request, env, ctx, false)
   } else if (request.method === "GET") {
