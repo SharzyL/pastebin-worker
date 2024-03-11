@@ -67,7 +67,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let passwd = ''
   let customName = '', adminUrl = '', file = null
 
-  const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$@,;\/]{3,}$/
+  const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$@,;]{3,}$/
   const EXPIRE_REGEX = /^\d+\s*[mhdwM]?$/
   const submitButton = $('#submit-button')
   const deleteButton = $('#delete-button')

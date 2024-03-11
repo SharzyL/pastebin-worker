@@ -1,6 +1,6 @@
 export const params = {
   CHAR_GEN : "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678",
-  NAME_REGEX : /^[a-zA-Z0-9+_\-\[\]*$@,;\/]{3,}$/,
+  NAME_REGEX : /^[a-zA-Z0-9+_\-\[\]*$@,;]{3,}$/,
   RAND_LEN : 4,
   PRIVATE_RAND_LEN : 24,
   ADMIN_PATH_LEN : 24,
