@@ -165,6 +165,10 @@ async function handleGet(request, env, ctx) {
   const url = new URL(request.url)
   const { role, short, ext, passwd, filename } = parsePath(url.pathname)
 
+  if (url.pathname == '/favicon.ico' && env.FAVICON) {
+    return Response.redirect(env.FAVICON)
+  }
+
   const staticPageContent = getStaticPage(url.pathname, env)
   if (staticPageContent) {
     // access to all static pages requires auth
