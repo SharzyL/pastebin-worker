@@ -8,7 +8,8 @@
   "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev --var BASE_URL:http://localhost:8787 --port 8787"
+    "dev": "wrangler dev --var BASE_URL:http://localhost:8787 --port 8787",
+    "build": "wrangler deploy --dry-run --outdir=dist"
   },
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
