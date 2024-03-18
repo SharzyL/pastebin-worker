@@ -6,332 +6,332 @@ hist_file="${XDG_CONFIG_DIR:-$HOME/.config}/pb_hist"
 script_name=${0##*/}
 
 _print_with_color() {
-	color=$1
-	shift
-	[ -t 2 ] && printf "\x1b[0;%sm" "$color" >&2
-	echo -n "$*" >&2
-	[ -t 2 ] && printf "\x1b[0m\n" >&2
+    color=$1
+    shift
+    [ -t 2 ] && printf "\x1b[0;%sm" "$color" >&2
+    echo -n "$*" >&2
+    [ -t 2 ] && printf "\x1b[0m\n" >&2
 }
 
 _die() {
-	_print_with_color 31 "$@"
-	exit 1
+    _print_with_color 31 "$@"
+    exit 1
 }
 
 [ -d "${hist_file%/*}" ] || mkdir -p "${hist_file%/*}" || _die "cannot create directory for '$hist_file'"
 touch "$hist_file" || _die "cannot create history file '$hist_file'"
 
 _verbose() {
-	_print_with_color 90 "$script_name: $*"
+    _print_with_color 90 "$script_name: $*"
 }
 
 _clip() {
-	echo "$@" | xclip -selection clipboard
-	_verbose "'$*' is copied to your clipboard"
+    echo "$@" | xclip -selection clipboard
+    _verbose "'$*' is copied to your clipboard"
 }
 
 curl_code() {
-	status_code=$(curl -sS -w '%{response_code}' "$@")
-	if [ "$status_code" != '200' ] && [ "$status_code" != '302' ]; then
-		return 1
-	fi
+    status_code=$(curl -sS -w '%{response_code}' "$@")
+    if [ "$status_code" != '200' ] && [ "$status_code" != '302' ]; then
+        return 1
+    fi
 }
 
 main() {
-	action="$1"
-	shift
-	case "$action" in
-		(p|post  ) pb_post "$@";;
-		(u|update) pb_update "$@";;
-		(d|delete) pb_delete "$@";;
-		(g|get   ) pb_get "$@";;
-		(-h|--help) usage;;
-		(*) _die "no action given. try '$script_name' -h for more information"
-	esac
+    action="$1"
+    shift
+    case "$action" in
+        (p|post  ) pb_post "$@";;
+        (u|update) pb_update "$@";;
+        (d|delete) pb_delete "$@";;
+        (g|get   ) pb_get "$@";;
+        (-h|--help) usage;;
+        (*) _die "no action given. try '$script_name' -h for more information"
+    esac
 }
 
 usage() {
-	cat <<-EOF
-	Usage:
-	  ${script_name} [-h|--help]
-	    print this help message
+    cat <<-EOF
+Usage:
+  ${script_name} [-h|--help]
+    print this help message
 
-	  ${script_name} [p|post] [OPTIONS] [-f] FILE
-	    upload your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
-	    read the paste from stdin.
+  ${script_name} [p|post] [OPTIONS] [-f] FILE
+    upload your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
+    read the paste from stdin.
 
-	  ${script_name} [u|update] NAME[:PASSWD]
-	    Update your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
-	    read the paste from stdin. If 'PASSWD' is not given, try to read password
-	    from the history file.
+  ${script_name} [u|update] NAME[:PASSWD]
+    Update your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
+    read the paste from stdin. If 'PASSWD' is not given, try to read password
+    from the history file.
 
-	  ${script_name} [g|get] [OPTIONS] NAME[.EXT]
-	    fetch the paste with name 'NAME' and extension 'EXT'
+  ${script_name} [g|get] [OPTIONS] NAME[.EXT]
+    fetch the paste with name 'NAME' and extension 'EXT'
 
-	  ${script_name} [d|delete] [OPTIONS] NAME
-	    delete the paste with name 'NAME'
+  ${script_name} [d|delete] [OPTIONS] NAME
+    delete the paste with name 'NAME'
 
-	Options:
-	  post options:
-	    -c, --content CONTENT   the content of the paste
-	    -e, --expire SECONDS    the expiration time of the paste (in seconds)
-	    -n, --name NAME         the name of the paste
-	    -s, --passwd PASSWD     the password
-	    -p, --private           make the generated paste name longer for better privacy
-	    -x, --clip              clip the url to the clipboard
+Options:
+  post options:
+    -c, --content CONTENT   the content of the paste
+    -e, --expire SECONDS    the expiration time of the paste (in seconds)
+    -n, --name NAME         the name of the paste
+    -s, --passwd PASSWD     the password
+    -p, --private           make the generated paste name longer for better privacy
+    -x, --clip              clip the url to the clipboard
 
-	  update options:
-	    -f, --file FILE         read the paste from file
-	    -c, --content CONTENT   the content of the paste
-	    -e, --expire SECONDS    the expiration time of the paste (in seconds)
-	    -s, --passwd PASSWD     the password
-	    -x, --clip              clip the url to the clipboard
+  update options:
+    -f, --file FILE         read the paste from file
+    -c, --content CONTENT   the content of the paste
+    -e, --expire SECONDS    the expiration time of the paste (in seconds)
+    -s, --passwd PASSWD     the password
+    -x, --clip              clip the url to the clipboard
 
-	  get options:
-	    -l, --lang LANG         highlight the paste with language 'LANG' in a web page
-	    -m, --mime MIME         set the 'Content-Type' header according to mime-type MIME
-	    -o, --output FILE       output the paste in file 'FILE'
-	    -u, --url               make a 302 URL redirection
+  get options:
+    -l, --lang LANG         highlight the paste with language 'LANG' in a web page
+    -m, --mime MIME         set the 'Content-Type' header according to mime-type MIME
+    -o, --output FILE       output the paste in file 'FILE'
+    -u, --url               make a 302 URL redirection
 
-	  delete options:
-	    none
+  delete options:
+    none
 
-	  general options:
-	    -v, --verbose           display the 'underlying' curl command
-	    -d, --dry               do a dry run, executing no 'curl' command at all
-	EOF
+  general options:
+    -v, --verbose           display the 'underlying' curl command
+    -d, --dry               do a dry run, executing no 'curl' command at all
+EOF
 }
 
 pb_post() {
-	# parse args
-	short_args="c:e:n:s:f:vhpxd"
-	long_args="content:,expire:,name:,passwd:,file:,verbose,private,clip,dry"
-	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-		|| return 1
-	eval set -- "$TEMP";
+    # parse args
+    short_args="c:e:n:s:f:vhpxd"
+    long_args="content:,expire:,name:,passwd:,file:,verbose,private,clip,dry"
+    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
+        || return 1
+    eval set -- "$TEMP";
 
-	local content expire name passwd private verbose clip dry
-	while [[ ${1:0:1} == - ]]; do
-		[[ $1 =~ ^-f|--|--file$ ]]  && {
-			shift 1;
-			if [ -n "$1" ]; then file="$1"; shift 1; continue; fi
-		};
-		[[ $1 =~ ^-c|--content$ ]]  && { content="$2"; shift 2; continue; };
-		[[ $1 =~ ^-e|--expire$ ]]   && { expire="$2"; shift 2; continue; };
-		[[ $1 =~ ^-n|--name$ ]]     && { name="$2"; shift 2; continue; };
-		[[ $1 =~ ^-s|--passwd$ ]]   && { passwd="$2"; shift 2; continue; };
-		[[ $1 =~ ^-p|--private$ ]]  && { private="true"; shift 1; continue; };
-		[[ $1 =~ ^-v|--verbose$ ]]  && { verbose="true"; shift 1; continue; };
-		[[ $1 =~ ^-x|--clip$ ]]     && { clip="true"; shift 1; continue; };
-		[[ $1 =~ ^-d|--dry$ ]]      && { dry="true"; shift 1; continue; };
-		break;
-	done
-	[ "$#" -gt 0 ] && _die "redundant arguments '$*'"
+    local content expire name passwd private verbose clip dry
+    while [[ ${1:0:1} == - ]]; do
+        [[ $1 =~ ^-f|--|--file$ ]]  && {
+            shift 1;
+            if [ -n "$1" ]; then file="$1"; shift 1; continue; fi
+        };
+        [[ $1 =~ ^-c|--content$ ]]  && { content="$2"; shift 2; continue; };
+        [[ $1 =~ ^-e|--expire$ ]]   && { expire="$2"; shift 2; continue; };
+        [[ $1 =~ ^-n|--name$ ]]     && { name="$2"; shift 2; continue; };
+        [[ $1 =~ ^-s|--passwd$ ]]   && { passwd="$2"; shift 2; continue; };
+        [[ $1 =~ ^-p|--private$ ]]  && { private="true"; shift 1; continue; };
+        [[ $1 =~ ^-v|--verbose$ ]]  && { verbose="true"; shift 1; continue; };
+        [[ $1 =~ ^-x|--clip$ ]]     && { clip="true"; shift 1; continue; };
+        [[ $1 =~ ^-d|--dry$ ]]      && { dry="true"; shift 1; continue; };
+        break;
+    done
+    [ "$#" -gt 0 ] && _die "redundant arguments '$*'"
 
-	# check arguments
-	[ -n "$content" ] && [ -n "$file" ] && _die "cannot set both 'content' and 'file'"
+    # check arguments
+    [ -n "$content" ] && [ -n "$file" ] && _die "cannot set both 'content' and 'file'"
     [ -n "$file" ] && [ ! -r "$file" ]  && _die "cannot read file '${file}'"
-	[ -n "$private" ] && [ -n "$name" ] && _die "cannot set both 'private' and 'name'"
+    [ -n "$private" ] && [ -n "$name" ] && _die "cannot set both 'private' and 'name'"
 
-	# build arguments
-	declare -a args=("curl_code" "-sS" "$domain")
-	[ -n "$file" ]    && args+=("-Fc=@$file")
-	[ -n "$content" ] && args+=("-Fc=\"$content\"")
-	[ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
-	[ -n "$name" ]    && args+=("-Fn=\"$name\"")
-	[ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
-	[ -n "$private" ] && args+=("-Fp=true")
-	[ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
+    # build arguments
+    declare -a args=("curl_code" "-sS" "$domain")
+    [ -n "$file" ]    && args+=("-Fc=@$file")
+    [ -n "$content" ] && args+=("-Fc=\"$content\"")
+    [ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
+    [ -n "$name" ]    && args+=("-Fn=\"$name\"")
+    [ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
+    [ -n "$private" ] && args+=("-Fp=true")
+    [ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
 
-	# prepare curl
-	tmp_file=$(mktemp)
-	trap 'rm -f "$tmp_file"' EXIT
+    # prepare curl
+    tmp_file=$(mktemp)
+    trap 'rm -f "$tmp_file"' EXIT
 
-	[ -n "$verbose" ] && _verbose "${args[@]}"
+    [ -n "$verbose" ] && _verbose "${args[@]}"
 
-	# curl if not dry-run
-	if [ -z "$dry" ]; then
-		"${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
-	else
-		return 0
-	fi
+    # curl if not dry-run
+    if [ -z "$dry" ]; then
+        "${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
+    else
+        return 0
+    fi
 
-	# report error if jq parse error
-	jq . "$tmp_file"
+    # report error if jq parse error
+    jq . "$tmp_file"
 
-	# record history
-	admin_url=$(jq -r '.admin' "$tmp_file")
-	admin_path=${admin_url##*/}
-	echo "$admin_path" >> "$hist_file"
+    # record history
+    admin_url=$(jq -r '.admin' "$tmp_file")
+    admin_path=${admin_url##*/}
+    echo "$admin_path" >> "$hist_file"
 
-	# copy URL to clipboard
-	url=$(jq -r '.url' "$tmp_file")
-	[ -n "$clip" ] && _clip "$url"
+    # copy URL to clipboard
+    url=$(jq -r '.url' "$tmp_file")
+    [ -n "$clip" ] && _clip "$url"
 
-	return 0
+    return 0
 }
 
 pb_update() {
-	# parse args
-	short_args="c:e:s:f:vhxd"
-	long_args="content:,expire:,passwd:,file:,verbose,clip,dry"
-	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-		|| return 1
-	eval set -- "$TEMP";
+    # parse args
+    short_args="c:e:s:f:vhxd"
+    long_args="content:,expire:,passwd:,file:,verbose,clip,dry"
+    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
+        || return 1
+    eval set -- "$TEMP";
 
-	local name_passwd file content expire passwd verbose clip dry
-	while [[ ${1:0:1} == - ]]; do
-		[[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
-		[[ $1 =~ ^-f|--file$ ]]    && { file="$2"; shift 2; continue; };
-		[[ $1 =~ ^-c|--content$ ]] && { content="$2"; shift 2; continue; };
-		[[ $1 =~ ^-e|--expire$ ]]  && { expire="$2"; shift 2; continue; };
-		[[ $1 =~ ^-s|--passwd$ ]]  && { passwd="$2"; shift 2; continue; };
-		[[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
-		[[ $1 =~ ^-x|--clip$ ]]    && { clip="true"; shift 1; continue; };
-		[[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
-		break;
-	done
-	[ "$#" -gt 0 ] && _die "redundant arguments '$*'"
+    local name_passwd file content expire passwd verbose clip dry
+    while [[ ${1:0:1} == - ]]; do
+        [[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
+        [[ $1 =~ ^-f|--file$ ]]    && { file="$2"; shift 2; continue; };
+        [[ $1 =~ ^-c|--content$ ]] && { content="$2"; shift 2; continue; };
+        [[ $1 =~ ^-e|--expire$ ]]  && { expire="$2"; shift 2; continue; };
+        [[ $1 =~ ^-s|--passwd$ ]]  && { passwd="$2"; shift 2; continue; };
+        [[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
+        [[ $1 =~ ^-x|--clip$ ]]    && { clip="true"; shift 1; continue; };
+        [[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
+        break;
+    done
+    [ "$#" -gt 0 ] && _die "redundant arguments '$*'"
 
-	# parse name and passwd
-	[ -z "$name_passwd" ] && _die "no name and passwd given"
-	name=${name_passwd%:*}
-	if [[ "$name_passwd" =~ : ]]; then
-		passwd=${name_passwd#*:}
-	else
-		name_passwd=$(grep "^$name:" "$hist_file" | tail -1) && [ -n "$name_passwd" ] && passwd=${name_passwd#*:}
-	fi
-	[ -z "$passwd" ] && _die "no passwd given, and cannot find passwd in history file '$hist_file'"
+    # parse name and passwd
+    [ -z "$name_passwd" ] && _die "no name and passwd given"
+    name=${name_passwd%:*}
+    if [[ "$name_passwd" =~ : ]]; then
+        passwd=${name_passwd#*:}
+    else
+        name_passwd=$(grep "^$name:" "$hist_file" | tail -1) && [ -n "$name_passwd" ] && passwd=${name_passwd#*:}
+    fi
+    [ -z "$passwd" ] && _die "no passwd given, and cannot find passwd in history file '$hist_file'"
 
-	# check arguments
-	[ -n "$content" ] && [ -n "$file" ] && _die "cannot set both 'content' and 'file'"
-	[ -n "$file" ] && [ ! -r "$file" ]  && _die "cannot read file '${file}'"
+    # check arguments
+    [ -n "$content" ] && [ -n "$file" ] && _die "cannot set both 'content' and 'file'"
+    [ -n "$file" ] && [ ! -r "$file" ]  && _die "cannot read file '${file}'"
 
-	# build arguments
-	declare -a args=("curl_code" "-X" "PUT" "$domain/$name:$passwd")
-	[ -n "$file" ]    && args+=("-Fc=@$file")
-	[ -n "$content" ] && args+=("-Fc=\"$content\"")
-	[ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
-	[ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
-	[ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
+    # build arguments
+    declare -a args=("curl_code" "-X" "PUT" "$domain/$name:$passwd")
+    [ -n "$file" ]    && args+=("-Fc=@$file")
+    [ -n "$content" ] && args+=("-Fc=\"$content\"")
+    [ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
+    [ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
+    [ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
 
-	# prepare curl
-	tmp_file=$(mktemp)
-	trap 'rm -f "$tmp_file"' EXIT
+    # prepare curl
+    tmp_file=$(mktemp)
+    trap 'rm -f "$tmp_file"' EXIT
 
-	[ -n "$verbose" ] && _verbose "${args[@]}"
+    [ -n "$verbose" ] && _verbose "${args[@]}"
 
-	# curl if not dry-run
-	if [ -z "$dry" ]; then
-		"${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
-	else
-		return 0
-	fi
+    # curl if not dry-run
+    if [ -z "$dry" ]; then
+        "${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
+    else
+        return 0
+    fi
 
-	# report error if jq parse error
-	jq . "$tmp_file" 2>/dev/null || _die "$(cat "$tmp_file")"
+    # report error if jq parse error
+    jq . "$tmp_file" 2>/dev/null || _die "$(cat "$tmp_file")"
 
-	# record history
-	admin_url=$(jq -r '.admin' "$tmp_file")
-	admin_path=${admin_url##*/}
-	echo "$admin_path" >> "$hist_file"
+    # record history
+    admin_url=$(jq -r '.admin' "$tmp_file")
+    admin_path=${admin_url##*/}
+    echo "$admin_path" >> "$hist_file"
 
-	# copy URL to clipboard
-	url=$(jq -r '.url' "$tmp_file")
-	[ -n "$clip" ] && _clip "$url"
+    # copy URL to clipboard
+    url=$(jq -r '.url' "$tmp_file")
+    [ -n "$clip" ] && _clip "$url"
 
-	return 0
+    return 0
 }
 
 pb_get() {
-	# parse args
-	short_args="l:m:o::uvd"
-	long_args="lang:,mime:,output:,url,verbose,dry"
-	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-		|| return 1
-	eval set -- "$TEMP";
+    # parse args
+    short_args="l:m:o::uvd"
+    long_args="lang:,mime:,output:,url,verbose,dry"
+    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
+        || return 1
+    eval set -- "$TEMP";
 
-	local name lang mime output url verbose dry
-	while [[ ${1:0:1} == - ]]; do
-		[[ $1 == -- ]]             && { name="$2"; shift 2; break; };
-		[[ $1 =~ ^-l|--lang$ ]]    && { lang="$2"; shift 2; continue; };
-		[[ $1 =~ ^-m|--mime$ ]]    && { mime="$2"; shift 2; continue; };
-		[[ $1 =~ ^-o|--output$ ]]  && { output="$2"; shift 2; continue; };
-		[[ $1 =~ ^-u|--url$ ]]     && { url="true"; shift 1; continue; };
-		[[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
-		[[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
-		break;
-	done
-	[ "$#" -gt 1 ] && _die "redundant arguments '$*'"
+    local name lang mime output url verbose dry
+    while [[ ${1:0:1} == - ]]; do
+        [[ $1 == -- ]]             && { name="$2"; shift 2; break; };
+        [[ $1 =~ ^-l|--lang$ ]]    && { lang="$2"; shift 2; continue; };
+        [[ $1 =~ ^-m|--mime$ ]]    && { mime="$2"; shift 2; continue; };
+        [[ $1 =~ ^-o|--output$ ]]  && { output="$2"; shift 2; continue; };
+        [[ $1 =~ ^-u|--url$ ]]     && { url="true"; shift 1; continue; };
+        [[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
+        [[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
+        break;
+    done
+    [ "$#" -gt 1 ] && _die "redundant arguments '$*'"
 
-	# check args
-	[ -z "$name" ] && _die "no paste name is given"
+    # check args
+    [ -z "$name" ] && _die "no paste name is given"
 
-	# build arguments
-	tmp_file=$(mktemp)
-	trap 'rm -f "$tmp_file"' EXIT
-	declare -a args=("curl_code" "-G")
-	[ -n "$url" ]     && args+=("$domain/u/$name") || args+=("$domain/$name")
-	[ -n "$lang" ]    && args+=("-d" "lang=$lang")
-	[ -n "$mime" ]    && args+=("-d" "mime=$mime")
-	[ -n "$output" ]  && args+=("-o" "$output") || args+=("-o" "$tmp_file")
+    # build arguments
+    tmp_file=$(mktemp)
+    trap 'rm -f "$tmp_file"' EXIT
+    declare -a args=("curl_code" "-G")
+    [ -n "$url" ]     && args+=("$domain/u/$name") || args+=("$domain/$name")
+    [ -n "$lang" ]    && args+=("-d" "lang=$lang")
+    [ -n "$mime" ]    && args+=("-d" "mime=$mime")
+    [ -n "$output" ]  && args+=("-o" "$output") || args+=("-o" "$tmp_file")
 
-	# prepare curl
-	[ -n "$verbose" ] && _verbose "${args[@]}"
+    # prepare curl
+    [ -n "$verbose" ] && _verbose "${args[@]}"
 
-	# curl if not dry-run
-	if [ -z "$dry" ]; then
-		"${args[@]}" || _die "$status_code: $(cat "$tmp_file")"
-		[ -z "$output" ] && cat "$tmp_file"
-	else
-		return 0
-	fi
+    # curl if not dry-run
+    if [ -z "$dry" ]; then
+        "${args[@]}" || _die "$status_code: $(cat "$tmp_file")"
+        [ -z "$output" ] && cat "$tmp_file"
+    else
+        return 0
+    fi
 
-	return 0
+    return 0
 }
 
 pb_delete() {
-	# parse args
-	short_args="vd"
-	long_args="verbose,dry"
-	TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-		|| return 1
-	eval set -- "$TEMP";
+    # parse args
+    short_args="vd"
+    long_args="verbose,dry"
+    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
+        || return 1
+    eval set -- "$TEMP";
 
-	local name_passwd verbose dry
-	while [[ ${1:0:1} == - ]]; do
-		[[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
-		[[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
-		[[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
-		break;
-	done
-	[ "$#" -gt 0 ] && _die "redundant arguments '$*'"
+    local name_passwd verbose dry
+    while [[ ${1:0:1} == - ]]; do
+        [[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
+        [[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
+        [[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
+        break;
+    done
+    [ "$#" -gt 0 ] && _die "redundant arguments '$*'"
 
-	# parse name and passwd
-	[ -z "$name_passwd" ] && _die "no name and passwd given"
-	name=${name_passwd%:*}
-	if [[ "$name_passwd" =~ : ]]; then
-		passwd=${name_passwd#*:}
-	else
-		name_passwd=$(grep "^$name:" "$hist_file" | tail -1) && [ -n "$name_passwd" ] && passwd=${name_passwd#*:}
-	fi
-	[ -z "$passwd" ] && _die "no passwd given, and cannot find passwd in history file '$hist_file'"
+    # parse name and passwd
+    [ -z "$name_passwd" ] && _die "no name and passwd given"
+    name=${name_passwd%:*}
+    if [[ "$name_passwd" =~ : ]]; then
+        passwd=${name_passwd#*:}
+    else
+        name_passwd=$(grep "^$name:" "$hist_file" | tail -1) && [ -n "$name_passwd" ] && passwd=${name_passwd#*:}
+    fi
+    [ -z "$passwd" ] && _die "no passwd given, and cannot find passwd in history file '$hist_file'"
 
-	# build arguments
-	tmp_file=$(mktemp)
-	trap 'rm -f "$tmp_file"' EXIT
-	declare -a args=("curl_code" "-X" "DELETE" "$domain/$name:$passwd")
+    # build arguments
+    tmp_file=$(mktemp)
+    trap 'rm -f "$tmp_file"' EXIT
+    declare -a args=("curl_code" "-X" "DELETE" "$domain/$name:$passwd")
 
-	[ -n "$verbose" ] && _verbose "${args[@]}"
+    [ -n "$verbose" ] && _verbose "${args[@]}"
 
-	# curl if not dry-run
-	if [ -z "$dry" ]; then
-		"${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
-	else
-		return 0
-	fi
+    # curl if not dry-run
+    if [ -z "$dry" ]; then
+        "${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
+    else
+        return 0
+    fi
 
-	return 0
+    return 0
 }
 
 main "$@"
