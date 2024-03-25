@@ -169,7 +169,8 @@ async function handleGet(request, env, ctx) {
     return Response.redirect(env.FAVICON)
   }
 
-  const staticPageContent = getStaticPage(url.pathname, env)
+  // return the editor for admin URL
+  const staticPageContent = getStaticPage((passwd.length > 0) ? "/" : url.pathname, env)
   if (staticPageContent) {
     // access to all static pages requires auth
     const authResponse = verifyAuth(request, env)
@@ -178,14 +179,6 @@ async function handleGet(request, env, ctx) {
     }
     return new Response(staticPageContent, {
       headers: { "content-type": "text/html;charset=UTF-8", ...staticPageCacheHeader(env) }
-    })
-  }
-
-  // return the editor for admin URL
-  if (passwd.length > 0) {
-    const item = await env.PB.get('index')
-    return new Response(item, {
-      headers: { "content-type": "text/html;charset=UTF-8" }
     })
   }
 
