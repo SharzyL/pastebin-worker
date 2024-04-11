@@ -87,7 +87,7 @@ async function handlePostOrPut(request, env, ctx, isPut) {
   const filename = form.get("c") && getDispFilename(form.get("c").fields)
   const name = form.get("n") && decode(form.get("n").content)
   const isPrivate = form.get("p") !== undefined
-  const passwd = form.get("s") && decode(form.get("s").content)
+  const newPasswd = form.get("s") && decode(form.get("s").content)
   const expire =
     form.has("e") && form.get("e").content.byteLength > 0
       ? decode(form.get("e").content)
@@ -140,7 +140,7 @@ async function handlePostOrPut(request, env, ctx, isPut) {
         throw new WorkerError(403, `incorrect password for paste '${short}`)
       } else {
         return makeResponse(
-          await createPaste(env, content, isPrivate, expirationSeconds, short, date, passwd, filename),
+          await createPaste(env, content, isPrivate, expirationSeconds, short, date, newPasswd || passwd, filename),
         )
       }
     }
@@ -152,7 +152,7 @@ async function handlePostOrPut(request, env, ctx, isPut) {
         throw new WorkerError(409, `name '${name}' is already used`)
     }
     return makeResponse(await createPaste(
-      env, content, isPrivate, expirationSeconds, short, undefined, passwd, filename
+      env, content, isPrivate, expirationSeconds, short, undefined, newPasswd, filename,
     ))
   }
 }
