@@ -1,11 +1,12 @@
 name = "pb"
 compatibility_date = "2023-01-28"
+compatibility_flags = [ "nodejs_compat" ]
 
 workers_dev = false
 main = "src/index.js"
 
 rules = [
-  { type = "Text", globs = [ "*.html", "*.client.js", "*.md", "*.css" ], fallthrough = true }
+  { type = "Text", globs = [ "*/frontend/**", "*/doc/**" ], fallthrough = true }
 ]
 
 #----------------------------------------
