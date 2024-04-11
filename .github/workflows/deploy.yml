@@ -34,7 +34,10 @@ jobs:
       - name: setup
         run: yarn
 
-      - name: build
+      - name: test
+        run: yarn test
+
+      - name: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
