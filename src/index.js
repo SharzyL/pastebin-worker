@@ -37,10 +37,10 @@ async function handleRequest(request, env, ctx) {
       return response
     }
   } catch (e) {
-    console.log(e.stack)
     if (e instanceof WorkerError) {
       return corsWrapResponse(new Response(`Error ${e.statusCode}: ${e.message}\n`, { status: e.statusCode }))
     } else {
+      console.log(e.stack)
       return corsWrapResponse(new Response(`Error 500: ${e.message}\n`, { status: 500 }))
     }
   }

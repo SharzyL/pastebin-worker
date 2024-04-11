@@ -1,5 +1,7 @@
 const contentDispositionPrefix = 'Content-Disposition: form-data'
 
+// TODO: migrate to native interface
+
 export function parseFormdata(uint8Array, boundary) {
   // return an array of {fields: {...: ...}, content: Int8Array}
 
