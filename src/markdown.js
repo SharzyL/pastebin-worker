@@ -1,22 +1,23 @@
-import {unified} from 'unified'
-import remarkParse from 'remark-parse'
-import remarkGfm from 'remark-gfm'
-import remarkRehype from 'remark-rehype'
-import rehypeStringify from 'rehype-stringify'
-import {toString} from 'mdast-util-to-string'
+import { unified } from "unified"
+import remarkParse from "remark-parse"
+import remarkGfm from "remark-gfm"
+import remarkRehype from "remark-rehype"
+import rehypeStringify from "rehype-stringify"
+import { toString } from "mdast-util-to-string"
 
-import {escapeHtml} from './common.js'
+import { VFileMessage } from "vfile-message"
+import { escapeHtml } from "./common.js"
 
 const descriptionLimit = 200
 const defaultTitle = "Untitled"
 
 function getMetadata(options) {
   return (tree) => {
-    if (tree.children.length == 0) return
+    if (tree.children.length === 0) return
 
     const firstChild = tree.children[0]
     // if the document begins with a h1, set its content as the title
-    if (firstChild.type == 'heading' && firstChild.depth === 1) {
+    if (firstChild.type === "heading" && firstChild.depth === 1) {
       options.result.title = escapeHtml(toString(firstChild))
 
       if (tree.children.length > 1) {

@@ -35,7 +35,7 @@ export function verifyAuth(request, env) {
   const passwdMap = new Map(Object.entries(env['BASIC_AUTH']))
 
   // pass auth if 'BASIC_AUTH' is empty
-  if (passwdMap.size == 0) return null
+  if (passwdMap.size === 0) return null
 
   if (request.headers.has('Authorization')) {
     const { user, pass } = parseBasicAuth(request)

@@ -1,17 +1,28 @@
-import { WorkerError, parsePath, parseExpiration, genRandStr, decode, params, encodeRFC5987ValueChars, getDispFilename } from "./common.js";
-import { handleOptions, corsWrapResponse } from './cors.js'
+import {
+  params,
+  WorkerError,
+  parsePath,
+  parseExpiration,
+  genRandStr,
+  decode,
+  encodeRFC5987ValueChars,
+  getDispFilename,
+  isLegalUrl,
+} from "./common.js"
+
+import { handleOptions, corsWrapResponse } from "./cors.js"
 import { makeHighlight } from "./highlight.js"
 import { parseFormdata, getBoundary } from "./parseFormdata.js"
-import { getStaticPage } from './staticPages.js'
-import { makeMarkdown } from "./markdown.js";
+import { getStaticPage } from "./staticPages.js"
+import { makeMarkdown } from "./markdown.js"
 
 import { getType } from "mime/lite.js"
-import {verifyAuth} from "./auth.js";
+import { verifyAuth } from "./auth.js"
 
 export default {
   async fetch(request, env, ctx) {
     return await handleRequest(request, env, ctx)
-  }
+  },
 }
 
 async function handleRequest(request, env, ctx) {
@@ -152,20 +163,20 @@ function staticPageCacheHeader(env) {
 }
 
 function pasteCacheHeader(env) {
-  const age = env.CACHE_STATIC_PAGE_AGE
+  const age = env.CACHE_PASTE_AGE
   return age ? { "cache-control": `public, max-age=${age}` } : {}
 }
 
 function lastModifiedHeader(paste) {
   const lastModified = paste.metadata.lastModified
-  return lastModified ? { 'last-modified': new Date(lastModified).toGMTString() } : {}
+  return lastModified ? { "last-modified": new Date(lastModified).toGMTString() } : {}
 }
 
 async function handleGet(request, env, ctx) {
   const url = new URL(request.url)
   const { role, short, ext, passwd, filename } = parsePath(url.pathname)
 
-  if (url.pathname == '/favicon.ico' && env.FAVICON) {
+  if (url.pathname === "/favicon.ico" && env.FAVICON) {
     return Response.redirect(env.FAVICON)
   }
 
@@ -178,7 +189,7 @@ async function handleGet(request, env, ctx) {
       return authResponse
     }
     return new Response(staticPageContent, {
-      headers: { "content-type": "text/html;charset=UTF-8", ...staticPageCacheHeader(env) }
+      headers: { "content-type": "text/html;charset=UTF-8", ...staticPageCacheHeader(env) },
     })
   }
 
@@ -195,7 +206,7 @@ async function handleGet(request, env, ctx) {
 
   // check `if-modified-since`
   const pasteLastModified = item.metadata.lastModified
-  const headerModifiedSince = request.headers.get('if-modified-since')
+  const headerModifiedSince = request.headers.get("if-modified-since")
   if (pasteLastModified && headerModifiedSince) {
     let pasteLastModifiedMs = Date.parse(pasteLastModified)
     pasteLastModifiedMs -= pasteLastModifiedMs % 1000 // deduct the milliseconds parts
@@ -203,7 +214,7 @@ async function handleGet(request, env, ctx) {
     if (pasteLastModifiedMs <= headerIfModifiedMs) {
       return new Response(null, {
         status: 304, // Not Modified
-        headers: lastModifiedHeader(item)
+        headers: lastModifiedHeader(item),
       })
     }
   }
@@ -228,12 +239,12 @@ async function handleGet(request, env, ctx) {
   const lang = url.searchParams.get("lang")
   if (lang) {
     return new Response(makeHighlight(decode(item.value), lang), {
-      headers: { "content-type": `text/html;charset=UTF-8`, ...pasteCacheHeader(env) , ...lastModifiedHeader(item)},
+      headers: { "content-type": `text/html;charset=UTF-8`, ...pasteCacheHeader(env), ...lastModifiedHeader(item) },
     })
   } else {
 
     // handle default
-    const headers = { "content-type": `${mime};charset=UTF-8`, ...pasteCacheHeader(env) , ...lastModifiedHeader(item)}
+    const headers = { "content-type": `${mime};charset=UTF-8`, ...pasteCacheHeader(env), ...lastModifiedHeader(item) }
     if (returnFilename) {
       const encodedFilename = encodeRFC5987ValueChars(returnFilename)
       headers["content-disposition"] = `${disp}; filename*=UTF-8''${encodedFilename}`
@@ -281,8 +292,8 @@ async function createPaste(env, content, isPrivate, expire, short, createDate, p
       lastModified: new Date().toISOString(),
     },
   })
-  let accessUrl = env.BASE_URL + '/' + short
-  const adminUrl = env.BASE_URL + '/' + short + params.SEP + passwd
+  let accessUrl = env.BASE_URL + "/" + short
+  const adminUrl = env.BASE_URL + "/" + short + params.SEP + passwd
   return {
     url: accessUrl,
     suggestUrl: suggestUrl(content, filename, short, env.BASE_URL),
