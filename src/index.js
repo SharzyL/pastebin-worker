@@ -224,7 +224,12 @@ async function handleGet(request, env, ctx) {
 
   // handle URL redirection
   if (role === "u") {
-    return Response.redirect(decode(item.value), 302)
+    const redirectURL = decode(item.value)
+    if (isLegalUrl(redirectURL)) {
+      return Response.redirect(redirectURL)
+    } else {
+      throw new WorkerError(400, "cannot parse paste content as a legal URL")
+    }
   }
 
   // handle article (render as markdown)

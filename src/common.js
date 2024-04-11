@@ -133,3 +133,7 @@ export function getDispFilename(fields) {
     return undefined
   }
 }
+
+export function isLegalUrl(url) {
+  return URL.canParse(url)
+}
