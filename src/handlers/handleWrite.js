@@ -3,10 +3,12 @@ import { getBoundary, parseFormdata } from "../parseFormdata.js"
 import { decode, genRandStr, getDispFilename, params, parseExpiration, parsePath, WorkerError } from "../common.js"
 
 async function createPaste(env, content, isPrivate, expire, short, createDate, passwd, filename) {
-  createDate = createDate || new Date().toISOString()
+  const now = new Date().toISOString()
+  createDate = createDate || now
   passwd = passwd || genRandStr(params.ADMIN_PATH_LEN)
   const short_len = isPrivate ? params.PRIVATE_RAND_LEN : params.RAND_LEN
 
+  // repeat until finding an unused name
   if (short === undefined) {
     while (true) {
       short = genRandStr(short_len)
@@ -20,7 +22,7 @@ async function createPaste(env, content, isPrivate, expire, short, createDate, p
       postedAt: createDate,
       passwd: passwd,
       filename: filename,
-      lastModified: new Date().toISOString(),
+      lastModified: now,
     },
   })
   let accessUrl = env.BASE_URL + "/" + short
