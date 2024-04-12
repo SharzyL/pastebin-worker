@@ -1,28 +1,21 @@
-import { WorkerError } from "./common.js";
+import { WorkerError } from "./common.js"
 
-function parseBasicAuth(request) {
-  const Authorization = request.headers.get('Authorization');
+// Encoding function
+export function encodeBasicAuth(username, password) {
+  const credentials = `${username}:${password}`
+  const encodedCredentials = Buffer.from(credentials).toString("base64")
+  return `Basic ${encodedCredentials}`
+}
 
-  const [scheme, encoded] = Authorization.split(' ');
-
-  // The Authorization header must start with Basic, followed by a space.
-  if (!encoded || scheme !== 'Basic') {
-    throw new WorkerError(400, 'malformed authorization header');
+// Decoding function
+export function decodeBasicAuth(encodedString) {
+  const [scheme, encodedCredentials] = encodedString.split(" ")
+  if (scheme !== "Basic") {
+    throw new WorkerError(400, "Invalid authentication scheme")
   }
-
-  const buffer = Uint8Array.from(atob(encoded), character => character.charCodeAt(0))
-  const decoded = new TextDecoder().decode(buffer).normalize();
-
-  const index = decoded.indexOf(':');
-
-  if (index === -1 || /[\0-\x1F\x7F]/.test(decoded)) {
-    throw WorkerError(400, 'invalid authorization value');
-  }
-
-  return {
-    user: decoded.substring(0, index),
-    pass: decoded.substring(index + 1),
-  };
+  const credentials = Buffer.from(encodedCredentials, "base64").toString("utf-8")
+  const [username, password] = credentials.split(":")
+  return { username, password }
 }
 
 // return true if auth passes or is not required,
@@ -30,29 +23,29 @@ function parseBasicAuth(request) {
 // throw WorkerError if auth failed
 export function verifyAuth(request, env) {
   // pass auth if 'BASIC_AUTH' is not present
-  if (!('BASIC_AUTH' in env)) return null
+  if (!env.BASIC_AUTH) return null
 
-  const passwdMap = new Map(Object.entries(env['BASIC_AUTH']))
+  const passwdMap = new Map(Object.entries(env.BASIC_AUTH))
 
   // pass auth if 'BASIC_AUTH' is empty
   if (passwdMap.size === 0) return null
 
-  if (request.headers.has('Authorization')) {
-    const { user, pass } = parseBasicAuth(request)
-    if (passwdMap.get(user) === undefined) {
+  if (request.headers.has("Authorization")) {
+    const { username, password } = decodeBasicAuth(request.headers.get("Authorization"))
+    if (passwdMap.get(username) === undefined) {
       throw new WorkerError(401, "user not found for basic auth")
-    } else if (passwdMap.get(user) !== pass) {
+    } else if (passwdMap.get(username) !== password) {
       throw new WorkerError(401, "incorrect passwd for basic auth")
     } else {
       return null
     }
   } else {
-    return new Response('HTTP basic auth is required', {
+    return new Response("HTTP basic auth is required", {
       status: 401,
       headers: {
         // Prompts the user for credentials.
-        'WWW-Authenticate': 'Basic realm="my scope", charset="UTF-8"',
+        "WWW-Authenticate": "Basic charset=\"UTF-8\"",
       },
-    });
+    })
   }
 }

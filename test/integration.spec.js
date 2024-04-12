@@ -1,57 +1,13 @@
-import { SELF, env, ctx } from "cloudflare:test"
+import { env } from "cloudflare:test"
 import { test, expect } from "vitest"
 
 import { params, genRandStr } from "../src/common.js"
-
-import * as crypto from "crypto"
-
-// for auto reload
-import worker from "../src/index.js"
-
-const BASE_URL = env["BASE_URL"]
-const RAND_NAME_REGEX = /^[ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678]+$/
-
-async function workerFetch(req, options) {
-  // we are not using SELF.fetch since it sometimes do not print worker log to console
-  // return await SELF.fetch(req, options)
-  return await worker.fetch(new Request(req, options), env, ctx)
-}
-
-async function upload(kv) {
-  const uploadResponse = await workerFetch(new Request(BASE_URL, {
-    method: "POST",
-    body: createFormData(kv),
-  }))
-  expect(uploadResponse.status).toStrictEqual(200)
-  expect(uploadResponse.headers.get("Content-Type")).toStrictEqual("application/json;charset=UTF-8")
-  return JSON.parse(await uploadResponse.text())
-}
-
-function createFormData(kv) {
-  const fd = new FormData()
-  Object.entries(kv).forEach(([k, v]) => {
-    if ((v === Object(v)) && "filename" in v && "value" in v) {
-      fd.set(k, new File([v.value], v.filename))
-    } else {
-      fd.set(k, v)
-    }
-  })
-  return fd
-}
-
-function randomBlob(len) {
-  const buf = Buffer.alloc(len)
-  return new Blob([crypto.randomFillSync(buf, 0, len)])
-}
-
-async function areBlobsEqual(blob1, blob2) {
-  return Buffer.from(await blob1.arrayBuffer()).compare(
-    Buffer.from(await blob2.arrayBuffer()),
-  ) === 0
-}
+import {
+  randomBlob, areBlobsEqual, createFormData, workerFetch, upload,
+  BASE_URL, RAND_NAME_REGEX, staticPages,
+} from "./testUtils.js"
 
 test("static page", async () => {
-  const staticPages = ["", "index.html", "index", "tos", "tos.html", "api", "api.html"]
   for (const page of staticPages) {
     expect((await workerFetch(`${BASE_URL}/${page}`)).status).toStrictEqual(200)
   }
@@ -133,7 +89,7 @@ test("basic", async () => {
 
   // check delete
   const deleteResponse = await workerFetch(new Request(admin, { method: "DELETE" }))
-  expect(putResponse.status).toStrictEqual(200)
+  expect(deleteResponse.status).toStrictEqual(200)
 
   // check visit modified
   const revisitDeletedResponse = await workerFetch(url)
@@ -181,7 +137,7 @@ test("expire", async () => {
   await testExpireParse("1M", 18144000)
   await testExpireParse("100  m", 6000)
 
-  const testFailParse = async (expire, expireSecs) => {
+  const testFailParse = async (expire) => {
     const uploadResponse = await workerFetch(new Request(BASE_URL, {
       method: "POST",
       body: createFormData({ "c": blob1, "e": expire }),
@@ -375,10 +331,18 @@ test("cache control", async () => {
   const uploadResp = await upload(({ "c": randomBlob(1024) }))
   const url = uploadResp["url"]
   const resp = await workerFetch(url)
-  expect(resp.headers.get("Cache-Control")).toStrictEqual(`public, max-age=${env.CACHE_PASTE_AGE}`)
+  if ("CACHE_PASTE_AGE" in env) {
+    expect(resp.headers.get("Cache-Control")).toStrictEqual(`public, max-age=${env.CACHE_PASTE_AGE}`)
+  } else {
+    expect(resp.headers.get("Cache-Control")).toBeUndefined()
+  }
 
   const indexResp = await workerFetch(BASE_URL)
-  expect(indexResp.headers.get("Cache-Control")).toStrictEqual(`public, max-age=${env.CACHE_STATIC_PAGE_AGE}`)
+  if ("CACHE_STATIC_PAGE_AGE" in env) {
+    expect(indexResp.headers.get("Cache-Control")).toStrictEqual(`public, max-age=${env.CACHE_STATIC_PAGE_AGE}`)
+  } else {
+    expect(indexResp.headers.get("Cache-Control")).toBeUndefined()
+  }
 
   const staleResp = await workerFetch(url, {
     headers: {
@@ -387,7 +351,5 @@ test("cache control", async () => {
   })
   expect(staleResp.status).toStrictEqual(304)
 })
-
-// TODO: add tests for basic auth
 
 // TODO: add tests for CORS
