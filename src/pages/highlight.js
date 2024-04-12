@@ -1,4 +1,4 @@
-import { escapeHtml } from "./common.js"
+import { escapeHtml } from "../common.js"
 
 export function makeHighlight(content, lang) {
   return `<!DOCTYPE html>

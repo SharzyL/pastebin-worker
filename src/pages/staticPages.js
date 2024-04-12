@@ -1,10 +1,10 @@
 import { makeMarkdown } from "./markdown.js"
 
-import indexHtml from "../frontend/index.html"
-import styleCss from "../frontend/style.css"
-import indexJs from "../frontend/index.client.js"
-import tosMd from "../frontend/tos.md"
-import apiMd from "../doc/api.md"
+import indexHtml from "../../frontend/index.html"
+import styleCss from "../../frontend/style.css"
+import indexJs from "../../frontend/index.client.js"
+import tosMd from "../../frontend/tos.md"
+import apiMd from "../../doc/api.md"
 
 function indexPage(env) {
   return indexHtml

@@ -6,7 +6,7 @@ import rehypeStringify from "rehype-stringify"
 import { toString } from "mdast-util-to-string"
 
 import { VFileMessage } from "vfile-message"
-import { escapeHtml } from "./common.js"
+import { escapeHtml } from "../common.js"
 
 const descriptionLimit = 200
 const defaultTitle = "Untitled"
