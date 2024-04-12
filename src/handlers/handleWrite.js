@@ -1,6 +1,15 @@
 import { verifyAuth } from "../auth.js"
 import { getBoundary, parseFormdata } from "../parseFormdata.js"
-import { decode, genRandStr, getDispFilename, params, parseExpiration, parsePath, WorkerError } from "../common.js"
+import {
+  decode,
+  genRandStr,
+  getDispFilename,
+  isLegalUrl,
+  params,
+  parseExpiration,
+  parsePath,
+  WorkerError,
+} from "../common.js"
 
 async function createPaste(env, content, isPrivate, expire, short, createDate, passwd, filename) {
   const now = new Date().toISOString()
@@ -37,18 +46,9 @@ async function createPaste(env, content, isPrivate, expire, short, createDate, p
 }
 
 function suggestUrl(content, filename, short, baseUrl) {
-  function isUrl(text) {
-    try {
-      new URL(text)
-      return true
-    } catch (e) {
-      return false
-    }
-  }
-
   if (filename) {
     return `${baseUrl}/${short}/${filename}`
-  } else if (isUrl(decode(content))) {
+  } else if (isLegalUrl(decode(content))) {
     return `${baseUrl}/u/${short}`
   } else {
     return null
