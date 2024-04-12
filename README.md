@@ -57,7 +57,7 @@ user1 = "passwd1"
 user2 = "passwd2"
 ```
 
-Now every access to PUT or POST request, and every access to the index page, requires an HTTP basic auth with the user-password pair listed above. For example: 
+Now every access to POST request, and every access to static pages, requires an HTTP basic auth with the user-password pair listed above. For example:
 
 ```shell
 $ curl example-pb.com

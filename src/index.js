@@ -61,9 +61,11 @@ async function handleNormalRequest(request, env, ctx) {
 }
 
 async function handlePostOrPut(request, env, ctx, isPut) {
-  const authResponse = verifyAuth(request, env)
-  if (authResponse !== null) {
-    return authResponse
+  if (!isPut) {  // only POST requires auth, since PUT request already contains auth
+    const authResponse = verifyAuth(request, env)
+    if (authResponse !== null) {
+      return authResponse
+    }
   }
 
   const contentType = request.headers.get("content-type") || ""
