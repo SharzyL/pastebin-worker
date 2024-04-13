@@ -6,7 +6,7 @@ const cfg = defineWorkersConfig({
   test: {
     coverage: {
       provider: "istanbul", // v8 is not supported due for cf workers
-      reporter: ["text", "json", "html"],
+      reporter: ["text", "json-summary", "html", "json"],
     },
     poolOptions: {
       workers: {
