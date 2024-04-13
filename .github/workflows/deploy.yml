@@ -2,45 +2,29 @@ name: Deploy
 on:
   push:
     branches:
-      - ci-test
       - master
-  workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Log level'     
-        required: true
-        default: 'warning'
 
 jobs:
   deploy:
-    name: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-
-      - uses: actions/cache@v4
-        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+      - name: "Install Node"
+        uses: actions/setup-node@v4
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          node-version: "20"
+          cache: "yarn"
 
-      - name: setup
-        run: yarn
+      - name: "Setup"
+        run: yarn install
 
-      - name: test
+      - name: "Test"
         run: yarn test
 
-      - name: deploy
+      - name: "Deploy"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
           yarn deploy
-
