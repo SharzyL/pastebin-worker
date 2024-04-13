@@ -1,5 +1,5 @@
 # fish-shell completions for pb
-# See: https://github.com/SharzyL/pastebin-worker/tree/master/scripts
+# See: https://github.com/SharzyL/pastebin-worker/tree/goshujin/scripts
 
 set -l commands p post u update g get d delete
 

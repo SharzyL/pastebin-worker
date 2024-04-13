@@ -11,7 +11,7 @@ This is a wrapper script to make it easier to use our pastebin.
 **Installation**: download `pb` to your `PATH` and give it execution permission. For example: 
 
 ```shell
-$ wget https://github.com/SharzyL/pastebin-worker/raw/master/scripts/pb
+$ wget https://github.com/SharzyL/pastebin-worker/raw/goshujin/scripts/pb
 $ install -Dm755 pb ~/.local/bin
 ```
 
@@ -71,27 +71,3 @@ Options:
     -v, --verbose           display the 'underlying' curl command
     -d, --dry               do a dry run, executing no 'curl' command at all
 ```
-
-## `deploy-static.sh`
-
-Deploy html files to Cloudflare KV storage. The map of KV storage key and web page is recorded in `src/staticPages.js`. Usage: 
-
-```shell
-deploy-static.sh [--preview] [<file-name>...]
-```
-
-## `md2html.sh`
-
-Convert markdown to HTML, with a GitHub style CSS. Usage: 
-
-```shell
-md2html.sh <markdown-file> <html-file> <page-title>
-```
-
-## `post-commit`
-
-A git hook that deploy the code after each commit on `master` branch. 
-
-## `render.js`
-
-A wrapper to render [LiquidJS](https://liquidjs.com) template file. 

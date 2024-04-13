@@ -9,7 +9,7 @@ jobs:
       matrix:
         branch:
           - ${{ github.head_ref }}
-          - "master"
+          - "goshujin"
 
     permissions:
       contents: read
@@ -49,13 +49,13 @@ jobs:
           name: coverage-${{ github.head_ref }}
           path: coverage
 
-      - name: "Download master coverage artifacts"
+      - name: "Download goshujin coverage artifacts"
         uses: actions/download-artifact@v4
         with:
-          name: coverage-master
-          path: coverage-master
+          name: coverage-goshujin
+          path: coverage-goshujin
 
       - name: "Report Coverage"
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          json-summary-compare-path: coverage-master/coverage-summary.json
+          json-summary-compare-path: coverage-goshujin/coverage-summary.json
