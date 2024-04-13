@@ -1,4 +1,5 @@
 import { WorkerError } from "./common.js"
+import { Buffer } from 'node:buffer'
 
 // Encoding function
 export function encodeBasicAuth(username, password) {
