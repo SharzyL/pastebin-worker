@@ -132,8 +132,8 @@ export async function handlePostOrPut(request, env, ctx, isPut) {
     if (item.value === null) {
       throw new WorkerError(404, `paste of name '${short}' is not found`)
     } else {
-      const date = item.metadata.postedAt
-      if (passwd !== item.metadata.passwd) {
+      const date = item.metadata?.postedAt
+      if (passwd !== item.metadata?.passwd) {
         throw new WorkerError(403, `incorrect password for paste '${short}`)
       } else {
         return makeResponse(

@@ -7,7 +7,7 @@ export async function handleDelete(request, env, ctx) {
   if (item.value === null) {
     throw new WorkerError(404, `paste of name '${short}' not found`)
   } else {
-    if (passwd !== item.metadata.passwd) {
+    if (passwd !== item.metadata?.passwd) {
       throw new WorkerError(403, `incorrect password for paste '${short}`)
     } else {
       await env.PB.delete(short)
