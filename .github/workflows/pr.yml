@@ -7,9 +7,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        branch:
-          - ${{ github.head_ref }}
-          - "goshujin"
+        include:
+          - ref: ${{ github.ref }}
+            name: "head"
+          - ref: "goshujin"
+            name: "goshujin"
 
     permissions:
       contents: read
@@ -17,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.branch }}
+          ref: ${{ matrix.ref }}
 
       - name: "Install Node"
         uses: actions/setup-node@v4
@@ -34,7 +36,7 @@ jobs:
       - name: "Upload Coverage"
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.branch }}
+          name: coverage-${{ matrix.name }}
           path: coverage
 
   report-coverage:
@@ -46,7 +48,7 @@ jobs:
       - name: "Download HEAD coverage artifacts"
         uses: actions/download-artifact@v4
         with:
-          name: coverage-${{ github.head_ref }}
+          name: coverage-head
           path: coverage
 
       - name: "Download goshujin coverage artifacts"
