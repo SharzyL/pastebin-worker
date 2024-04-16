@@ -26,7 +26,18 @@ _verbose() {
 }
 
 _clip() {
-    echo "$@" | xclip -selection clipboard
+    if [ -x "$(command -v pbcopy)" ]; then
+        echo "$@" | pbcopy
+    elif [ -x "$(command -v xclip)" ]; then
+        echo "$@" | xclip -selection clipboard
+    elif [ -x "$(command -v xsel)" ]; then
+        echo "$@" | xsel -b
+    elif [ -x "$(command -v wl-copy)" ]; then
+        echo "$@" | wl-copy
+    else
+        _verbose "Cannot find a clipboard tool. Requires one of 'pbcopy' (macOS), 'xclip' (xorg), 'xsel' (xorg) or 'wl-copy' (wayland)."
+        return
+    fi
     _verbose "'$*' is copied to your clipboard"
 }
 
