@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-domain="https://shz.al"
+domain="${PB_DOMAIN:-https://shz.al}"
 hist_file="${XDG_CONFIG_DIR:-$HOME/.config}/pb_hist"
 
 script_name=${0##*/}
