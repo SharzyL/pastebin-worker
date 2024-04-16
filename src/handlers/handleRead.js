@@ -16,7 +16,7 @@ function pasteCacheHeader(env) {
 }
 
 function lastModifiedHeader(paste) {
-  const lastModified = paste.metadata.lastModified
+  const lastModified = paste.metadata?.lastModified
   return lastModified ? { "last-modified": new Date(lastModified).toGMTString() } : {}
 }
 
@@ -53,7 +53,7 @@ export async function handleGet(request, env, ctx) {
   }
 
   // check `if-modified-since`
-  const pasteLastModified = item.metadata.lastModified
+  const pasteLastModified = item.metadata?.lastModified
   const headerModifiedSince = request.headers.get("if-modified-since")
   if (pasteLastModified && headerModifiedSince) {
     let pasteLastModifiedMs = Date.parse(pasteLastModified)
@@ -68,7 +68,7 @@ export async function handleGet(request, env, ctx) {
   }
 
   // determine filename with priority: url path > meta
-  const returnFilename = filename || item.metadata.filename
+  const returnFilename = filename || item.metadata?.filename
 
   // handle URL redirection
   if (role === "u") {
