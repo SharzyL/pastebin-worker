@@ -1,25 +1,27 @@
 # Scripts of pastebin-worker
 
-This directory contains a set of scripts that facilitate the usage and development of pastebin-worker. 
+This directory contains a set of scripts that facilitate the usage and development of pastebin-worker.
 
 ## `pb`: paste things on command line
 
-This is a wrapper script to make it easier to use our pastebin. 
+This is a wrapper script to make it easier to use our pastebin.
 
 **Requirements**: `bash`, `jq`, `getopt`, `curl`
 
-**Installation**: download `pb` to your `PATH` and give it execution permission. For example: 
+**Installation**: download `pb` to your `PATH` and give it execution permission. For example:
 
 ```shell
 $ wget https://github.com/SharzyL/pastebin-worker/raw/goshujin/scripts/pb
 $ install -Dm755 pb ~/.local/bin
 ```
 
-**Zsh completion**: download `_pb` in a folder within your zsh `fpath` 
+By default the script will use the instance on `https://shz.al`, you can either modify the script itself, or specify the `PB_DOMAIN` environment variable to use other instances.
 
-**fish completion**: download `pb.fish` in a folder within your fish `fish_complete_path` 
+**Zsh completion**: download `_pb` in a folder within your zsh `fpath`
 
-**Usage**: 
+**fish completion**: download `pb.fish` in a folder within your fish `fish_complete_path`
+
+**Usage**:
 
 ```text
 $ pb -h
