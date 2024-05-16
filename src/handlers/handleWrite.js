@@ -10,6 +10,7 @@ import {
   parsePath,
   WorkerError,
 } from "../common.js"
+import { DB_Put, DB_Get, DB_GetWithMetadata, safeAccess } from "../db.js"
 
 async function createPaste(env, content, isPrivate, expire, short, createDate, passwd, filename) {
   const now = new Date().toISOString()
@@ -21,19 +22,19 @@ async function createPaste(env, content, isPrivate, expire, short, createDate, p
   if (short === undefined) {
     while (true) {
       short = genRandStr(short_len)
-      if ((await env.PB.get(short)) === null) break
+      if ((await DB_Get(short, env)) === null) break
     }
   }
 
-  await env.PB.put(short, content, {
+  await DB_Put(short, content, {
     expirationTtl: expire,
-    metadata: {
+    // metadata: {
       postedAt: createDate,
       passwd: passwd,
       filename: filename,
       lastModified: now,
-    },
-  })
+    // },
+  }, env)
   let accessUrl = env.BASE_URL + "/" + short
   const adminUrl = env.BASE_URL + "/" + short + params.SEP + passwd
   return {
@@ -104,12 +105,14 @@ export async function handlePostOrPut(request, env, ctx, isPut) {
     if (isNaN(expirationSeconds)) {
       throw new WorkerError(400, `cannot parse expire ${expirationSeconds} as an number`)
     }
+    /** KV Only limitation
     if (expirationSeconds < 60) {
       throw new WorkerError(
         400,
         `due to limitation of Cloudflare, expire should be a integer greater than 60, '${expirationSeconds}' given`,
       )
     }
+    */
   }
 
   // check if name is legal
@@ -128,8 +131,8 @@ export async function handlePostOrPut(request, env, ctx, isPut) {
 
   if (isPut) {
     const { short, passwd } = parsePath(url.pathname)
-    const item = await env.PB.getWithMetadata(short)
-    if (item.value === null) {
+    const item = await DB_GetWithMetadata(short, env)
+    if (safeAccess(item, "value", null) === null) {
       throw new WorkerError(404, `paste of name '${short}' is not found`)
     } else {
       const date = item.metadata?.postedAt
@@ -145,7 +148,7 @@ export async function handlePostOrPut(request, env, ctx, isPut) {
     let short = undefined
     if (name !== undefined) {
       short = "~" + name
-      if ((await env.PB.get(short)) !== null)
+      if ((await DB_Get(short, env)) !== null)
         throw new WorkerError(409, `name '${name}' is already used`)
     }
     return makeResponse(await createPaste(

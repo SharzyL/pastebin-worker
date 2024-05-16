@@ -25,8 +25,10 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 
 ## Limitations
 
-1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 100,000 reads and 1000 writes, 1000 deletes per day. 
-2. Due to the size limit of Cloudflare KV storage, the size of each paste is bounded under 25 MB. 
+1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 5 million reads and 100000 writes per day.
+2. Due to the size limit of Cloudflare D1 storage, the size of each basic paste is bounded under 1 MB.
+3. Big files (more than 0.95 MB) are storaged in KV (metadata in D1), the size limit is 25 MB. 100000 reads per day. 1000 writes per day.
+4. To save KV writes, we do not actively delete expired big files in KV, we just overwrite them in need.
 
 ## Deploy
 
@@ -34,13 +36,15 @@ You are free to deploy the pastebin on your own domain if you host your domain o
 
 1. Install `node` and `yarn`.
 
-2. Create a KV namespace on Cloudflare workers dashboard, remember its ID.
+2. Create a D1 Database on Cloudflare workers dashboard, run `schema.sql` in it, remember its ID. Please notice that executing `schema.sql` in the DB will reset all data in the DB.
 
-3. Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`.
+3. Create a KV on Cloudflare workers dashboard, remember its ID.
 
-4. Modify entries in `wrangler.toml`. Its comments will tell you how.
+4. Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`.
 
-5. Deploy and enjoy!
+5. Modify entries in `wrangler.toml`. Its comments will tell you how.
+
+6. Deploy and enjoy!
 
 ```shell
 $ yarn install
