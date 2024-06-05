@@ -45,4 +45,3 @@ async function handleNormalRequest(request, env, ctx) {
     throw new WorkerError(405, "method not allowed")
   }
 }
-
