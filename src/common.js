@@ -75,7 +75,7 @@ export function parsePath(pathname) {
 }
 
 export function parseExpiration(expirationStr) {
-  const EXPIRE_REGEX = /^[\d\.]+\s*[mhdwM]?$/
+  const EXPIRE_REGEX = /^[\d\.]+\s*[smhdwM]?$/
   if (!EXPIRE_REGEX.test(expirationStr)) {
     throw new WorkerError(400, `‘${expirationStr}’ is not a valid expiration specification`)
   }
