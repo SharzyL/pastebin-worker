@@ -19,8 +19,14 @@ pattern = "shz.al"
 custom_domain = true
 
 [[kv_namespaces]]
-binding = "PB"  # do not touch this
+# name = "pastebin-worker"
+binding = "KV" # DO NOT MODIFY
 id = "cc398e983a234aa19de5ea6af571a483"  # id of your KV namespace
+
+[[d1_databases]]
+binding = "DB" # DO NOT MODIFY
+database_name = "pastebin-worker"
+database_id = "77e9dafa-8f6b-4636-94f0-1a8e6e0e5fc1" # id of your D1 database
 
 [vars]
 # must be consistent with your routes
@@ -41,5 +47,5 @@ TOS_MAIL = "pb@shz.al"
 # Cache-Control max-age for static pages
 CACHE_STATIC_PAGE_AGE = 7200
 
-# Cache-Control max-age for static pages
+# Cache-Control max-age for pastes
 CACHE_PASTE_AGE = 600
