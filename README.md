@@ -36,16 +36,19 @@ You are free to deploy the pastebin on your own domain if you host your domain o
 
 2. Create a KV namespace on Cloudflare workers dashboard, remember its ID.
 
-3. Clone the repository and enter the directory. Login to your Cloudflare account with `wrangler login`.
+3. Clone the repository and enter the directory.
 
 4. Modify entries in `wrangler.toml`. Its comments will tell you how.
 
-5. Deploy and enjoy!
+5. Login to Cloudflare and deploy with the following steps:
 
-```shell
+```console
 $ yarn install
+$ yarn wrangler login
 $ yarn deploy
 ```
+
+6. Enjoy!
 
 ## Auth
 
@@ -59,7 +62,7 @@ user2 = "passwd2"
 
 Now every access to POST request, and every access to static pages, requires an HTTP basic auth with the user-password pair listed above. For example:
 
-```shell
+```console
 $ curl example-pb.com
 HTTP basic auth is required
 

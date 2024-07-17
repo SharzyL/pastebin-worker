@@ -26,10 +26,10 @@ id = "cc398e983a234aa19de5ea6af571a483"  # id of your KV namespace
 # must be consistent with your routes
 BASE_URL = "https://shz.al"
 
-# url to repo, displayed in index page
+# url to repo, displayed in the index page
 REPO = "https://github.com/SharzyL/pastebin-worker"
 
-# url to favicon
+# url to the favicon
 FAVICON = "https://sharzy.in/favicon-32x32.png"
 
 # the name displayed in TOS
