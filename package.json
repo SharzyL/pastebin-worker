@@ -16,7 +16,7 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "https://prerelease-registry.devprod.cloudflare.dev/workers-sdk/runs/8561120366/npm-package-cloudflare-vitest-pool-workers-5458",
+    "@cloudflare/vitest-pool-workers": "^0.4.2",
     "@vitest/coverage-istanbul": "1.4.0",
     "vitest": "1.4.0",
     "eslint": "^8.33.0",
