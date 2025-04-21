@@ -9,7 +9,7 @@ import {
   parsePath,
   WorkerError,
 } from "../common.js"
-import {createPaste, getPaste, pasteNameAvailable, updatePaste} from "../storage/storage.js";
+import {createPaste, getPasteMetadata, pasteNameAvailable, updatePaste} from "../storage/storage.js";
 
 type PasteResponse = {
   url: string,
@@ -106,18 +106,18 @@ export async function handlePostOrPut(request: Request, env: Env, ctx: Execution
   let now = new Date()
   if (isPut) {
     const { nameFromPath, passwd } = parsePath(url.pathname)
-    const item = await getPaste(env, nameFromPath)
+    const originalMetadata = await getPasteMetadata(env, nameFromPath)
 
-    if (item === null) {
+    if (originalMetadata === null) {
       throw new WorkerError(404, `paste of name '${nameFromPath}' is not found`)
     } else if (passwd === undefined) {
       throw new WorkerError(403, `no password for paste '${nameFromPath}`)
-    } else if (passwd !== item.metadata.passwd) {
+    } else if (passwd !== originalMetadata.passwd) {
         throw new WorkerError(403, `incorrect password for paste '${nameFromPath}`)
     } else {
       let pasteName = nameFromPath || genRandStr(isPrivate ? params.PRIVATE_PASTE_NAME_LEN : params.PASTE_NAME_LEN)
       let newPasswd = passwdFromForm || passwd
-      await updatePaste(env, pasteName, content, item.metadata, {
+      await updatePaste(env, pasteName, content, originalMetadata, {
         expirationSeconds,
         now,
         passwd: newPasswd,
