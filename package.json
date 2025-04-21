@@ -16,24 +16,27 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.4.2",
-    "@vitest/coverage-istanbul": "1.4.0",
-    "vitest": "1.4.0",
-    "eslint": "^8.33.0",
-    "prettier": "^2.8.3",
-    "wrangler": "^3.32.0"
+    "@cloudflare/vitest-pool-workers": "^0.8.18",
+    "@types/jquery": "^3.5.32",
+    "@types/node": "^22.14.1",
+    "@vitest/coverage-istanbul": "3.1.1",
+    "eslint": "^9.25.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "vitest": "3.1.1",
+    "wrangler": "^4.12.0"
   },
   "dependencies": {
-    "mdast-util-to-string": "^3.1.1",
-    "mime": "^3.0.0",
-    "rehype-stringify": "^9.0.3",
-    "remark-gfm": "^3.0.1",
-    "remark-parse": "^10.0.1",
-    "remark-rehype": "^10.1.0",
-    "unified": "^10.1.2",
+    "mdast-util-to-string": "^4.0.0",
+    "mime": "^4.0.7",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "unified": "^11.0.5",
     "vfile-message": "^4.0.2"
   },
   "resolutions": {
-    "micromark": "^3.1.0"
+    "stringify-entities": "4.0.2"
   }
 }

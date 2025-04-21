@@ -1,4 +1,4 @@
-name: PR tests
+name: PR Tests
 on:
   pull_request:
 
@@ -32,6 +32,11 @@ jobs:
         run: yarn install
 
       - name: "Test"
+        run: |
+          yarn tsc --noEmit
+          yarn test
+
+      - name: "Run Coverage"
         run: yarn coverage
 
       - name: "Upload Coverage"

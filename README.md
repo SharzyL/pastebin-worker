@@ -104,6 +104,11 @@ Run tests:
 $ yarn test
 ```
 
+Run typing check:
+```console
+$ yarn tsc --noEmit
+```
+
 Run tests with coverage report:
 ```console
 $ yarn coverage

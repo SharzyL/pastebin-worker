@@ -1,22 +1,25 @@
 import { expect, test } from "vitest"
 import { BASE_URL, staticPages, upload, workerFetch } from "./testUtils.js"
+import {createExecutionContext} from "cloudflare:test";
 
 test("static pages", async () => {
+  const ctx = createExecutionContext()
   for (const page of staticPages) {
-    expect((await workerFetch(`${BASE_URL}/${page}`)).status).toStrictEqual(200)
+    expect((await workerFetch(ctx, `${BASE_URL}/${page}`)).status).toStrictEqual(200)
   }
 })
 
 test("markdown", async () => {
   const testMd = `# Hello`  // TODO: use a stronger test file
-  const url = (await upload({ "c": testMd }))["url"]
+  const ctx = createExecutionContext()
+  const url = (await upload(ctx, { "c": testMd }))["url"]
 
-  function makeMarkdownUrl(url) {
+  function makeMarkdownUrl(url: string): string {
     const splitPoint = url.lastIndexOf("/")
     return url.slice(0, splitPoint) + "/a" + url.slice(splitPoint)
   }
 
-  const revisitResponse = await workerFetch(makeMarkdownUrl(url))
+  const revisitResponse = await workerFetch(ctx, makeMarkdownUrl(url))
   expect(revisitResponse.status).toStrictEqual(200)
   expect(revisitResponse.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
   const responseHtml = await revisitResponse.text()
@@ -26,41 +29,44 @@ test("markdown", async () => {
 
 test("url redirect", async () => {
   const contentUrl = "https://example.com:1234/abc-def?g=hi&jk=l"
-  const uploadResp = await upload({ "c": contentUrl })
+  const ctx = createExecutionContext()
+  const uploadResp = await upload(ctx, { "c": contentUrl })
   const url = uploadResp["url"]
 
-  function makeRedirectUrl(url) {
+  function makeRedirectUrl(url: string): string {
     const splitPoint = url.lastIndexOf("/")
     return url.slice(0, splitPoint) + "/u" + url.slice(splitPoint)
   }
 
-  expect(uploadResp["suggestUrl"].includes(makeRedirectUrl(url)))
+  expect(uploadResp["suggestedUrl"].includes(makeRedirectUrl(url)))
 
-  const resp = await workerFetch(makeRedirectUrl(url))
+  const resp = await workerFetch(ctx, makeRedirectUrl(url))
   expect(resp.status).toStrictEqual(302)
   expect(resp.headers.get("location")).toStrictEqual(contentUrl)
 })
 
 test("url redirect with illegal url", async () => {
+  const ctx = createExecutionContext()
   const contentUrl = "xxxx"
-  const uploadResp = await upload({ "c": contentUrl })
+  const uploadResp = await upload(ctx, { "c": contentUrl })
   const url = uploadResp["url"]
 
-  function makeRedirectUrl(url) {
+  function makeRedirectUrl(url: string): string {
     const splitPoint = url.lastIndexOf("/")
     return url.slice(0, splitPoint) + "/u" + url.slice(splitPoint)
   }
 
-  expect(uploadResp["suggestUrl"]).toBeNull()
+  expect(uploadResp["suggestedUrl"]).toBeUndefined()
 
-  const resp = await workerFetch(makeRedirectUrl(url))
+  const resp = await workerFetch(ctx, makeRedirectUrl(url))
   expect(resp.status).toStrictEqual(400)
 })
 
 test("highlight", async () => {
   const content = "print(\"hello world\")"
-  const url = (await upload(({ "c": content })))["url"]
-  const resp = await workerFetch(`${url}?lang=html`)
+  const ctx = createExecutionContext()
+  const url = (await upload(ctx, ({ "c": content })))["url"]
+  const resp = await workerFetch(ctx, `${url}?lang=html`)
   expect(resp.status).toStrictEqual(200)
   const body = await resp.text()
   expect(body.includes("language-html")).toBeTruthy()

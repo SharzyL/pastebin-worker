@@ -4,15 +4,15 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 }
 
-export function handleOptions(request) {
+export function handleOptions(request: Request) {
   let headers = request.headers;
   if (
     headers.get("Origin") !== null &&
     headers.get("Access-Control-Request-Method") !== null
   ){
-    let respHeaders = {
-      ...corsHeaders,
-      "Access-Control-Allow-Headers": request.headers.get("Access-Control-Request-Headers"),
+    let respHeaders: { [name: string]: string } = corsHeaders;
+    if  ("Access-Control-Request-Methods" in respHeaders) {
+      respHeaders["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers")!
     }
 
     return new Response(null, {
@@ -28,7 +28,7 @@ export function handleOptions(request) {
   }
 }
 
-export function corsWrapResponse(response) {
+export function corsWrapResponse(response: Response) {
   if (response.headers !== undefined)
     response.headers.set("Access-Control-Allow-Origin", "*")
   return response

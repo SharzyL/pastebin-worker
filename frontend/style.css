@@ -207,6 +207,11 @@ body {
     border-radius: 2px;
 }
 
+#expiration-message {
+    margin-top: 1em;
+    margin-bottom: 0em;
+}
+
 input:not(:checked) ~ #paste-url-input-wrapper,
 input:not(:checked) ~ #paste-admin-url-input {
     display: none;

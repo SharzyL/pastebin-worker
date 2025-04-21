@@ -34,7 +34,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   $('#deploy-date').text(getDateString(deploy_date))
 
-  function isAdminUrlLegal(url) {
+  function isManageUrlLegal(url) {
     try {
       url = new URL(url)
       return url.origin === base_url && url.pathname.indexOf(':') >= 0
@@ -65,7 +65,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let inputType = 'edit'
   let expiration = $('#paste-expiration-input').val()
   let passwd = ''
-  let customName = '', adminUrl = '', file = null
+  let customName = '', manageUrl = '', file = null
 
   const NAME_REGEX = /^[a-zA-Z0-9+_\-\[\]*$@,;]{3,}$/
   const EXPIRE_REGEX = /^\d+\s*[smhdwMY]?$/
@@ -88,7 +88,7 @@ window.addEventListener('DOMContentLoaded', () => {
       expirationValid = true
     }
     const nameValid = urlType !== 'custom' || NAME_REGEX.test(customName)
-    const adminUrlValid = urlType !== 'admin' || isAdminUrlLegal(adminUrl)
+    const manageurlValid = urlType !== 'manage' || isManageUrlLegal(manageUrl)
 
     if (!pasteNotEmpty) {
       disableSubmitButton('Paste is empty')
@@ -96,14 +96,14 @@ window.addEventListener('DOMContentLoaded', () => {
       disableSubmitButton(`Expiration “${expiration}” not valid`)
     } else if (!nameValid) {
       disableSubmitButton(`The customized URL should satisfy regex ${NAME_REGEX}`)
-    } else if (!adminUrlValid) {
-      disableSubmitButton(`Admin URL “${adminUrl}” not valid`)
+    } else if (!manageurlValid) {
+      disableSubmitButton(`Maange URL “${manageUrl}” not valid`)
     } else {
       submitButton.addClass('enabled')
       submitErrMsg.text('')
     }
 
-    if (urlType === 'admin') {
+    if (urlType === 'manage') {
       submitButton.text('Update')
       deleteButton.removeClass('hidden')
     } else {
@@ -111,12 +111,12 @@ window.addEventListener('DOMContentLoaded', () => {
       deleteButton.addClass('hidden')
     }
 
-    if (adminUrlValid) {
+    if (manageurlValid) {
       deleteButton.addClass('enabled')
       submitButton.prop('title', '')
     } else {
       deleteButton.removeClass('enabled')
-      submitErrMsg.text(`The admin URL should start with “${base_url}” and contain a colon`)
+      submitErrMsg.text(`The manage URL should start with “${base_url}” and contain a colon`)
     }
   }
 
@@ -175,15 +175,15 @@ window.addEventListener('DOMContentLoaded', () => {
     updateButtons()
   })
 
-  $('#paste-admin-url-input').on('input', event => {
-    adminUrl = event.target.value
+  $('#paste-manage-url-input').on('input', event => {
+    manageUrl = event.target.value
     updateButtons()
   })
 
   // submit the form
   submitButton.on('click', () => {
     if (submitButton.hasClass('enabled')) {
-      if (urlType === 'admin') {
+      if (urlType === 'manage') {
         putPaste()
       } else {
         postPaste()
@@ -211,7 +211,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     $.ajax({
       method: 'PUT',
-      url: adminUrl,
+      url: manageUrl,
       data: fd,
       processData: false,
       contentType: false,
@@ -254,7 +254,7 @@ window.addEventListener('DOMContentLoaded', () => {
     let fd = new FormData()
     $.ajax({
       method: 'DELETE',
-      url: adminUrl,
+      url: manageUrl,
       data: fd,
       processData: false,
       success: () => {
@@ -273,12 +273,13 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderUploaded(uploaded) {
     $('#paste-uploaded-panel').removeClass('hidden')
     $('#uploaded-url').prop('value', uploaded.url)
-    $('#uploaded-admin-url').prop('value', uploaded.admin)
-    if (uploaded.suggestUrl) {
-      $('#uploaded-suggest-url').prop('value', uploaded.suggestUrl)
+    $('#uploaded-manage-url').prop('value', uploaded.manageUrl)
+    if (uploaded.suggestedUrl) {
+      $('#uploaded-suggested-url').prop('value', uploaded.suggestedUrl)
     }
-    if (uploaded.expire) {
-      $('#uploaded-expiration').prop('value', uploaded.expire)
+    if (uploaded.expiredAt) {
+      const expiredAt = new Date(uploaded.expiredAt).toLocaleString()
+      $('#expiration-message').text(`Will expire at ${expiredAt} (${uploaded.expirationSeconds} secs)`)
     }
     updateButtons()
   }
@@ -309,13 +310,13 @@ window.addEventListener('DOMContentLoaded', () => {
     $('#submit-button').addClass('enabled')
   }
 
-  function initAdmin() {
+  function initManage() {
     const { role, short, passwd, ext } = parsePath(location.pathname)
     if (passwd.length > 0) {
-      $('#paste-url-admin-radio').click()
-      $('#paste-admin-url-input').val(location.href)
-      urlType = 'admin'
-      adminUrl = location.href
+      $('#paste-url-manage-radio').trigger("click")
+      $('#paste-manage-url-input').val(location.href)
+      urlType = 'manage'
+      manageUrl = location.href
       updateButtons()
       $.ajax({
         url: "/" + short,
@@ -328,5 +329,5 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  initAdmin()
+  initManage()
 })

@@ -124,7 +124,7 @@ Upload your paste. It accept parameters in form-data:
 
 - `c`: mandatory. The **content** of your paste, text of binary. It should be no larger than 10 MB. The `filename` in its `Content-Disposition` will be present when fetching the paste.
 
-- `e`: optional. The **expiration** time of the paste. After this period of time, the paste is permanently deleted. It should be an integer or a float point number suffixed with an optional unit (seconds by default). Supported units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `M` (months). For example, `360.24` means 360.25 seconds; `25d` is interpreted as 25 days. It should be no smaller than 60 seconds due to the limitation of Cloudflare KV storage.
+- `e`: optional. The **expiration** time of the paste. After this period of time, the paste is permanently deleted. It should be an integer or a float point number suffixed with an optional unit (seconds by default). Supported units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `M` (months). For example, `360.24` means 360.25 seconds; `25d` is interpreted as 25 days. The actual expiration might be shorter than specified expiration due to limitations imposed by the administrator. If unspecified, a default expiration time setting is used.
 
 - `s`: optional. The **password** which allows you to modify and delete the paste. If not specified, the worker will generate a random string as password.
 
@@ -137,19 +137,19 @@ Upload your paste. It accept parameters in form-data:
 ```json
 {
     "url": "https://shz.al/abcd",
-    "admin": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
-    "expire": 100,
-    "isPrivate": false
+    "manageUrl": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
+    "expirationSeconds": 1209600,
+    "expireAt": "2025-05-05T10:33:06.114Z"
 }
 ```
 
 Explanation of the fields:
 
 - `url`: String. The URL to fetch the paste. When using a customized name, it looks like `https//shz.al/~myname`.
-- `suggestUrl`: String or null. The URL that may carry filename or URL redirection.
-- `admin`: String. The URL to update and delete the paste, which is `url` suffixed by `~` and the password.
-- `expire`: String or null. The expiration seconds.
-- `isPrivate`: Bool. Whether the paste is in private mode.
+- `suggestedUrl`: String or null. The URL that may carry filename or URL redirection.
+- `manageUrl`: String. The URL to update and delete the paste, which is `url` suffixed by `~` and the password.
+- `expirationSeconds`: String. The expiration seconds.
+- `expireAt`: String. An ISO String representing when the paste will expire.
 
 If error occurs, the worker returns status code different from `200`:
 
@@ -164,16 +164,17 @@ Usage example:
 $ curl -Fc="kawaii" -Fe=300 -Fn=hitagi https://shz.al  # uploading some text
 {
   "url": "https://shz.al/~hitagi",
-  "admin": "https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv",
-  "isPrivate": false,
-  "expire": 300
+  "manageUrl": "https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv",
+  "expirationSeconds": 300,
+  "expireAt": "2025-05-05T10:33:06.114Z"
 }
 
 $ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
 {
   "url": "https://shz.al/~panty",
-  "admin": "https://shz.al/~panty:12345678",
-  "isPrivate": false
+  "manageUrl": "https://shz.al/~panty:12345678",
+  "expirationSeconds": 1209600,
+  "expireAt": "2025-05-05T10:33:06.114Z"
 }
 
 # because `curl` takes some characters as filed separator, the fields should be
@@ -181,8 +182,9 @@ $ curl -Fc=@panty.jpg -Fn=panty -Fs=12345678 https://shz.al   # uploading a file
 $ curl -Fc=@panty.jpg -Fn='"hi/hello;g,ood"' -Fs=12345678 https://shz.al
 {
   "url": "https://shz.al/~hi/hello;g,ood",
-  "admin": "https://shz.al/~hi/hello;g,ood:QJhMKh5WR6z36QRAAn5Q5GZh",
-  "isPrivate": false
+  "manageUrl": "https://shz.al/~hi/hello;g,ood:QJhMKh5WR6z36QRAAn5Q5GZh",
+  "expirationSeconds": 1209600,
+  "expireAt": "2025-05-05T10:33:06.114Z"
 }
 ```
 
@@ -210,16 +212,17 @@ Usage example:
 $ curl -X PUT -Fc="kawaii~" -Fe=500 https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv
 {
   "url": "https://shz.al/~hitagi",
-  "admin": "https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv",
-  "isPrivate": false,
-  "expire": 500
+  "manageUrl": "https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv",
+  "expirationSeconds": 500,
+  "expireAt": "2025-05-05T10:33:06.114Z"
 }
 
 $ curl -X PUT -Fc="kawaii~" https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv
 {
   "url": "https://shz.al/~hitagi",
-  "admin": "https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv",
-  "isPrivate": false
+  "manageUrl": "https://shz.al/~hitagi:22@-OJWcTOH2jprTJWYadmDv",
+  "expirationSeconds": 500,
+  "expireAt": "2025-05-05T10:33:06.114Z"
 }
 ```
 

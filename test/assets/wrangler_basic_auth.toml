@@ -7,7 +7,7 @@ main = "src/index.ts"
 [[rules]]
 type = "Text"
 # Due to bugs of wrangler, we cannot specify glob by prefix
-globs = [ "**.css", "**.html", "**.in", "**.md" ]
+globs = [ "frontend/*.css", "frontend/*.html", "**.in", "**.md" ]
 fallthrough = true
 
 #----------------------------------------
@@ -53,4 +53,7 @@ MAX_EXPIRATION = "30d"
 
 # A collection of {username: password} pair
 # Leave empty to disable auth
-BASIC_AUTH = {}
+BASIC_AUTH = {
+  "user1": "passwd1",
+  "user2": "passwd2",
+}
