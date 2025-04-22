@@ -5,9 +5,7 @@ import { createExecutionContext } from "cloudflare:test"
 test("static pages", async () => {
   const ctx = createExecutionContext()
   for (const page of staticPages) {
-    expect(
-      (await workerFetch(ctx, `${BASE_URL}/${page}`)).status,
-    ).toStrictEqual(200)
+    expect((await workerFetch(ctx, `${BASE_URL}/${page}`)).status).toStrictEqual(200)
   }
 })
 
@@ -23,9 +21,7 @@ test("markdown", async () => {
 
   const revisitResponse = await workerFetch(ctx, makeMarkdownUrl(url))
   expect(revisitResponse.status).toStrictEqual(200)
-  expect(revisitResponse.headers.get("Content-Type")).toStrictEqual(
-    "text/html;charset=UTF-8",
-  )
+  expect(revisitResponse.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
   const responseHtml = await revisitResponse.text()
   expect(responseHtml.indexOf("<title>Hello</title>")).toBeGreaterThan(-1)
   expect(responseHtml.indexOf("<h1>Hello</h1>")).toBeGreaterThan(-1)

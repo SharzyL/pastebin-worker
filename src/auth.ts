@@ -35,9 +35,7 @@ export function verifyAuth(request: Request, env: Env): Response | null {
   if (passwdMap.size === 0) return null
 
   if (request.headers.has("Authorization")) {
-    const { username, password } = decodeBasicAuth(
-      request.headers.get("Authorization")!,
-    )
+    const { username, password } = decodeBasicAuth(request.headers.get("Authorization")!)
     if (!passwdMap.has(username) || passwdMap.get(username) !== password) {
       throw new WorkerError(401, "incorrect passwd for basic auth")
     } else {

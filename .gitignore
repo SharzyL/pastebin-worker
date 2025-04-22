@@ -1,5 +1,5 @@
 /target
-/dist
+dist
 **/*.rs.bk
 Cargo.lock
 bin/
@@ -12,3 +12,4 @@ node_modules/
 .idea
 .wrangler
 coverage
+.dev.vars*

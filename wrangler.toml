@@ -1,14 +1,18 @@
 name = "pb"
-compatibility_date = "2023-01-28"
+compatibility_date = "2025-04-24"
 
 workers_dev = false
 main = "src/index.ts"
 
 [[rules]]
 type = "Text"
-# Due to bugs of wrangler, we cannot specify glob by prefix
-globs = [ "**.css", "**.html", "**.in", "**.md" ]
+globs = [ "**/*.html", "**/*.md" ]
 fallthrough = true
+
+[assets]
+directory = "dist/frontend"
+run_worker_first = true
+binding = "ASSETS"
 
 #----------------------------------------
 # lines below are what you should modify
@@ -25,13 +29,10 @@ id = "435f8959b9de485ea48751ba557d90f5"  # id of your KV namespace
 
 [vars]
 # must be consistent with your routes
-BASE_URL = "https://shz.al"
+DEPLOY_URL = "https://shz.al"
 
 # url to repo, displayed in the index page
 REPO = "https://github.com/SharzyL/pastebin-worker"
-
-# url to the favicon
-FAVICON = "https://sharzy.in/favicon-32x32.png"
 
 # the name displayed in TOS
 TOS_MAINTAINER = "Sharzy"
@@ -42,7 +43,7 @@ TOS_MAIL = "pb@shz.al"
 # Cache-Control max-age for static pages
 CACHE_STATIC_PAGE_AGE = 7200
 
-# Cache-Control max-age for static pages
+# Cache-Control max-age for paste pages
 CACHE_PASTE_AGE = 600
 
 # Default expiration

@@ -20,10 +20,7 @@ export type PasteWithMetadata = {
   metadata: PasteMetadata
 }
 
-export async function getPaste(
-  env: Env,
-  short: string,
-): Promise<PasteWithMetadata | null> {
+export async function getPaste(env: Env, short: string): Promise<PasteWithMetadata | null> {
   const item = await env.PB.getWithMetadata<PasteMetadata>(short, {
     type: "arrayBuffer",
   })
@@ -38,6 +35,7 @@ export async function getPaste(
     }
 
     // update counter with probability 1%
+    // TODO: use waitUntil API
     if (Math.random() < 0.01) {
       item.metadata.accessCounter += 1
       try {
@@ -47,9 +45,7 @@ export async function getPaste(
         })
       } catch (e) {
         // ignore rate limit message
-        if (
-          !(e as Error).message.includes("KV PUT failed: 429 Too Many Requests")
-        ) {
+        if (!(e as Error).message.includes("KV PUT failed: 429 Too Many Requests")) {
           throw e
         }
       }
@@ -60,10 +56,7 @@ export async function getPaste(
 }
 
 // we separate usage of getPasteMetadata and getPaste to make access metric more reliable
-export async function getPasteMetadata(
-  env: Env,
-  short: string,
-): Promise<PasteMetadata | null> {
+export async function getPasteMetadata(env: Env, short: string): Promise<PasteMetadata | null> {
   const item = await env.PB.getWithMetadata<PasteMetadata>(short, {
     type: "stream",
   })
@@ -141,10 +134,7 @@ export async function createPaste(
   await env.PB.put(pasteName, content, putOptions)
 }
 
-export async function pasteNameAvailable(
-  env: Env,
-  pasteName: string,
-): Promise<boolean> {
+export async function pasteNameAvailable(env: Env, pasteName: string): Promise<boolean> {
   const item = await env.PB.getWithMetadata<PasteMetadata>(pasteName)
   if (item.value == null) {
     return true

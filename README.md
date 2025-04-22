@@ -97,11 +97,25 @@ $ yarn -s wrangler kv key list --binding PB > kv_list.json
 
 ## Development
 
-Run a local simulator:
+Note that the frontend and worker code are built separatedly. To start a Vite development server of the frontend,
+
+```console
+$ yarn dev:frontend
+```
+
+To develop the backend worker, we must build a develop version of frontend,
+
+```console
+$ yarn build:frontend:dev
+```
+
+Then starts a local worker,
 
 ```console
 $ yarn dev
 ```
+
+The difference between `build:frontend:dev` and `build:frontend` is that the former will points the API endpoint to your deployment URL, while the later points to `http://localhost:8787`, the address of a local worker.
 
 Run tests:
 

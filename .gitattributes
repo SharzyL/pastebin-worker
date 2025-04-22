@@ -1,2 +1,3 @@
-frontend/github.css linguist-vendored
+yarn.lock -diff
+worker-configuration.d.ts -diff
 

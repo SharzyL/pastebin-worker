@@ -15,17 +15,12 @@ export default tseslint.config(
       },
     },
   },
-  globalIgnores([
-    "dist/**",
-    ".wrangler/**",
-    "coverage/**",
-    "worker-configuration.d.ts",
-  ]),
+  globalIgnores(["dist/**", ".wrangler/**", "coverage/**", "worker-configuration.d.ts"]),
   {
     rules: {
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
@@ -34,7 +29,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["*.config.js"],
+    files: ["**/*.config.js"],
     extends: [tseslint.configs.disableTypeChecked],
   },
 )

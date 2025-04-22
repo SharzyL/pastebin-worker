@@ -1,47 +1,64 @@
-import { decode, isLegalUrl, parsePath, WorkerError } from "../common.js"
-import { getStaticPage } from "../pages/staticPages.js"
+import { decode, isLegalUrl, WorkerError } from "../common.js"
+import { getDocPage } from "../pages/docs.js"
 import { verifyAuth } from "../auth.js"
 import mime from "mime/lite"
 import { makeMarkdown } from "../pages/markdown.js"
 import { makeHighlight } from "../pages/highlight.js"
 import { getPaste, PasteMetadata } from "../storage/storage.js"
+import { parsePath } from "../shared.js"
 
 type Headers = { [name: string]: string }
 
 function staticPageCacheHeader(env: Env): Headers {
   const age = env.CACHE_STATIC_PAGE_AGE
-  return age ? { "cache-control": `public, max-age=${age}` } : {}
+  return age ? { "Cache-Control": `public, max-age=${age}` } : {}
 }
 
 function pasteCacheHeader(env: Env): Headers {
   const age = env.CACHE_PASTE_AGE
-  return age ? { "cache-control": `public, max-age=${age}` } : {}
+  return age ? { "Cache-Control": `public, max-age=${age}` } : {}
 }
 
 function lastModifiedHeader(metadata: PasteMetadata): Headers {
   const lastModified = metadata.lastModifiedAtUnix
-  return lastModified
-    ? { "last-modified": new Date(lastModified * 1000).toUTCString() }
-    : {}
+  return lastModified ? { "Last-Modified": new Date(lastModified * 1000).toUTCString() } : {}
 }
 
-export async function handleGet(
-  request: Request,
-  env: Env,
-  _: ExecutionContext,
-): Promise<Response> {
+async function handleStaticPages(request: Request, env: Env, _: ExecutionContext): Promise<Response | null> {
   const url = new URL(request.url)
-  const { role, nameFromPath, ext, passwd, filename } = parsePath(url.pathname)
 
-  if (url.pathname === "/favicon.ico" && env.FAVICON) {
-    return Response.redirect(env.FAVICON)
+  let path = url.pathname
+  if (path.endsWith("/")) {
+    path += "index.html"
+  } else if (path.endsWith("/index")) {
+    path += ".html"
+  } else if (path.lastIndexOf("/") === 0 && path.indexOf(":") > 0) {
+    path = "/index.html" // handle admin URL
+  }
+  if (path.startsWith("/assets/") || path.startsWith("/static/") || path === "/index.html") {
+    if (path === "/index.html") {
+      const authResponse = verifyAuth(request, env)
+      if (authResponse !== null) {
+        return authResponse
+      }
+    }
+    const assetsUrl = url
+    assetsUrl.pathname = path
+    const resp = await env.ASSETS.fetch(assetsUrl)
+    if (resp.status === 404) {
+      throw new WorkerError(404, `asset '${path}' not found`)
+    } else {
+      const pageMime = mime.getType(path) || "text/plain"
+      return new Response(await resp.blob(), {
+        headers: {
+          "Content-Type": `${pageMime};charset=UTF-8`,
+          ...staticPageCacheHeader(env),
+        },
+      })
+    }
   }
 
-  // return the editor for admin URL
-  const staticPageContent = getStaticPage(
-    passwd && passwd.length > 0 ? "/" : url.pathname,
-    env,
-  )
+  const staticPageContent = getDocPage(url.pathname, env)
   if (staticPageContent) {
     // access to all static pages requires auth
     const authResponse = verifyAuth(request, env)
@@ -50,11 +67,24 @@ export async function handleGet(
     }
     return new Response(staticPageContent, {
       headers: {
-        "content-type": "text/html;charset=UTF-8",
+        "Content-Type": "text/html;charset=UTF-8",
         ...staticPageCacheHeader(env),
       },
     })
   }
+
+  return null
+}
+
+export async function handleGet(request: Request, env: Env, _: ExecutionContext): Promise<Response> {
+  const staticPageResp = await handleStaticPages(request, env, _)
+  if (staticPageResp !== null) {
+    return staticPageResp
+  }
+
+  const url = new URL(request.url)
+
+  const { role, nameFromPath, ext, filename } = parsePath(url.pathname)
 
   const disp = url.searchParams.has("a") ? "attachment" : "inline"
 
@@ -74,7 +104,7 @@ export async function handleGet(
     (item.metadata.filename && mime.getType(item.metadata.filename)) ||
     "text/plain"
 
-  const headerModifiedSince = request.headers.get("if-modified-since")
+  const headerModifiedSince = request.headers.get("If-Modified-Since")
   if (headerModifiedSince) {
     const headerModifiedSinceUnix = Date.parse(headerModifiedSince) / 1000
     if (pasteLastModifiedUnix <= headerModifiedSinceUnix) {
@@ -103,7 +133,7 @@ export async function handleGet(
     const md = makeMarkdown(decode(item.paste))
     return new Response(md, {
       headers: {
-        "content-type": `text/html;charset=UTF-8`,
+        "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),
         ...lastModifiedHeader(item.metadata),
       },
@@ -115,25 +145,25 @@ export async function handleGet(
   if (lang) {
     return new Response(makeHighlight(decode(item.paste), lang), {
       headers: {
-        "content-type": `text/html;charset=UTF-8`,
+        "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),
         ...lastModifiedHeader(item.metadata),
       },
     })
-  } else {
-    // handle default
-    const headers: Headers = {
-      "content-type": `${inferred_mime};charset=UTF-8`,
-      ...pasteCacheHeader(env),
-      ...lastModifiedHeader(item.metadata),
-    }
-    if (returnFilename) {
-      const encodedFilename = encodeURIComponent(returnFilename)
-      headers["content-disposition"] =
-        `${disp}; filename*=UTF-8''${encodedFilename}`
-    } else {
-      headers["content-disposition"] = `${disp}`
-    }
-    return new Response(item.paste, { headers })
   }
+
+  // handle default
+  const headers: Headers = {
+    "Content-Type": `${inferred_mime};charset=UTF-8`,
+    ...pasteCacheHeader(env),
+    ...lastModifiedHeader(item.metadata),
+  }
+  if (returnFilename) {
+    const encodedFilename = encodeURIComponent(returnFilename)
+    headers["Content-Disposition"] = `${disp}; filename*=UTF-8''${encodedFilename}`
+  } else {
+    headers["Content-Disposition"] = `${disp}`
+  }
+  headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+  return new Response(item.paste, { headers })
 }

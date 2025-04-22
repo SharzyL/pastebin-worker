@@ -1,15 +1,8 @@
 import { expect, test } from "vitest"
-import {
-  areBlobsEqual,
-  BASE_URL,
-  createFormData,
-  genRandomBlob,
-  staticPages,
-  workerFetch,
-} from "./testUtils.js"
+import { areBlobsEqual, BASE_URL, createFormData, genRandomBlob, staticPages, workerFetch } from "./testUtils.js"
 import { encodeBasicAuth, decodeBasicAuth } from "../src/auth.js"
 import { createExecutionContext, env } from "cloudflare:test"
-import { PasteResponse } from "../src/handlers/handleWrite"
+import { PasteResponse } from "../src/shared"
 
 test("basic auth encode and decode", () => {
   const userPasswdPairs = [
@@ -31,13 +24,16 @@ test("basic auth", async () => {
     user1: "passwd1",
     user2: "passwd2",
   }
+
+  /* TODO: Due to the limitation of workers-sdk, setting env here may also affect other tests occasionally
+   It means that other tests may fail with 400 error occasionally
+   ref: https://github.com/cloudflare/workers-sdk/issues/7339
+  */
   env.BASIC_AUTH = users
 
-  // access index
+  // access index page
   for (const page of staticPages) {
-    expect(
-      (await workerFetch(ctx, `${BASE_URL}/${page}`)).status,
-    ).toStrictEqual(401)
+    expect((await workerFetch(ctx, `${BASE_URL}/${page}`)).status).toStrictEqual(401)
   }
   expect(
     (

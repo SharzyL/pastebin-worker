@@ -1,6 +1,6 @@
 import { test, expect } from "vitest"
 
-import { params, genRandStr } from "../src/common"
+import { genRandStr } from "../src/common"
 
 import {
   genRandomBlob,
@@ -12,7 +12,7 @@ import {
   RAND_NAME_REGEX,
 } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
-import { PasteResponse } from "../src/handlers/handleWrite"
+import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN, PasteResponse, PRIVATE_PASTE_NAME_LEN } from "../src/shared"
 
 test("basic", async () => {
   const blob1 = genRandomBlob(1024)
@@ -36,20 +36,18 @@ test("basic", async () => {
 
   // check name
   const name: string = url.slice(BASE_URL.length + 1)
-  expect(name.length).toStrictEqual(params.PASTE_NAME_LEN)
+  expect(name.length).toStrictEqual(PASTE_NAME_LEN)
   expect(RAND_NAME_REGEX.test(name))
 
   // check manageUrl
   const manageUrl: string = responseJson["manageUrl"]
   expect(manageUrl).toBeDefined()
   expect(manageUrl.startsWith(BASE_URL))
-  expect(
-    manageUrl.slice(BASE_URL.length + 1, manageUrl.lastIndexOf(":")),
-  ).toStrictEqual(name)
+  expect(manageUrl.slice(BASE_URL.length + 1, manageUrl.lastIndexOf(":"))).toStrictEqual(name)
 
   // check passwd
   const passwd = manageUrl.slice(manageUrl.lastIndexOf(":") + 1)
-  expect(passwd.length).toStrictEqual(params.DEFAULT_PASSWD_LEN)
+  expect(passwd.length).toStrictEqual(DEFAULT_PASSWD_LEN)
 
   // check revisit
   const revisitSesponse = await workerFetch(ctx, url)
@@ -59,18 +57,15 @@ test("basic", async () => {
   // check 404
   let newName
   do {
-    newName = genRandStr(params.PASTE_NAME_LEN)
+    newName = genRandStr(PASTE_NAME_LEN)
   } while (newName === name) // roll until finding a different name
-  const missingResponse = await workerFetch(
-    ctx,
-    new Request(`${BASE_URL}/${newName}`),
-  )
+  const missingResponse = await workerFetch(ctx, new Request(`${BASE_URL}/${newName}`))
   expect(missingResponse.status).toStrictEqual(404)
 
   // check modify with wrong manageUrl
   let wrongPasswd
   do {
-    wrongPasswd = genRandStr(params.DEFAULT_PASSWD_LEN)
+    wrongPasswd = genRandStr(DEFAULT_PASSWD_LEN)
   } while (wrongPasswd === passwd)
   expect(
     (
@@ -116,10 +111,7 @@ test("basic", async () => {
   ).toStrictEqual(403)
 
   // check delete
-  const deleteResponse = await workerFetch(
-    ctx,
-    new Request(manageUrl, { method: "DELETE" }),
-  )
+  const deleteResponse = await workerFetch(ctx, new Request(manageUrl, { method: "DELETE" }))
   expect(deleteResponse.status).toStrictEqual(200)
 
   // check visit modified
@@ -148,7 +140,7 @@ test("upload long", async () => {
 
   // check name
   const name = url.slice(BASE_URL.length + 1)
-  expect(name.length).toStrictEqual(params.PRIVATE_PASTE_NAME_LEN)
+  expect(name.length).toStrictEqual(PRIVATE_PASTE_NAME_LEN)
   expect(RAND_NAME_REGEX.test(name))
 
   // check revisit
@@ -238,7 +230,7 @@ test("custom passwd", async () => {
   // check modify with wrong manageUrl
   let wrongPasswd
   do {
-    wrongPasswd = genRandStr(params.DEFAULT_PASSWD_LEN)
+    wrongPasswd = genRandStr(DEFAULT_PASSWD_LEN)
   } while (wrongPasswd === passwd)
   expect(
     (

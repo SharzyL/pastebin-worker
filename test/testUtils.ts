@@ -4,39 +4,24 @@ import { expect } from "vitest"
 import crypto from "crypto"
 
 import worker from "../src/index.js"
-import { PasteResponse } from "../src/handlers/handleWrite"
+import { PasteResponse } from "../src/shared"
 
-export const BASE_URL: string = env["BASE_URL"]
-export const RAND_NAME_REGEX =
-  /^[ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678]+$/
+export const BASE_URL: string = env.DEPLOY_URL
+export const RAND_NAME_REGEX = /^[ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678]+$/
 
-export const staticPages = [
-  "",
-  "index.html",
-  "index",
-  "tos",
-  "tos.html",
-  "api",
-  "api.html",
-]
+export const staticPages = ["", "index.html", "index", "tos", "tos.html", "api", "api.html"]
 
 type FormDataBuild = {
   [key: string]: string | Blob | { content: Blob; filename: string }
 }
 
-export async function workerFetch(
-  ctx: ExecutionContext,
-  req: Request | string,
-) {
+export async function workerFetch(ctx: ExecutionContext, req: Request | string) {
   // we are not using SELF.fetch since it sometimes do not print worker log to console
   // return await SELF.fetch(req, options)
   return await worker.fetch(new Request(req), env, ctx)
 }
 
-export async function upload(
-  ctx: ExecutionContext,
-  kv: FormDataBuild,
-): Promise<PasteResponse> {
+export async function upload(ctx: ExecutionContext, kv: FormDataBuild): Promise<PasteResponse> {
   const uploadResponse = await workerFetch(
     ctx,
     new Request(BASE_URL, {
@@ -49,9 +34,7 @@ export async function upload(
     console.log(`failed upload response ${uploadMsg}`)
   }
   expect(uploadResponse.status).toStrictEqual(200)
-  expect(uploadResponse.headers.get("Content-Type")).toStrictEqual(
-    "application/json;charset=UTF-8",
-  )
+  expect(uploadResponse.headers.get("Content-Type")).toStrictEqual("application/json;charset=UTF-8")
   return JSON.parse(await uploadResponse.text()) as PasteResponse
 }
 
@@ -77,9 +60,5 @@ export function genRandomBlob(len: number): Blob {
 }
 
 export async function areBlobsEqual(blob1: Blob, blob2: Blob) {
-  return (
-    Buffer.from(await blob1.arrayBuffer()).compare(
-      Buffer.from(await blob2.arrayBuffer()),
-    ) === 0
-  )
+  return Buffer.from(await blob1.arrayBuffer()).compare(Buffer.from(await blob2.arrayBuffer())) === 0
 }

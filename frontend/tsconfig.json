@@ -1,6 +1,10 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": ["dom", "@tyeps/jquery"]
-  }
+    "lib": ["dom", "es2021"],
+    "types": ["vite/client", "./vite-env.d.ts"],
+    "target": "es2021",
+    "jsx": "react-jsx"
+  },
+  "include": ["**/*.tsx", "**/*.ts"]
 }

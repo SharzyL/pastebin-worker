@@ -3,33 +3,52 @@ on:
   pull_request:
 
 jobs:
-  test:
+  coverage-goshujin:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - ref: ${{ github.ref }}
-            name: "head"
-          - ref: "goshujin"
-            name: "goshujin"
-
-    permissions:
-      contents: read
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.ref }}
+          ref: goshujin
 
       - name: "Install Node"
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: "yarn"
+
+      - name: "Coverage"
+        run: |
+          yarn install
+          yarn build:frontend || true
+          yarn test
+          yarn coverage
+
+      - name: "Upload Coverage"
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-goshujin
+          path: coverage
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: "Install Node"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
           cache: "yarn"
 
       - name: "Install Deps"
         run: yarn install
+
+      - name: "Build Frontend"
+        run: yarn build:frontend
 
       - name: "Test"
         run: |
@@ -43,7 +62,7 @@ jobs:
       - name: "Upload Coverage"
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.name }}
+          name: coverage-head
           path: coverage
 
   report-coverage:

@@ -16,10 +16,7 @@ export type FormDataPart = {
   content: Uint8Array
 }
 
-export function parseFormdata(
-  uint8Array: Uint8Array,
-  boundary: string,
-): Map<string, FormDataPart> {
+export function parseFormdata(uint8Array: Uint8Array, boundary: string): Map<string, FormDataPart> {
   boundary = "--" + boundary
   function readLine(idx: number): number {
     // return the index before the next '\r\n' occurs after idx
@@ -50,22 +47,15 @@ export function parseFormdata(
       }
       dispositionTypeEndIdx++
     }
-    const dispositionType = decode(
-      line.slice(dispositionTypeStartIdx, dispositionTypeEndIdx + 1),
-    )
+    const dispositionType = decode(line.slice(dispositionTypeStartIdx, dispositionTypeEndIdx + 1))
 
     let name: string | undefined, filename: string | undefined
 
-    for (const dispositionField of decode(
-      line.slice(dispositionTypeEndIdx + 2),
-    ).split(";")) {
+    for (const dispositionField of decode(line.slice(dispositionTypeEndIdx + 2)).split(";")) {
       if (dispositionField.match(/^\s*$/)) continue
       const match = dispositionField.match(/\b(\w+)="(.+?)"/)
       if (!match) {
-        throw new WorkerError(
-          400,
-          `Failed to parse formdata ContentDisposition field: '${dispositionField}'`,
-        )
+        throw new WorkerError(400, `Failed to parse formdata ContentDisposition field: '${dispositionField}'`)
       } else {
         const [_, k, v] = match
         if (k == "name") {
@@ -134,10 +124,7 @@ export function parseFormdata(
       for (let i = 0; i < boundary.length; i++) {
         if (line[i] !== boundary.charCodeAt(i)) return LineType.NORMAL
       }
-      if (
-        line[boundary.length] === 0x2d &&
-        line[boundary.length + 1] === 0x2d
-      ) {
+      if (line[boundary.length] === 0x2d && line[boundary.length + 1] === 0x2d) {
         return LineType.END
       }
     }

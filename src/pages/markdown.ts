@@ -28,16 +28,12 @@ function getMetadata(options: { result: DocMetadata }): (_: Root) => void {
       if (tree.children.length > 1) {
         // description is set as the content of the second node
         const secondChild = tree.children[1]
-        options.result.description = escapeHtml(
-          toString(secondChild).slice(0, descriptionLimit),
-        )
+        options.result.description = escapeHtml(toString(secondChild).slice(0, descriptionLimit))
       }
     } else {
       // no title is set
       // description is set as the content of the first node
-      options.result.description = escapeHtml(
-        toString(firstChild).slice(0, descriptionLimit),
-      )
+      options.result.description = escapeHtml(toString(firstChild).slice(0, descriptionLimit))
     }
   }
 }

@@ -19,6 +19,9 @@ jobs:
       - name: "Setup"
         run: yarn install
 
+      - name: "Build Frontend"
+        run: yarn build:frontend
+
       - name: "Test"
         run: |
           yarn prettier -c .

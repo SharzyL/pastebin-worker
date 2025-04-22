@@ -30,9 +30,6 @@ BASE_URL = "https://shz.al"
 # url to repo, displayed in the index page
 REPO = "https://github.com/SharzyL/pastebin-worker"
 
-# url to the favicon
-FAVICON = "https://sharzy.in/favicon-32x32.png"
-
 # the name displayed in TOS
 TOS_MAINTAINER = "Sharzy"
 
@@ -53,7 +50,4 @@ MAX_EXPIRATION = "30d"
 
 # A collection of {username: password} pair
 # Leave empty to disable auth
-BASIC_AUTH = {
-  "user1": "passwd1",
-  "user2": "passwd2",
-}
+BASIC_AUTH = { "user1" = "passwd1", "user2" = "passwd2" }

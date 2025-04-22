@@ -1,11 +1,8 @@
-import { parsePath, WorkerError } from "../common.js"
+import { WorkerError } from "../common.js"
 import { deletePaste, getPasteMetadata } from "../storage/storage.js"
+import { parsePath } from "../shared.js"
 
-export async function handleDelete(
-  request: Request,
-  env: Env,
-  _: ExecutionContext,
-) {
+export async function handleDelete(request: Request, env: Env, _: ExecutionContext) {
   const url = new URL(request.url)
   const { nameFromPath, passwd } = parsePath(url.pathname)
   const metadata = await getPasteMetadata(env, nameFromPath)
@@ -13,10 +10,7 @@ export async function handleDelete(
     throw new WorkerError(404, `paste of name '${nameFromPath}' not found`)
   } else {
     if (passwd !== metadata.passwd) {
-      throw new WorkerError(
-        403,
-        `incorrect password for paste '${nameFromPath}`,
-      )
+      throw new WorkerError(403, `incorrect password for paste '${nameFromPath}`)
     } else {
       await deletePaste(env, nameFromPath)
       return new Response("the paste will be deleted in seconds")

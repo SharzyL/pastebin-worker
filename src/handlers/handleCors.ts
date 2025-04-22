@@ -6,16 +6,9 @@ const corsHeaders = {
 
 export function handleOptions(request: Request) {
   const headers = request.headers
-  if (
-    headers.get("Origin") !== null &&
-    headers.get("Access-Control-Request-Method") !== null
-  ) {
+  if (headers.get("Origin") !== null && headers.get("Access-Control-Request-Method") !== null) {
     const respHeaders: { [name: string]: string } = corsHeaders
-    if ("Access-Control-Request-Methods" in respHeaders) {
-      respHeaders["Access-Control-Allow-Headers"] = request.headers.get(
-        "Access-Control-Request-Headers",
-      )!
-    }
+    respHeaders["Access-Control-Allow-Headers"] = "*"
 
     return new Response(null, {
       headers: respHeaders,
@@ -30,7 +23,6 @@ export function handleOptions(request: Request) {
 }
 
 export function corsWrapResponse(response: Response) {
-  if (response.headers !== undefined)
-    response.headers.set("Access-Control-Allow-Origin", "*")
+  if (response.headers !== undefined) response.headers.set("Access-Control-Allow-Origin", "*")
   return response
 }
