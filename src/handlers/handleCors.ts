@@ -23,7 +23,7 @@ export function handleOptions(request: Request) {
   } else {
     return new Response(null, {
       headers: {
-        Allow: "GET, HEAD, POST, PUT, OPTIONS",
+        Allow: "GET, HEAD, POST, PUT, OPTIONS, DELETE",
       },
     })
   }
