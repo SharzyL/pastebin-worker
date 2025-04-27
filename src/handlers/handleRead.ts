@@ -9,6 +9,23 @@ import { parsePath } from "../shared.js"
 
 type Headers = { [name: string]: string }
 
+async function decodeMaybeStream(content: ArrayBuffer | ReadableStream): Promise<string> {
+  if (content instanceof ArrayBuffer) {
+    return decode(content)
+  } else {
+    const reader = content.pipeThrough(new TextDecoderStream()).getReader()
+    let result = ""
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      result += value
+    }
+    return result
+  }
+}
+
 function staticPageCacheHeader(env: Env): Headers {
   const age = env.CACHE_STATIC_PAGE_AGE
   return age ? { "Cache-Control": `public, max-age=${age}` } : {}
@@ -76,8 +93,8 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
   return null
 }
 
-export async function handleGet(request: Request, env: Env, _: ExecutionContext): Promise<Response> {
-  const staticPageResp = await handleStaticPages(request, env, _)
+export async function handleGet(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const staticPageResp = await handleStaticPages(request, env, ctx)
   if (staticPageResp !== null) {
     return staticPageResp
   }
@@ -88,7 +105,7 @@ export async function handleGet(request: Request, env: Env, _: ExecutionContext)
 
   const disp = url.searchParams.has("a") ? "attachment" : "inline"
 
-  const item = await getPaste(env, nameFromPath)
+  const item = await getPaste(env, nameFromPath, ctx)
 
   // when paste is not found
   if (item === null) {
@@ -120,7 +137,7 @@ export async function handleGet(request: Request, env: Env, _: ExecutionContext)
 
   // handle URL redirection
   if (role === "u") {
-    const redirectURL = decode(item.paste)
+    const redirectURL = await decodeMaybeStream(item.paste)
     if (isLegalUrl(redirectURL)) {
       return Response.redirect(redirectURL)
     } else {
@@ -130,7 +147,7 @@ export async function handleGet(request: Request, env: Env, _: ExecutionContext)
 
   // handle article (render as markdown)
   if (role === "a") {
-    const md = makeMarkdown(decode(item.paste))
+    const md = makeMarkdown(await decodeMaybeStream(item.paste))
     return new Response(md, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
@@ -143,7 +160,7 @@ export async function handleGet(request: Request, env: Env, _: ExecutionContext)
   // handle language highlight
   const lang = url.searchParams.get("lang")
   if (lang) {
-    return new Response(makeHighlight(decode(item.paste), lang), {
+    return new Response(makeHighlight(await decodeMaybeStream(item.paste), lang), {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),

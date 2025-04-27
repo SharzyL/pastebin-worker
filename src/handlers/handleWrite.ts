@@ -3,7 +3,6 @@ import { decode, genRandStr, isLegalUrl, WorkerError } from "../common.js"
 import { createPaste, getPasteMetadata, pasteNameAvailable, updatePaste } from "../storage/storage.js"
 import {
   DEFAULT_PASSWD_LEN,
-  MAX_LEN,
   NAME_REGEX,
   PASTE_NAME_LEN,
   PasteResponse,
@@ -13,6 +12,7 @@ import {
   parsePath,
   MIN_PASSWD_LEN,
   MAX_PASSWD_LEN,
+  parseSize,
 } from "../shared.js"
 
 function suggestUrl(short: string, baseUrl: string, filename?: string, contentAsString?: string) {
@@ -93,7 +93,7 @@ export async function handlePostOrPut(
   // check if paste content is legal
   if (content === undefined) {
     throw new WorkerError(400, "cannot find content in formdata")
-  } else if (contentLength > MAX_LEN) {
+  } else if (contentLength > parseSize(env.R2_MAX_ALLOWED)!) {
     throw new WorkerError(413, "payload too large")
   }
 

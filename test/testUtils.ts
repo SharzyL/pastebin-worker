@@ -21,36 +21,45 @@ export async function workerFetch(ctx: ExecutionContext, req: Request | string) 
   return await worker.fetch(new Request(req), env, ctx)
 }
 
-export async function upload(ctx: ExecutionContext, kv: FormDataBuild): Promise<PasteResponse> {
+export async function upload(
+  ctx: ExecutionContext,
+  kv: FormDataBuild,
+  method: "POST" | "PUT" = "POST",
+  url: string = BASE_URL,
+): Promise<PasteResponse> {
   const uploadResponse = await workerFetch(
     ctx,
-    new Request(BASE_URL, {
-      method: "POST",
+    new Request(url, {
+      method,
       body: createFormData(kv),
     }),
   )
   if (uploadResponse.status !== 200) {
     const uploadMsg = await uploadResponse.text()
-    console.log(`failed upload response ${uploadMsg}`)
+    throw new Error(uploadMsg)
   }
-  expect(uploadResponse.status).toStrictEqual(200)
   expect(uploadResponse.headers.get("Content-Type")).toStrictEqual("application/json;charset=UTF-8")
   return JSON.parse(await uploadResponse.text()) as PasteResponse
 }
 
-export async function uploadExpectStatus(ctx: ExecutionContext, kv: FormDataBuild, expectedStatsu: number) {
+export async function uploadExpectStatus(
+  ctx: ExecutionContext,
+  kv: FormDataBuild,
+  expectedStatuus: number,
+  method: string = "POST",
+  url: string = BASE_URL,
+): Promise<void> {
   const uploadResponse = await workerFetch(
     ctx,
-    new Request(BASE_URL, {
-      method: "POST",
+    new Request(url, {
+      method,
       body: createFormData(kv),
     }),
   )
-  const uploadMsg = await uploadResponse.text()
-  expect(
-    uploadResponse.status,
-    `Upload status not expected: (expecting ${expectedStatsu}): ${uploadMsg}`,
-  ).toStrictEqual(expectedStatsu)
+  if (uploadResponse.status !== expectedStatuus) {
+    const uploadMsg = await uploadResponse.text()
+    throw new Error(uploadMsg)
+  }
 }
 
 export function createFormData(kv: FormDataBuild): FormData {
@@ -71,7 +80,12 @@ export function createFormData(kv: FormDataBuild): FormData {
 
 export function genRandomBlob(len: number): Blob {
   const buf = Buffer.alloc(len)
-  return new Blob([crypto.randomFillSync(buf, 0, len)])
+  const chunkSize = 4096
+  for (let i = 0; i < len; i += chunkSize) {
+    const fillLen = Math.min(len - i, chunkSize)
+    crypto.randomFillSync(buf, i, fillLen)
+  }
+  return new Blob([buf])
 }
 
 export async function areBlobsEqual(blob1: Blob, blob2: Blob) {

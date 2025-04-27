@@ -27,6 +27,10 @@ custom_domain = true
 binding = "PB"  # do not touch this
 id = "435f8959b9de485ea48751ba557d90f5"  # id of your KV namespace
 
+[[r2_buckets]]
+binding = "R2"  # do not touch this
+bucket_name = "pb-shz-al"  # bucket name of your R2 bucket
+
 [vars]
 # must be consistent with your routes
 DEPLOY_URL = "https://shz.al"
@@ -58,3 +62,9 @@ MAX_EXPIRATION = "30d"
 # A collection of {username: password} pair
 # Leave empty to disable auth
 BASIC_AUTH = {}
+
+# if file larger than this threshold, it will be stored in R2
+R2_THRESHOLD = "100K"
+
+# file larger than this will be denied
+R2_MAX_ALLOWED = "100M"

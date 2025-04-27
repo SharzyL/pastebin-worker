@@ -5,7 +5,6 @@ import { genRandStr } from "../src/common"
 import {
   genRandomBlob,
   areBlobsEqual,
-  createFormData,
   workerFetch,
   upload,
   BASE_URL,
@@ -18,28 +17,20 @@ import {
   MAX_PASSWD_LEN,
   MIN_PASSWD_LEN,
   PASTE_NAME_LEN,
-  PasteResponse,
   PRIVATE_PASTE_NAME_LEN,
 } from "../src/shared"
 
 test("basic", async () => {
   const blob1 = genRandomBlob(1024)
   const blob2 = new Blob(["hello"])
+  const passwd1 = "7365ca6eac619ca3f118"
   const ctx = createExecutionContext()
 
   // upload
-  const uploadResponse = await workerFetch(
-    ctx,
-    new Request(`${BASE_URL}`, {
-      method: "POST",
-      body: createFormData({ c: blob1 }),
-    }),
-  )
-  expect(uploadResponse.status).toStrictEqual(200)
-  const responseJson = JSON.parse(await uploadResponse.text()) as PasteResponse
+  const responseJson = await upload(ctx, { c: blob1 })
 
   // check url
-  const url: string = responseJson["url"]
+  const url: string = responseJson.url
   expect(url.startsWith(BASE_URL))
 
   // check name
@@ -48,7 +39,7 @@ test("basic", async () => {
   expect(RAND_NAME_REGEX.test(name))
 
   // check manageUrl
-  const manageUrl: string = responseJson["manageUrl"]
+  const manageUrl: string = responseJson.manageUrl
   expect(manageUrl).toBeDefined()
   expect(manageUrl.startsWith(BASE_URL))
   expect(manageUrl.slice(BASE_URL.length + 1, manageUrl.lastIndexOf(":"))).toStrictEqual(name)
@@ -71,34 +62,12 @@ test("basic", async () => {
   expect(missingResponse.status).toStrictEqual(404)
 
   // check modify with wrong manageUrl
-  let wrongPasswd
-  do {
-    wrongPasswd = genRandStr(DEFAULT_PASSWD_LEN)
-  } while (wrongPasswd === passwd)
-  expect(
-    (
-      await workerFetch(
-        ctx,
-        new Request(`${url}:${wrongPasswd}`, {
-          method: "PUT",
-          body: createFormData({ c: blob2 }),
-        }),
-      )
-    ).status,
-  ).toStrictEqual(403)
+  await uploadExpectStatus(ctx, { c: blob2 }, 403, "PUT", `${url}:${passwd1}`)
 
   // check modify
-  const putResponse = await workerFetch(
-    ctx,
-    new Request(manageUrl, {
-      method: "PUT",
-      body: createFormData({ c: blob2 }),
-    }),
-  )
-  expect(putResponse.status).toStrictEqual(200)
-  const putResponseJson = JSON.parse(await putResponse.text()) as PasteResponse
-  expect(putResponseJson["url"]).toStrictEqual(url)
-  expect(putResponseJson["manageUrl"]).toStrictEqual(manageUrl)
+  const putResponseJson = await upload(ctx, { c: blob2 }, "PUT", manageUrl)
+  expect(putResponseJson.url).toStrictEqual(url)
+  expect(putResponseJson.manageUrl).toStrictEqual(manageUrl)
 
   // check visit modified
   const revisitModifiedResponse = await workerFetch(ctx, url)
@@ -107,16 +76,7 @@ test("basic", async () => {
   expect(await areBlobsEqual(revisitBlob, blob2)).toBeTruthy()
 
   // check delete with wrong manageUrl
-  expect(
-    (
-      await workerFetch(
-        ctx,
-        new Request(`${url}:${wrongPasswd}`, {
-          method: "DELETE",
-        }),
-      )
-    ).status,
-  ).toStrictEqual(403)
+  expect((await workerFetch(ctx, new Request(`${url}:${passwd1}`, { method: "DELETE" }))).status).toStrictEqual(403)
 
   // check delete
   const deleteResponse = await workerFetch(ctx, new Request(manageUrl, { method: "DELETE" }))
@@ -132,15 +92,7 @@ test("upload long", async () => {
   const ctx = createExecutionContext()
 
   // upload
-  const uploadResponse = await workerFetch(
-    ctx,
-    new Request(BASE_URL, {
-      method: "POST",
-      body: createFormData({ c: blob1, p: "1" }),
-    }),
-  )
-  expect(uploadResponse.status).toStrictEqual(200)
-  const responseJson = JSON.parse(await uploadResponse.text()) as PasteResponse
+  const responseJson = await upload(ctx, { c: blob1, p: "1" })
 
   // check url
   const url = responseJson["url"]
@@ -160,6 +112,7 @@ test("upload long", async () => {
 test("expire", async () => {
   const blob1 = genRandomBlob(1024)
   const ctx = createExecutionContext()
+
   async function testExpireParse(expire: string, expireSecs: number | null) {
     const responseJson = await upload(ctx, { c: blob1, e: expire })
     expect(responseJson["expirationSeconds"]).toStrictEqual(expireSecs)
@@ -174,14 +127,7 @@ test("expire", async () => {
   await testExpireParse("", 604800)
 
   const testFailParse = async (expire: string) => {
-    const uploadResponse = await workerFetch(
-      ctx,
-      new Request(BASE_URL, {
-        method: "POST",
-        body: createFormData({ c: blob1, e: expire }),
-      }),
-    )
-    expect(uploadResponse.status).toStrictEqual(400)
+    await uploadExpectStatus(ctx, { c: blob1, e: expire }, 400)
   }
 
   await testFailParse("abc")
@@ -196,14 +142,7 @@ test("custom path", async () => {
   // check bad names
   const badNames = ["a", "ab", "..."]
   for (const name of badNames) {
-    const uploadResponse = await workerFetch(
-      ctx,
-      new Request(BASE_URL, {
-        method: "POST",
-        body: createFormData({ c: blob1, n: name }),
-      }),
-    )
-    expect(uploadResponse.status).toStrictEqual(400)
+    await uploadExpectStatus(ctx, { c: blob1, n: name }, 400)
   }
 
   // check good name upload
@@ -227,12 +166,9 @@ test("custom passwd", async () => {
   // check good name upload
   const passwd = "1366eaa20c071763dc94"
   const wrongPasswd = "7365ca6eac619ca3f118"
-  const uploadResponseJson = await upload(ctx, {
-    c: blob1,
-    s: passwd,
-  })
-  const url = uploadResponseJson["url"]
-  const manageUrl = uploadResponseJson["manageUrl"]
+  const uploadResponseJson = await upload(ctx, { c: blob1, s: passwd })
+  const url = uploadResponseJson.url
+  const manageUrl = uploadResponseJson.manageUrl
   const parsedPasswd = manageUrl.slice(manageUrl.lastIndexOf(":") + 1)
   expect(parsedPasswd).toStrictEqual(passwd)
 
@@ -242,30 +178,12 @@ test("custom passwd", async () => {
   await uploadExpectStatus(ctx, { c: blob1, s: "1".repeat(MAX_PASSWD_LEN + 1) }, 400)
 
   // check modify with wrong manageUrl
-  expect(
-    (
-      await workerFetch(
-        ctx,
-        new Request(`${url}:${wrongPasswd}`, {
-          method: "PUT",
-          body: createFormData({ c: blob1 }),
-        }),
-      )
-    ).status,
-  ).toStrictEqual(403)
+  await uploadExpectStatus(ctx, { c: blob1 }, 403, "PUT", `${url}:${wrongPasswd}`)
 
   // check modify
-  const putResponse = await workerFetch(
-    ctx,
-    new Request(manageUrl, {
-      method: "PUT",
-      body: createFormData({ c: blob1, s: wrongPasswd }),
-    }),
-  )
-  expect(putResponse.status).toStrictEqual(200)
-  const putResponseJson = JSON.parse(await putResponse.text()) as PasteResponse
-  expect(putResponseJson["url"]).toStrictEqual(url) // url will not change
-  expect(putResponseJson["manageUrl"]).toStrictEqual(`${url}:${wrongPasswd}`) // passwd may change
+  const putResponseJson = await upload(ctx, { c: blob1, s: wrongPasswd }, "PUT", manageUrl)
+  expect(putResponseJson.url).toStrictEqual(url) // url will not change
+  expect(putResponseJson.manageUrl).toStrictEqual(`${url}:${wrongPasswd}`) // passwd may change
 })
 
 // TODO: add tests for CORS

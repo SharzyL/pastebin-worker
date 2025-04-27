@@ -16,7 +16,21 @@ export const DEFAULT_PASSWD_LEN = 24
 export const MAX_PASSWD_LEN = 128
 export const MIN_PASSWD_LEN = 8
 export const PASSWD_SEP = ":"
-export const MAX_LEN = 25 * 1024 * 1024
+
+export function parseSize(sizeStr: string): number | null {
+  sizeStr = sizeStr.trim()
+  const EXPIRE_REGEX = /^[\d.]+\s*[KMG]?$/
+  if (!EXPIRE_REGEX.test(sizeStr)) {
+    return null
+  }
+
+  let sizeBytes = parseFloat(sizeStr)
+  const lastChar = sizeStr[sizeStr.length - 1]
+  if (lastChar === "K") sizeBytes *= 1024
+  else if (lastChar === "M") sizeBytes *= 1024 * 1024
+  else if (lastChar === "G") sizeBytes *= 1024 * 1024 * 1024
+  return sizeBytes
+}
 
 export function parseExpiration(expirationStr: string): number | null {
   expirationStr = expirationStr.trim()

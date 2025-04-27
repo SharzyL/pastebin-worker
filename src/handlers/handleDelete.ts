@@ -12,7 +12,7 @@ export async function handleDelete(request: Request, env: Env, _: ExecutionConte
     if (passwd !== metadata.passwd) {
       throw new WorkerError(403, `incorrect password for paste '${nameFromPath}`)
     } else {
-      await deletePaste(env, nameFromPath)
+      await deletePaste(env, nameFromPath, metadata)
       return new Response("the paste will be deleted in seconds")
     }
   }

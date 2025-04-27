@@ -1,27 +1,79 @@
 import { dateToUnix, WorkerError } from "../common.js"
+import { parseSize } from "../shared.js"
 
+export type PasteLocation = "KV" | "R2"
+
+// TODO: allow admin to upload permanent paste
+// TODO: add filename length check
 export type PasteMetadata = {
-  schemaVersion: number
+  schemaVersion: 1
+  location: PasteLocation // new field on V1
   passwd: string
 
   lastModifiedAtUnix: number
   createdAtUnix: number
-  // TODO: allow admin to upload permanent paste
   willExpireAtUnix: number
 
   accessCounter: number // a counter representing how frequent it is accessed, to administration usage
-  sizeBytes?: number
-  // TODO: add filename length check
+  sizeBytes: number
   filename?: string
 }
 
+type PasteMetadataInStorage = {
+  schemaVersion: number
+  location?: PasteLocation
+  passwd: string
+
+  lastModifiedAtUnix: number
+  createdAtUnix: number
+  willExpireAtUnix: number
+
+  accessCounter?: number
+  sizeBytes?: number
+  filename?: string
+}
+
+function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
+  return {
+    schemaVersion: 1,
+    location: original.location || "KV",
+    passwd: original.passwd,
+
+    lastModifiedAtUnix: original.lastModifiedAtUnix,
+    createdAtUnix: original.createdAtUnix,
+    willExpireAtUnix: original.willExpireAtUnix,
+
+    accessCounter: original.accessCounter || 0,
+    sizeBytes: original.sizeBytes || 0,
+    filename: original.filename,
+  }
+}
+
 export type PasteWithMetadata = {
-  paste: ArrayBuffer
+  paste: ArrayBuffer | ReadableStream
   metadata: PasteMetadata
 }
 
-export async function getPaste(env: Env, short: string): Promise<PasteWithMetadata | null> {
-  const item = await env.PB.getWithMetadata<PasteMetadata>(short, {
+async function updateAccessCounter(env: Env, short: string, value: ArrayBuffer, metadata: PasteMetadata) {
+  // update counter with probability 1%
+  if (Math.random() < 0.01) {
+    metadata.accessCounter += 1
+    try {
+      await env.PB.put(short, value, {
+        metadata: metadata,
+        expiration: metadata.willExpireAtUnix,
+      })
+    } catch (e) {
+      // ignore rate limit message
+      if (!(e as Error).message.includes("KV PUT failed: 429 Too Many Requests")) {
+        throw e
+      }
+    }
+  }
+}
+
+export async function getPaste(env: Env, short: string, ctx: ExecutionContext): Promise<PasteWithMetadata | null> {
+  const item = await env.PB.getWithMetadata<PasteMetadataInStorage>(short, {
     type: "arrayBuffer",
   })
 
@@ -30,34 +82,38 @@ export async function getPaste(env: Env, short: string): Promise<PasteWithMetada
   } else if (item.metadata === null) {
     throw new WorkerError(500, `paste of name '${short}' has no metadata`)
   } else {
-    if (item.metadata.willExpireAtUnix < new Date().getTime() / 1000) {
+    const metadata = migratePasteMetadata(item.metadata)
+    const expired = metadata.willExpireAtUnix < new Date().getTime() / 1000
+
+    ctx.waitUntil(
+      (async () => {
+        if (expired) {
+          await deletePaste(env, short, metadata)
+          return null
+        }
+        await updateAccessCounter(env, short, item.value!, metadata)
+      })(),
+    )
+
+    if (expired) {
       return null
     }
 
-    // update counter with probability 1%
-    // TODO: use waitUntil API
-    if (Math.random() < 0.01) {
-      item.metadata.accessCounter += 1
-      try {
-        await env.PB.put(short, item.value, {
-          metadata: item.metadata,
-          expiration: item.metadata.willExpireAtUnix,
-        })
-      } catch (e) {
-        // ignore rate limit message
-        if (!(e as Error).message.includes("KV PUT failed: 429 Too Many Requests")) {
-          throw e
-        }
+    if (metadata.location === "R2") {
+      const object = await env.R2.get(short)
+      if (object === null) {
+        throw new WorkerError(404, `cannot find R2 bucket of name '${short}'`)
       }
+      return { paste: object.body, metadata }
+    } else {
+      return { paste: item.value, metadata }
     }
-
-    return { paste: item.value, metadata: item.metadata }
   }
 }
 
 // we separate usage of getPasteMetadata and getPaste to make access metric more reliable
 export async function getPasteMetadata(env: Env, short: string): Promise<PasteMetadata | null> {
-  const item = await env.PB.getWithMetadata<PasteMetadata>(short, {
+  const item = await env.PB.getWithMetadata<PasteMetadataInStorage>(short, {
     type: "stream",
   })
 
@@ -69,7 +125,7 @@ export async function getPasteMetadata(env: Env, short: string): Promise<PasteMe
     if (item.metadata.willExpireAtUnix < new Date().getTime() / 1000) {
       return null
     }
-    return item.metadata
+    return migratePasteMetadata(item.metadata)
   }
 }
 
@@ -87,22 +143,29 @@ export async function updatePaste(
   },
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
-  const putOptions: KVNamespacePutOptions = {
-    metadata: {
-      schemaVersion: 0,
-      filename: options.filename || originalMetadata.filename,
-      passwd: options.passwd,
+  // since CF does not allow expiration shorter than 60s, extend the expiration to 70s
+  const expirationUnixSpecified = dateToUnix(options.now) + Math.max(options.expirationSeconds, 70)
 
-      lastModifiedAtUnix: dateToUnix(options.now),
-      createdAtUnix: originalMetadata.createdAtUnix,
-      willExpireAtUnix: expirationUnix,
-      accessCounter: originalMetadata.accessCounter,
-      sizeBytes: options.contentLength,
-    },
-    expiration: expirationUnix,
+  if (originalMetadata.location === "R2") {
+    await env.R2.put(pasteName, content)
+  }
+  const metadata: PasteMetadata = {
+    schemaVersion: 1,
+    location: originalMetadata.location,
+    filename: options.filename || originalMetadata.filename,
+    passwd: options.passwd,
+
+    lastModifiedAtUnix: dateToUnix(options.now),
+    createdAtUnix: originalMetadata.createdAtUnix,
+    willExpireAtUnix: expirationUnix,
+    accessCounter: originalMetadata.accessCounter,
+    sizeBytes: options.contentLength,
   }
 
-  await env.PB.put(pasteName, content, putOptions)
+  await env.PB.put(pasteName, originalMetadata.location === "R2" ? "" : content, {
+    metadata: metadata,
+    expiration: expirationUnixSpecified,
+  })
 }
 
 export async function createPaste(
@@ -118,22 +181,32 @@ export async function createPaste(
   },
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
-  const putOptions: KVNamespacePutOptions = {
-    metadata: {
-      schemaVersion: 0,
-      filename: options.filename,
-      passwd: options.passwd,
 
-      lastModifiedAtUnix: dateToUnix(options.now),
-      createdAtUnix: dateToUnix(options.now),
-      willExpireAtUnix: expirationUnix,
-      accessCounter: 0,
-      sizeBytes: options.contentLength,
-    },
-    expiration: expirationUnix,
+  // since CF does not allow expiration shorter than 60s, extend the expiration to 70s
+  const expirationUnixSpecified = dateToUnix(options.now) + Math.max(options.expirationSeconds, 70)
+
+  const location = options.contentLength > parseSize(env.R2_THRESHOLD)! ? "R2" : "KV"
+  if (location === "R2") {
+    await env.R2.put(pasteName, content)
   }
 
-  await env.PB.put(pasteName, content, putOptions)
+  const metadata: PasteMetadata = {
+    schemaVersion: 1,
+    location: location,
+    filename: options.filename,
+    passwd: options.passwd,
+
+    lastModifiedAtUnix: dateToUnix(options.now),
+    createdAtUnix: dateToUnix(options.now),
+    willExpireAtUnix: expirationUnix,
+    accessCounter: 0,
+    sizeBytes: options.contentLength,
+  }
+
+  await env.PB.put(pasteName, location === "R2" ? "" : content, {
+    metadata: metadata,
+    expiration: expirationUnixSpecified,
+  })
 }
 
 export async function pasteNameAvailable(env: Env, pasteName: string): Promise<boolean> {
@@ -147,6 +220,9 @@ export async function pasteNameAvailable(env: Env, pasteName: string): Promise<b
   }
 }
 
-export async function deletePaste(env: Env, pasteName: string): Promise<void> {
+export async function deletePaste(env: Env, pasteName: string, originalMetadata: PasteMetadata): Promise<void> {
   await env.PB.delete(pasteName)
+  if (originalMetadata.location === "R2") {
+    await env.R2.delete(pasteName)
+  }
 }
