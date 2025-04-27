@@ -45,6 +45,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 }
 
 async function handleNormalRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  // TODO: support HEAD method
   if (request.method === "POST") {
     return await handlePostOrPut(request, env, ctx, false)
   } else if (request.method === "GET") {

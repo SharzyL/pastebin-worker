@@ -120,6 +120,7 @@ export function PasteBin() {
 
   // handle admin URL
   useEffect(() => {
+    // TODO: do not fetch paste for a large file paste
     const pathname = location.pathname
     const { nameFromPath, passwd, filename, ext } = parsePath(pathname)
 
@@ -201,6 +202,7 @@ export function PasteBin() {
       setIsLoading(true)
       setPasteResponse(null)
       const isUpdate = uploadKind !== "manage"
+      // TODO: add progress indicator
       const resp = isUpdate
         ? await fetch(APIUrl, {
             method: "POST",

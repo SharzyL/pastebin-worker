@@ -113,6 +113,7 @@ export async function getPaste(env: Env, short: string, ctx: ExecutionContext): 
       if (object === null) {
         return null
       }
+      // TODO: how Content-Length handled?
       return { paste: object.body, metadata }
     } else {
       return { paste: item.value, metadata }
