@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { areBlobsEqual, BASE_URL, createFormData, genRandomBlob, staticPages, workerFetch } from "./testUtils.js"
+import { areBlobsEqual, BASE_URL, createFormData, genRandomBlob, workerFetch } from "./testUtils.js"
 import { encodeBasicAuth, decodeBasicAuth } from "../src/auth.js"
 import { createExecutionContext, env } from "cloudflare:test"
 import { PasteResponse } from "../src/shared"
@@ -32,7 +32,7 @@ test("basic auth", async () => {
   env.BASIC_AUTH = users
 
   // access index page
-  for (const page of staticPages) {
+  for (const page of ["", "index", "index.html"]) {
     expect((await workerFetch(ctx, `${BASE_URL}/${page}`)).status).toStrictEqual(401)
   }
   expect(

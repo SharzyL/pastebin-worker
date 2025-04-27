@@ -9,7 +9,7 @@ import { PasteResponse } from "../src/shared"
 export const BASE_URL: string = env.DEPLOY_URL
 export const RAND_NAME_REGEX = /^[ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678]+$/
 
-export const staticPages = ["", "index.html", "index", "tos", "tos.html", "api", "api.html"]
+export const staticPages = ["", "index.html", "index", "tos", "tos.html", "api", "api.html", "favicon.ico"]
 
 type FormDataBuild = {
   [key: string]: string | Blob | { content: Blob; filename: string }

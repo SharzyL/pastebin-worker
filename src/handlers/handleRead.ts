@@ -52,7 +52,7 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
   } else if (path.lastIndexOf("/") === 0 && path.indexOf(":") > 0) {
     path = "/index.html" // handle admin URL
   }
-  if (path.startsWith("/assets/") || path.startsWith("/static/") || path === "/index.html") {
+  if (path.startsWith("/assets/") || path === "/favicon.ico" || path === "/index.html") {
     if (path === "/index.html") {
       const authResponse = verifyAuth(request, env)
       if (authResponse !== null) {
