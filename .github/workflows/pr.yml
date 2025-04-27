@@ -20,7 +20,7 @@ jobs:
       - name: "Coverage"
         run: |
           yarn install
-          yarn build:frontend || true
+          yarn build:frontend
           yarn test
           yarn coverage
 
