@@ -37,6 +37,9 @@ REPO = "https://github.com/SharzyL/pastebin-worker"
 # the name displayed in TOS
 TOS_MAINTAINER = "Sharzy"
 
+# the page title displayed in index page
+INDEX_PAGE_TITLE = "Pastebin Worker"
+
 # the email displayed in TOS
 TOS_MAIL = "pb@shz.al"
 

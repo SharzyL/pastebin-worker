@@ -17,16 +17,28 @@ export default defineConfig(({ mode }) => {
       throw new Error(`Cannot find vars.${name} in ${wranglerConfigPath}`)
     }
   }
-  let deployUrl = getVar("DEPLOY_URL")
+  const deployUrl = getVar("DEPLOY_URL")
+
+  const indexTitle = getVar("INDEX_PAGE_TITLE") + (mode === "development" ? " (dev)" : "")
+  const transformHtmlPlugin = () => ({
+    name: "transform-html",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html) {
+        return html.replace(/%INDEX_PAGE_TITLE%/g, () => indexTitle)
+      },
+    },
+  })
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), transformHtmlPlugin()],
     define: {
       DEPLOY_URL: mode === "development" ? JSON.stringify(devAPIUrl) : JSON.stringify(deployUrl),
       API_URL: mode === "development" ? JSON.stringify(devAPIUrl) : JSON.stringify(""),
       REPO: JSON.stringify(getVar("REPO")),
       MAX_EXPIRATION: JSON.stringify(getVar("MAX_EXPIRATION")),
       DEFAULT_EXPIRATION: JSON.stringify(getVar("DEFAULT_EXPIRATION")),
+      INDEX_PAGE_TITLE: JSON.stringify(indexTitle),
     },
     server: {
       port: 5173,

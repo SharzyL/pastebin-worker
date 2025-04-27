@@ -261,7 +261,9 @@ export function PasteBin() {
 
   const info = (
     <div className="mx-4 lg:mx-0">
-      <h1 className="text-3xl mt-8 mb-4 relative">Pastebin Worker {toggleDarkModeButton}</h1>
+      <h1 className="text-3xl mt-8 mb-4 relative">
+        {INDEX_PAGE_TITLE} {toggleDarkModeButton}
+      </h1>
       <p className="my-2">This is an open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
         <b>Usage</b>: paste any text here, submit, then share it with URL. (
