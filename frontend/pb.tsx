@@ -68,6 +68,7 @@ export function PasteBin() {
 
   const [isModalOpen, setModalOpen] = useState(false)
   const [modalErrMsg, setModalErrMsg] = useState("")
+  const [modalErrTitle, setModalErrTitle] = useState("")
 
   const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
 
@@ -75,15 +76,16 @@ export function PasteBin() {
   const systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : false
   const isDark = darkModeSelect === "system" ? systemDark : darkModeSelect === "dark"
 
-  function showErrorMsg(err: string) {
+  function showErrorMsg(err: string, title: string) {
     setModalErrMsg(err)
+    setModalErrTitle(title)
     setModalOpen(true)
   }
 
-  async function reportResponseError(resp: Response) {
+  async function reportResponseError(resp: Response, title: string) {
     const statusText = resp.statusText === "error" ? "Unknown error" : resp.statusText
     const errText = (await resp.text()) || statusText
-    reportError(errText)
+    showErrorMsg(errText, title)
   }
 
   const errorModal = (
@@ -98,7 +100,7 @@ export function PasteBin() {
       }}
     >
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">Error</ModalHeader>
+        <ModalHeader className="flex flex-col gap-1">{modalErrTitle}</ModalHeader>
         <ModalBody>
           <p>{modalErrMsg}</p>
         </ModalBody>
@@ -130,7 +132,7 @@ export function PasteBin() {
 
         const resp = await fetch(pasteUrl)
         if (!resp.ok) {
-          await reportResponseError(resp)
+          await reportResponseError(resp, `Error on fetching ${pasteUrl}`)
           return
         }
         const contentType = resp.headers.get("Content-Type")
@@ -176,13 +178,13 @@ export function PasteBin() {
     const fd = new FormData()
     if (editKind === "file") {
       if (uploadFile === null) {
-        showErrorMsg("No file selected")
+        showErrorMsg("No file selected", "Error on preparing upload")
         return
       }
       fd.append("c", uploadFile)
     } else {
       if (pasteEdit.length === 0) {
-        showErrorMsg("Empty paste")
+        showErrorMsg("Empty paste", "Error on preparing upload")
         return
       }
       fd.append("c", pasteEdit)
@@ -211,10 +213,10 @@ export function PasteBin() {
         const respParsed = JSON.parse(await resp.text()) as PasteResponse
         setPasteResponse(respParsed)
       } else {
-        await reportResponseError(resp)
+        await reportResponseError(resp, `Error ${resp.status}`)
       }
     } catch (e) {
-      showErrorMsg((e as Error).toString())
+      showErrorMsg((e as Error).toString(), "Error on uploading paste")
       console.error(e)
     }
   }
@@ -227,9 +229,10 @@ export function PasteBin() {
       if (resp.ok) {
         setPasteResponse(null)
       } else {
-        await reportResponseError(resp)
+        await reportResponseError(resp, `Error ${resp.status}`)
       }
     } catch (e) {
+      showErrorMsg((e as Error).message, "Error on deleting paste")
       console.error(e)
     }
   }
