@@ -4,10 +4,16 @@ import { handleOptions, corsWrapResponse } from "./handlers/handleCors.js"
 import { handlePostOrPut } from "./handlers/handleWrite.js"
 import { handleGet } from "./handlers/handleRead.js"
 import { handleDelete } from "./handlers/handleDelete.js"
+import { cleanExpiredInR2 } from "./storage/storage.js"
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     return await handleRequest(request, env, ctx)
+  },
+
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async scheduled(controller: ScheduledController, env, ctx) {
+    ctx.waitUntil(cleanExpiredInR2(env, controller))
   },
 } satisfies ExportedHandler<Env>
 

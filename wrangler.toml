@@ -14,6 +14,10 @@ directory = "dist/frontend"
 run_worker_first = true
 binding = "ASSETS"
 
+[triggers]
+# clean r2 garbage every day
+crons = ["0 0 * * *"]
+
 #----------------------------------------
 # lines below are what you should modify
 #----------------------------------------
