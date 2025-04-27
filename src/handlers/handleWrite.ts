@@ -16,7 +16,6 @@ import {
 } from "../shared.js"
 
 function suggestUrl(short: string, baseUrl: string, filename?: string, contentAsString?: string) {
-  // TODO: should we suggest for URL redirect?
   if (filename) {
     return `${baseUrl}/${short}/${filename}`
   } else if (contentAsString && isLegalUrl(contentAsString)) {

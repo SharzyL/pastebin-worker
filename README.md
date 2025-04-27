@@ -26,7 +26,6 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 ## Limitations
 
 1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 100,000 reads and 1000 writes, 1000 deletes per day.
-2. Due to the size limit of Cloudflare KV storage, the size of each paste is bounded under 25 MB.
 
 ## Deploy
 
@@ -34,7 +33,7 @@ You are free to deploy the pastebin on your own domain if you host your domain o
 
 1. Install `node` and `yarn`.
 
-2. Create a KV namespace on Cloudflare workers dashboard, remember its ID.
+2. Create a KV namespace and R2 bucket on Cloudflare workers dashboard, remember its ID.
 
 3. Clone the repository and enter the directory.
 
