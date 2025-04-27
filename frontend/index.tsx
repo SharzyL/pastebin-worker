@@ -22,84 +22,38 @@ import {
   ModalContent,
   ModalHeader,
   ModalFooter,
+  Tooltip,
 } from "@heroui/react"
 
+import { PasteResponse, parsePath, parseFilenameFromContentDisposition } from "../src/shared.js"
+
 import {
-  parseExpiration,
-  PasteResponse,
-  NAME_REGEX,
-  PASSWD_SEP,
-  parsePath,
-  parseFilenameFromContentDisposition,
-  parseExpirationReadable,
-} from "../src/shared.js"
+  verifyExpiration,
+  verifyManageUrl,
+  verifyName,
+  formatSize,
+  maxExpirationReadable,
+  BaseUrl,
+  APIUrl,
+} from "./utils.js"
 
 import "./style.css"
+import { computerIcon, moonIcon, sunIcon } from "./icons.js"
 
-function formatSize(size: number): string {
-  if (!size) return "0"
-  if (size < 1024) {
-    return `${size} Bytes`
-  } else if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(2)} KB`
-  } else if (size < 1024 * 1024 * 1024) {
-    return `${(size / 1024 / 1024).toFixed(2)} MB`
+type EditKind = "edit" | "file"
+type UploadKind = "short" | "long" | "custom" | "manage"
+type DarkMode = "dark" | "light" | "system"
+
+function defaultDarkMode(): DarkMode {
+  const storedDarkModeSelect = localStorage.getItem("darkModeSelect")
+  if (storedDarkModeSelect !== null && ["light", "dark", "system"].includes(storedDarkModeSelect)) {
+    return storedDarkModeSelect as DarkMode
   } else {
-    return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
-  }
-}
-
-const BaseUrl = DEPLOY_URL
-const APIUrl = DEPLOY_URL || ""
-const maxExpirationSeconds = parseExpiration(MAX_EXPIRATION)!
-const maxExpirationReadable = parseExpirationReadable(MAX_EXPIRATION)!
-
-function verifyExpiration(expiration: string): [boolean, string] {
-  const parsed = parseExpiration(expiration)
-  if (parsed === null) {
-    return [false, "Invalid expiration"]
-  } else {
-    if (parsed > maxExpirationSeconds) {
-      return [false, `Exceed max expiration (${maxExpirationReadable})`]
-    } else {
-      return [true, `Expires in ${parseExpirationReadable(expiration)!}`]
-    }
-  }
-}
-
-function verifyName(name: string): [boolean, string] {
-  if (name.length < 3) {
-    return [false, "Should have at least 3 characters"]
-  } else if (!NAME_REGEX.test(name)) {
-    return [false, "Should only contain alphanumeric and +_-[]*$@,;"]
-  } else {
-    return [true, ""]
-  }
-}
-
-function verifyManageUrl(url: string): [boolean, string] {
-  try {
-    const url_parsed = new URL(url)
-    if (url_parsed.origin !== BaseUrl) {
-      return [false, `URL should starts with ${BaseUrl}`]
-    } else if (url_parsed.pathname.indexOf(PASSWD_SEP) < 0) {
-      return [false, `URL should contain a colon`]
-    } else {
-      return [true, ""]
-    }
-  } catch (e) {
-    if (e instanceof TypeError) {
-      return [false, "Invalid URL"]
-    } else {
-      throw e
-    }
+    return "system"
   }
 }
 
 function PasteBin() {
-  type EditKind = "edit" | "file"
-  type UploadKind = "short" | "long" | "custom" | "manage"
-
   const [editKind, setEditKind] = useState<EditKind>("edit")
   const [pasteEdit, setPasteEdit] = useState("")
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -116,6 +70,11 @@ function PasteBin() {
 
   const [isModalOpen, setModalOpen] = useState(false)
   const [modalErrMsg, setModalErrMsg] = useState("")
+
+  const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
+
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+  const isDark = darkModeSelect === "system" ? systemDark : darkModeSelect === "dark"
 
   function showErrorMsg(err: string) {
     setModalErrMsg(err)
@@ -153,6 +112,11 @@ function PasteBin() {
     </Modal>
   )
 
+  useEffect(() => {
+    localStorage.setItem("darkModeSelect", darkModeSelect)
+  }, [darkModeSelect])
+
+  // handle admin URL
   useEffect(() => {
     const pathname = location.pathname
     const { nameFromPath, passwd, filename, ext } = parsePath(pathname)
@@ -270,10 +234,34 @@ function PasteBin() {
     }
   }
 
+  const iconsMap = new Map([
+    ["system", computerIcon],
+    ["dark", moonIcon],
+    ["light", sunIcon],
+  ])
+  const toggleDarkModeButton = (
+    <Tooltip content="Toggle Dark Mode">
+      <span
+        className="absolute right-0"
+        onClick={() => {
+          if (darkModeSelect === "system") {
+            setDarkModeSelect("dark")
+          } else if (darkModeSelect === "dark") {
+            setDarkModeSelect("light")
+          } else {
+            setDarkModeSelect("system")
+          }
+        }}
+      >
+        {iconsMap.get(darkModeSelect)}
+      </span>
+    </Tooltip>
+  )
+
   const info = (
     <div className="mx-4 lg:mx-0">
-      <h1 className="text-3xl mt-8 mb-4">Pastebin Worker</h1>
-      <p className="my-2">This is an open source pastebin deployed on Cloudflare Workers.</p>
+      <h1 className="text-3xl mt-8 mb-4 relative">Pastebin Worker {toggleDarkModeButton}</h1>
+      <p className="my-2">This is an open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
         <b>Usage</b>: paste any text here, submit, then share it with URL. (
         <Link href={`${BaseUrl}/api`}>API Documentation</Link>)
@@ -534,7 +522,11 @@ function PasteBin() {
   )
 
   return (
-    <div className="flex flex-col items-center min-h-screen font-sans">
+    <div
+      className={
+        "flex flex-col items-center min-h-screen font-sans bg-background text-foreground" + (isDark ? " dark" : "")
+      }
+    >
       <div className="grow w-full max-w-[64rem]">
         {info}
         {editor}
