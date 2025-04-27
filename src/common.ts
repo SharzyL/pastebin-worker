@@ -45,7 +45,7 @@ export function escapeHtml(str: string): string {
     ['"', "&quot"],
     ["'", "&#x27"],
   ])
-  return str.replace(/[&<>]/g, function (tag): string {
+  return str.replace(/[&<>"']/g, function (tag): string {
     return tagsToReplace.get(tag) || tag
   })
 }

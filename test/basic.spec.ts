@@ -185,5 +185,3 @@ test("custom passwd", async () => {
   expect(putResponseJson.url).toStrictEqual(url) // url will not change
   expect(putResponseJson.manageUrl).toStrictEqual(`${url}:${wrongPasswd}`) // passwd may change
 })
-
-// TODO: add tests for CORS

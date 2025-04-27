@@ -38,7 +38,8 @@ test("url redirect", async () => {
     return url.slice(0, splitPoint) + "/u" + url.slice(splitPoint)
   }
 
-  expect(uploadResp["suggestedUrl"].includes(makeRedirectUrl(url)))
+  expect(uploadResp.suggestedUrl).toBeDefined()
+  expect(uploadResp.suggestedUrl!.includes(makeRedirectUrl(url)))
 
   const resp = await workerFetch(ctx, makeRedirectUrl(url))
   expect(resp.status).toStrictEqual(302)
@@ -63,12 +64,16 @@ test("url redirect with illegal url", async () => {
 })
 
 test("highlight", async () => {
-  const content = 'print("hello world")'
+  const content = 'print("<hello world>")'
   const ctx = createExecutionContext()
-  const url = (await upload(ctx, { c: content }))["url"]
+  const url = (await upload(ctx, { c: content })).url
   const resp = await workerFetch(ctx, `${url}?lang=html`)
   expect(resp.status).toStrictEqual(200)
   const body = await resp.text()
   expect(body.includes("language-html")).toBeTruthy()
-  expect(body.includes(content)).toBeTruthy()
+  expect(body.includes("print(&quot&lt;hello world&gt;&quot)")).toBeTruthy()
+
+  const resp1 = await workerFetch(ctx, `${url}?lang=<html>`)
+  const body1 = await resp1.text()
+  expect(body1.includes("language-&lt;html&gt;")).toBeTruthy()
 })

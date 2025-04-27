@@ -102,3 +102,46 @@ test("content disposition with specifying filename", async () => {
     `attachment; filename*=UTF-8''${altFilename}`,
   )
 })
+
+test("other HTTP methods", async () => {
+  const ctx = createExecutionContext()
+  const resp = await workerFetch(
+    ctx,
+    new Request(BASE_URL, {
+      method: "PATCH",
+    }),
+  )
+  expect(resp.status).toStrictEqual(405)
+  expect(resp.headers.has("Allow")).toBeTruthy()
+})
+
+test("option method", async () => {
+  const ctx = createExecutionContext()
+
+  const resp = await workerFetch(
+    ctx,
+    new Request(BASE_URL, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://example.com",
+        "Access-Control-Request-Method": "PUT",
+      },
+    }),
+  )
+  expect(resp.status).toStrictEqual(200)
+  expect(resp.headers.has("Access-Control-Allow-Origin")).toBeTruthy()
+  expect(resp.headers.has("Access-Control-Allow-Methods")).toBeTruthy()
+  expect(resp.headers.has("Access-Control-Max-Age")).toBeTruthy()
+
+  const resp1 = await workerFetch(
+    ctx,
+    new Request(BASE_URL, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://example.com",
+      },
+    }),
+  )
+  expect(resp1.status).toStrictEqual(200)
+  expect(resp1.headers.has("Allow")).toBeTruthy()
+})
