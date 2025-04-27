@@ -71,7 +71,8 @@ export function PasteBin() {
 
   const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
 
-  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+  // when matchMedia not available (e.g. in tests), set to light mode
+  const systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : false
   const isDark = darkModeSelect === "system" ? systemDark : darkModeSelect === "dark"
 
   function showErrorMsg(err: string) {
@@ -137,7 +138,8 @@ export function PasteBin() {
 
         if (contentType && contentType.startsWith("text/")) {
           setEditKind("edit")
-          setPasteEdit(await resp.text())
+          const t = await resp.text()
+          setPasteEdit(t)
         } else {
           setEditKind("file")
           let pasteFilename = filename
@@ -241,6 +243,7 @@ export function PasteBin() {
     <Tooltip content="Toggle Dark Mode">
       <span
         className="absolute right-0"
+        data-testid="pastebin-darkmode-toggle"
         onClick={() => {
           if (darkModeSelect === "system") {
             setDarkModeSelect("dark")
@@ -289,6 +292,7 @@ export function PasteBin() {
           <Tab key={"edit"} title="Edit">
             <Textarea
               isClearable
+              data-testid="pastebin-edit"
               placeholder={isPasteLoading ? "Loading..." : "Edit your paste here"}
               isDisabled={isPasteLoading}
               className="px-0 py-0"
@@ -520,7 +524,8 @@ export function PasteBin() {
   )
 
   return (
-    <div
+    <main
+      data-testid="pastebin-main"
       className={
         "flex flex-col items-center min-h-screen font-sans bg-background text-foreground" +
         (isDark ? " dark" : " light")
@@ -537,6 +542,6 @@ export function PasteBin() {
       </div>
       {footer}
       {errorModal}
-    </div>
+    </main>
   )
 }
