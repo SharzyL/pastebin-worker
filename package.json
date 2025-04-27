@@ -40,6 +40,7 @@
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.3",
     "vitest": "3.1.1",
+    "toml": "^3.0.0",
     "wrangler": "^4.13.2"
   },
   "prettier": {
@@ -64,7 +65,6 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "tailwindcss": "^4.1.4",
-    "toml": "^3.0.0",
     "unified": "^11.0.5"
   },
   "resolutions": {

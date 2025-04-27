@@ -38,6 +38,21 @@ export async function upload(ctx: ExecutionContext, kv: FormDataBuild): Promise<
   return JSON.parse(await uploadResponse.text()) as PasteResponse
 }
 
+export async function uploadExpectStatus(ctx: ExecutionContext, kv: FormDataBuild, expectedStatsu: number) {
+  const uploadResponse = await workerFetch(
+    ctx,
+    new Request(BASE_URL, {
+      method: "POST",
+      body: createFormData(kv),
+    }),
+  )
+  const uploadMsg = await uploadResponse.text()
+  expect(
+    uploadResponse.status,
+    `Upload status not expected: (expecting ${expectedStatsu}): ${uploadMsg}`,
+  ).toStrictEqual(expectedStatsu)
+}
+
 export function createFormData(kv: FormDataBuild): FormData {
   const fd = new FormData()
   Object.entries(kv).forEach(([k, v]) => {

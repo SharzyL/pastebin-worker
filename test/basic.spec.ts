@@ -10,9 +10,17 @@ import {
   upload,
   BASE_URL,
   RAND_NAME_REGEX,
+  uploadExpectStatus,
 } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
-import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN, PasteResponse, PRIVATE_PASTE_NAME_LEN } from "../src/shared"
+import {
+  DEFAULT_PASSWD_LEN,
+  MAX_PASSWD_LEN,
+  MIN_PASSWD_LEN,
+  PASTE_NAME_LEN,
+  PasteResponse,
+  PRIVATE_PASTE_NAME_LEN,
+} from "../src/shared"
 
 test("basic", async () => {
   const blob1 = genRandomBlob(1024)
@@ -217,7 +225,8 @@ test("custom passwd", async () => {
   const ctx = createExecutionContext()
 
   // check good name upload
-  const passwd = genRandStr(30)
+  const passwd = "1366eaa20c071763dc94"
+  const wrongPasswd = "7365ca6eac619ca3f118"
   const uploadResponseJson = await upload(ctx, {
     c: blob1,
     s: passwd,
@@ -227,11 +236,12 @@ test("custom passwd", async () => {
   const parsedPasswd = manageUrl.slice(manageUrl.lastIndexOf(":") + 1)
   expect(parsedPasswd).toStrictEqual(passwd)
 
+  // check password format verification
+  await uploadExpectStatus(ctx, { c: blob1, s: "1".repeat(MIN_PASSWD_LEN - 1) }, 400)
+  await uploadExpectStatus(ctx, { c: blob1, s: "1".repeat(MIN_PASSWD_LEN) + "\n" }, 400)
+  await uploadExpectStatus(ctx, { c: blob1, s: "1".repeat(MAX_PASSWD_LEN + 1) }, 400)
+
   // check modify with wrong manageUrl
-  let wrongPasswd
-  do {
-    wrongPasswd = genRandStr(DEFAULT_PASSWD_LEN)
-  } while (wrongPasswd === passwd)
   expect(
     (
       await workerFetch(

@@ -76,10 +76,11 @@ export async function getPasteMetadata(env: Env, short: string): Promise<PasteMe
 export async function updatePaste(
   env: Env,
   pasteName: string,
-  content: ArrayBuffer,
+  content: ArrayBuffer | ReadableStream,
   originalMetadata: PasteMetadata,
   options: {
     now: Date
+    contentLength: number
     expirationSeconds: number
     passwd: string
     filename?: string
@@ -96,7 +97,7 @@ export async function updatePaste(
       createdAtUnix: originalMetadata.createdAtUnix,
       willExpireAtUnix: expirationUnix,
       accessCounter: originalMetadata.accessCounter,
-      sizeBytes: content.byteLength,
+      sizeBytes: options.contentLength,
     },
     expiration: expirationUnix,
   }
@@ -107,12 +108,13 @@ export async function updatePaste(
 export async function createPaste(
   env: Env,
   pasteName: string,
-  content: ArrayBuffer,
+  content: ArrayBuffer | ReadableStream,
   options: {
     expirationSeconds: number
     now: Date
     passwd: string
     filename?: string
+    contentLength: number
   },
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
@@ -126,7 +128,7 @@ export async function createPaste(
       createdAtUnix: dateToUnix(options.now),
       willExpireAtUnix: expirationUnix,
       accessCounter: 0,
-      sizeBytes: content.byteLength,
+      sizeBytes: options.contentLength,
     },
     expiration: expirationUnix,
   }

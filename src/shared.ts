@@ -13,6 +13,8 @@ export const NAME_REGEX = /^[a-zA-Z0-9+_\-[\]*$@,;]{3,}$/
 export const PASTE_NAME_LEN = 4
 export const PRIVATE_PASTE_NAME_LEN = 24
 export const DEFAULT_PASSWD_LEN = 24
+export const MAX_PASSWD_LEN = 128
+export const MIN_PASSWD_LEN = 8
 export const PASSWD_SEP = ":"
 export const MAX_LEN = 25 * 1024 * 1024
 

@@ -48,6 +48,11 @@ async function handleNormalRequest(request: Request, env: Env, ctx: ExecutionCon
   } else if (request.method === "PUT") {
     return await handlePostOrPut(request, env, ctx, true)
   } else {
-    throw new WorkerError(405, `method ${request.method} not allowed`)
+    return new Response(`method ${request.method} not allowed`, {
+      status: 405,
+      headers: {
+        Allow: "GET, PUT, POST, DELETE, OPTION",
+      },
+    })
   }
 }

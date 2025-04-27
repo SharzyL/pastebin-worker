@@ -1,5 +1,4 @@
 import { verifyAuth } from "../auth.js"
-import { FormDataPart, getBoundary, parseFormdata } from "../parseFormdata.js"
 import { decode, genRandStr, isLegalUrl, WorkerError } from "../common.js"
 import { createPaste, getPasteMetadata, pasteNameAvailable, updatePaste } from "../storage/storage.js"
 import {
@@ -12,15 +11,52 @@ import {
   PASSWD_SEP,
   parseExpiration,
   parsePath,
+  MIN_PASSWD_LEN,
+  MAX_PASSWD_LEN,
 } from "../shared.js"
 
-function suggestUrl(content: ArrayBuffer, short: string, baseUrl: string, filename?: string) {
+function suggestUrl(short: string, baseUrl: string, filename?: string, contentAsString?: string) {
+  // TODO: should we suggest for URL redirect?
   if (filename) {
     return `${baseUrl}/${short}/${filename}`
-  } else if (isLegalUrl(decode(content))) {
+  } else if (contentAsString && isLegalUrl(contentAsString)) {
     return `${baseUrl}/u/${short}`
   } else {
     return undefined
+  }
+}
+
+async function getStringFromPart(part: string | null | File): Promise<string | undefined> {
+  if (part === null || typeof part == "string") {
+    return part || undefined
+  } else {
+    return decode(await part.arrayBuffer())
+  }
+}
+
+async function getFileFromPart(part: string | null | File): Promise<{
+  filename?: string
+  content?: ReadableStream | ArrayBuffer
+  contentAsString?: string
+  contentLength: number
+}> {
+  if (part === null) {
+    return { contentLength: 0 }
+  } else if (typeof part == "string") {
+    const encoded = new TextEncoder().encode(part)
+    return { filename: undefined, content: encoded.buffer, contentAsString: part, contentLength: encoded.length }
+  } else {
+    if (part.size < 1000) {
+      const arrayBuffer = await part.arrayBuffer()
+      return {
+        filename: part.name,
+        content: arrayBuffer,
+        contentAsString: decode(arrayBuffer),
+        contentLength: part.size,
+      }
+    } else {
+      return { filename: part.name, content: part.stream(), contentLength: part.size }
+    }
   }
 }
 
@@ -42,32 +78,22 @@ export async function handlePostOrPut(
   const url = new URL(request.url)
 
   // parse formdata
-  let form: Map<string, FormDataPart> = new Map()
-  if (contentType.includes("multipart/form-data")) {
-    // because cloudflare runtime treat all formdata part as strings thus corrupting binary data,
-    // we need to manually parse formdata
-    const uint8Array = new Uint8Array(await request.arrayBuffer())
-    try {
-      form = parseFormdata(uint8Array, getBoundary(contentType))
-    } catch {
-      throw new WorkerError(400, "error occurs when parsing formdata")
-    }
-  } else {
+  if (!contentType.includes("multipart/form-data")) {
     throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
 
-  const content = form.get("c")?.content
-  const filename = form.get("c") && form.get("c")!.disposition.filename
-  const nameFromForm = form.get("n") && decode(form.get("n")!.content)
-  const isPrivate = form.get("p")
-  const passwdFromForm = form.get("s") && decode(form.get("s")!.content)
-  const expire: string =
-    form.has("e") && form.get("e")!.content.byteLength > 0 ? decode(form.get("e")!.content) : env.DEFAULT_EXPIRATION
+  const form = await request.formData()
+  const { filename, content, contentAsString, contentLength } = await getFileFromPart(form.get("c"))
+  const nameFromForm = await getStringFromPart(form.get("n"))
+  const isPrivate = form.get("p") !== null
+  const passwdFromForm = await getStringFromPart(form.get("s"))
+  const expireFromPart: string | undefined = await getStringFromPart(form.get("e"))
+  const expire = expireFromPart !== undefined ? expireFromPart : env.DEFAULT_EXPIRATION
 
   // check if paste content is legal
   if (content === undefined) {
     throw new WorkerError(400, "cannot find content in formdata")
-  } else if (content.length > MAX_LEN) {
+  } else if (contentLength > MAX_LEN) {
     throw new WorkerError(413, "payload too large")
   }
 
@@ -79,6 +105,18 @@ export async function handlePostOrPut(
   const maxExpiration = parseExpiration(env.MAX_EXPIRATION)!
   if (expirationSeconds > maxExpiration) {
     expirationSeconds = maxExpiration
+  }
+
+  // check if password is legal
+  // TODO: sync checks to frontend
+  if (passwdFromForm) {
+    if (passwdFromForm.length > MAX_PASSWD_LEN) {
+      throw new WorkerError(400, `password too long (${passwdFromForm.length} > ${MAX_PASSWD_LEN})`)
+    } else if (passwdFromForm.length < MIN_PASSWD_LEN) {
+      throw new WorkerError(400, `password too short (${passwdFromForm.length} < ${MIN_PASSWD_LEN})`)
+    } else if (passwdFromForm.includes("\n")) {
+      throw new WorkerError(400, `password should not contain newline`)
+    }
   }
 
   // check if name is legal
@@ -118,11 +156,12 @@ export async function handlePostOrPut(
         expirationSeconds,
         now,
         passwd: newPasswd,
+        contentLength,
         filename,
       })
       return makeResponse({
         url: accessUrl(pasteName),
-        suggestedUrl: suggestUrl(content, pasteName, env.DEPLOY_URL, filename),
+        suggestedUrl: suggestUrl(pasteName, env.DEPLOY_URL, filename, contentAsString),
         manageUrl: manageUrl(pasteName, newPasswd),
         expirationSeconds,
         expireAt: new Date(now.getTime() + 1000 * expirationSeconds).toISOString(),
@@ -148,11 +187,12 @@ export async function handlePostOrPut(
       now,
       passwd,
       filename,
+      contentLength,
     })
 
     return makeResponse({
       url: accessUrl(pasteName),
-      suggestedUrl: suggestUrl(content, pasteName, env.DEPLOY_URL, filename),
+      suggestedUrl: suggestUrl(pasteName, env.DEPLOY_URL, filename, contentAsString),
       manageUrl: manageUrl(pasteName, passwd),
       expirationSeconds,
       expireAt: new Date(now.getTime() + 1000 * expirationSeconds).toISOString(),
