@@ -4,8 +4,45 @@ import { createExecutionContext } from "cloudflare:test"
 import { MetaResponse } from "../src/shared"
 import { genRandStr } from "../src/common"
 
+const testMd: string = `
+# Header 1
+
+This is the content of \`test.md\`
+
+<script>
+alert("Script should be removed")
+</script>
+
+## Header 2
+
+| abc | defghi |
+| :-: | -----: |
+| bar |    baz |
+
+**Bold**, \`Monospace\`, _Italics_, ~~Strikethrough~~, [URL](https://github.com)
+
+- A
+- A1
+- A2
+- B
+
+![Panty](https://shz.al/~panty.jpg)
+
+1. first
+2. second
+
+\`\`\`js
+console.log("hello world")
+\`\`\`
+
+> Quotation
+
+$$
+\\int_{-\\infty}^{\\infty} e^{-x^2} = \\sqrt{\\pi}
+$$
+`
+
 test("markdown with role a", async () => {
-  const testMd = `# Hello` // TODO: use a stronger test file
   const ctx = createExecutionContext()
   const url = (await upload(ctx, { c: testMd })).url
 
@@ -13,8 +50,13 @@ test("markdown with role a", async () => {
   expect(revisitResponse.status).toStrictEqual(200)
   expect(revisitResponse.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
   const responseHtml = await revisitResponse.text()
-  expect(responseHtml.indexOf("<title>Hello</title>")).toBeGreaterThan(-1)
-  expect(responseHtml.indexOf("<h1>Hello</h1>")).toBeGreaterThan(-1)
+  expect(responseHtml.indexOf("<title>Header 1</title>")).toBeGreaterThan(-1)
+  expect(responseHtml.indexOf('<code class="language-js">')).toBeGreaterThan(-1)
+
+  const bigMd = "1".repeat(1024 * 1024)
+  const bigUrl = (await upload(ctx, { c: bigMd })).url
+  const bigResp = await (await workerFetch(ctx, addRole(bigUrl, "a"))).text()
+  expect(bigResp.indexOf("Untitled")).toBeGreaterThan(-1)
 })
 
 test("meta with role m", async () => {

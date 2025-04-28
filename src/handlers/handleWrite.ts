@@ -126,6 +126,7 @@ export async function handlePostOrPut(
       throw new WorkerError(400, `password should not contain newline`)
     }
   }
+  const passwd = passwdFromForm || genRandStr(DEFAULT_PASSWD_LEN)
 
   // check if name is legal
   if (nameFromForm !== undefined && !NAME_REGEX.test(nameFromForm)) {
@@ -186,10 +187,6 @@ export async function handlePostOrPut(
       pasteName = genRandStr(isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
     }
 
-    const passwd = passwdFromForm || genRandStr(DEFAULT_PASSWD_LEN)
-    if (passwd.length === 0) {
-      throw new WorkerError(400, "Empty passwd is not allowed")
-    }
     await createPaste(env, pasteName, content, {
       expirationSeconds,
       now,
