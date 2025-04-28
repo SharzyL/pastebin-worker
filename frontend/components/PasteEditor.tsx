@@ -1,6 +1,7 @@
 import { Button, Card, CardBody, CardProps, Tab, Tabs, Textarea } from "@heroui/react"
-import React from "react"
+import React, { useRef, useState, DragEvent } from "react"
 import { formatSize } from "../utils.js"
+import { XIcon } from "../icons.js"
 
 export type EditKind = "edit" | "file"
 
@@ -16,28 +17,40 @@ interface PasteEditorProps extends CardProps {
   onStateChange: (state: PasteEditState) => void
 }
 
-function displayFileInfo(file: File | null) {
-  if (file === null) {
-    return null
-  } else {
-    return (
-      <span className="ml-4">
-        <code>{file.name}</code> ({formatSize(file.size)})
-      </span>
-    )
-  }
-}
-
 export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: PasteEditorProps) {
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [isDragged, setDragged] = useState<boolean>(false)
+
+  function setFile(file: File | null) {
+    onStateChange({ ...state, editKind: "file", file })
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault()
+    const items = e.dataTransfer?.items
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].kind === "file") {
+          console.log(items)
+          const file = items[i].getAsFile()!
+          setFile(file)
+          break
+        }
+      }
+    }
+    setDragged(false)
+  }
+
   return (
-    <Card {...rest}>
+    <Card aria-label="Pastebin editor panel" {...rest}>
       <CardBody>
         <Tabs
           variant="underlined"
           classNames={{
-            tabList: "ml-4 gap-6 w-full p-0 border-divider",
-            cursor: "w-full",
-            tab: "max-w-fit px-0 h-8",
+            tabList: "gap-2 w-full px-2 py-0 border-divider",
+            cursor: "w-[80%]",
+            tab: "max-w-fit px-2 h-8 px-2",
+            panel: "pb-1",
           }}
           selectedKey={state.editKind}
           onSelectionChange={(k) => {
@@ -54,7 +67,7 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
               classNames={{
                 input: "resize-y min-h-[30em] font-mono",
               }}
-              name="c"
+              aria-label="paste-edit"
               disableAutosize
               disableAnimation
               value={state.editContent}
@@ -66,24 +79,47 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
             ></Textarea>
           </Tab>
           <Tab key="file" title="File">
-            <Button radius="sm" color="primary" as="label">
+            <div
+              className={
+                "w-full h-[20rem] rounded-xl flex flex-col items-center justify-center cursor-pointer relative" +
+                (isDragged ? " bg-primary-100" : " bg-primary-50")
+              }
+              onDrop={onDrop}
+              onDragEnter={() => setDragged(true)}
+              onDragLeave={() => setDragged(false)}
+              onDragOver={() => setDragged(true)}
+              onClick={() => fileInput.current?.click()}
+            >
               <input
                 type="file"
+                aria-label="paste-file"
+                ref={fileInput}
                 className="w-0 h-0 overflow-hidden absolute inline"
-                onChange={(event) => {
-                  const files = event.target.files
+                onChange={(e) => {
+                  const files = e.target.files
                   if (files && files.length) {
-                    onStateChange({
-                      ...state,
-                      editKind: "file",
-                      file: files[0],
-                    })
+                    setFile(files[0])
                   }
                 }}
               />
-              Upload
-            </Button>
-            {displayFileInfo(state.file)}
+              <div className="text-2xl my-2 font-bold">Select File</div>
+              <p className="text-1xl text-foreground-500 relative">
+                <span>
+                  {state.file !== null
+                    ? `${state.file.name} (${formatSize(state.file.size)})`
+                    : "Click or drag & drop file here"}
+                </span>
+              </p>
+              {state.file && (
+                <XIcon
+                  className="h-6 inline absolute top-2 right-2 text-red-400"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setFile(null)
+                  }}
+                />
+              )}
+            </div>
           </Tab>
         </Tabs>
       </CardBody>

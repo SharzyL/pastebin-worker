@@ -8,11 +8,11 @@ interface UploadedPanelProps extends CardProps {
 
 export function UploadedPanel({ pasteResponse, ...rest }: UploadedPanelProps) {
   const snippetClassNames = {
-    pre: "overflow-scroll leading-[2.5]",
-    base: "w-full py-2/3",
+    pre: "overflow-scroll leading-[2.5] font-sans",
+    base: "w-full py-1/3",
     copyButton: "relative ml-[-12pt] left-[5pt]",
   }
-  const firstColClassNames = "w-[7rem] whitespace-nowrap"
+  const firstColClassNames = "w-[8rem] mr-4 whitespace-nowrap"
   return (
     <Card {...rest}>
       <CardHeader className="text-2xl">Uploaded Paste</CardHeader>
@@ -32,7 +32,7 @@ export function UploadedPanel({ pasteResponse, ...rest }: UploadedPanelProps) {
             </tr>
             <tr>
               <td className={firstColClassNames}>Manage URL</td>
-              <td className="w-full overflow-hidden">
+              <td className="w-full">
                 <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl grow">
                   <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
                     {pasteResponse?.manageUrl}

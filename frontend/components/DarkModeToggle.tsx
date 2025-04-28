@@ -1,5 +1,5 @@
 import React, { JSX, useEffect } from "react"
-import { computerIcon, moonIcon, sunIcon } from "../icons.js"
+import { ComputerIcon, MoonIcon, SunIcon } from "../icons.js"
 import { Tooltip, TooltipProps } from "@heroui/react"
 
 export type DarkMode = "dark" | "light" | "system"
@@ -10,9 +10,9 @@ interface MyComponentProps extends TooltipProps {
 }
 
 const icons: { name: DarkMode; icon: JSX.Element }[] = [
-  { name: "system", icon: computerIcon },
-  { name: "dark", icon: moonIcon },
-  { name: "light", icon: sunIcon },
+  { name: "system", icon: <ComputerIcon className="size-6 inline" /> },
+  { name: "dark", icon: <MoonIcon className="size-6 inline" /> },
+  { name: "light", icon: <SunIcon className="size-6 inline" /> },
 ]
 
 export function defaultDarkMode(): DarkMode {
@@ -37,10 +37,12 @@ export function DarkModeToggle({ mode, onModeChange, ...rest }: MyComponentProps
   }, [mode])
 
   return (
-    <Tooltip content="Toggle Dark Mode" {...rest}>
+    <Tooltip content={`Toggle dark mode (${mode} mode now)`} {...rest}>
       <span
         className="absolute right-0"
         data-testid="pastebin-darkmode-toggle"
+        role="button"
+        aria-label="Toggle Dark Mode"
         onClick={() => {
           const curModeIdx = icons.findIndex(({ name }) => name === mode)
           onModeChange(icons[(curModeIdx + 1) % icons.length].name)

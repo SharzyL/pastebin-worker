@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react"
 
-import { Button, Card, CardBody, Link, Tab, Tabs, Textarea } from "@heroui/react"
+import { Button, Link } from "@heroui/react"
 
 import { PasteResponse, parsePath, parseFilenameFromContentDisposition } from "../src/shared.js"
 
 import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./components/DarkModeToggle.js"
 import { ErrorModal } from "./components/ErrorModal.js"
-import { PanelSettingsPanel, PasteSetting, UploadKind } from "./components/PasteSettingPanel.js"
+import { PanelSettingsPanel, PasteSetting } from "./components/PasteSettingPanel.js"
 
 import { verifyExpiration, verifyManageUrl, verifyName, maxExpirationReadable, BaseUrl, APIUrl } from "./utils.js"
 
@@ -174,9 +174,10 @@ export function PasteBin() {
 
   const info = (
     <div className="mx-4 lg:mx-0">
-      <h1 className="text-3xl mt-8 mb-4 relative">
-        {INDEX_PAGE_TITLE} <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} />
-      </h1>
+      <div className="mt-8 mb-4 relative">
+        <h1 className="text-3xl inline">{INDEX_PAGE_TITLE}</h1>
+        <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} />
+      </div>
       <p className="my-2">This is an open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
         <b>Usage</b>: paste any text here, submit, then share it with URL. (

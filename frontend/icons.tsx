@@ -1,4 +1,6 @@
-export const moonIcon = (
+import { HTMLAttributes } from "react"
+
+export const MoonIcon = (props: HTMLAttributes<SVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
@@ -6,6 +8,7 @@ export const moonIcon = (
     strokeWidth={1.5}
     stroke="currentColor"
     className="size-6 inline"
+    {...props}
   >
     <path
       strokeLinecap="round"
@@ -15,14 +18,14 @@ export const moonIcon = (
   </svg>
 )
 
-export const sunIcon = (
+export const SunIcon = (props: HTMLAttributes<SVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 24 24"
     strokeWidth={1.5}
     stroke="currentColor"
-    className="size-6 inline"
+    {...props}
   >
     <path
       strokeLinecap="round"
@@ -32,19 +35,36 @@ export const sunIcon = (
   </svg>
 )
 
-export const computerIcon = (
+export const ComputerIcon = (props: HTMLAttributes<SVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 24 24"
     strokeWidth={1.5}
     stroke="currentColor"
-    className="size-6 inline"
+    {...props}
   >
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
       d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25"
+    />
+  </svg>
+)
+
+export const XIcon = (props: HTMLAttributes<SVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    {...props}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
     />
   </svg>
 )

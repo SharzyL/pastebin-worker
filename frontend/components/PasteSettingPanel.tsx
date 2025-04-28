@@ -19,14 +19,16 @@ interface PasteSettingPanelProps extends CardProps {
 
 export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteSettingPanelProps) {
   return (
-    <Card {...rest}>
+    <Card aria-label="Pastebin setting panel" {...rest}>
       <CardHeader className="text-2xl">Settings</CardHeader>
       <Divider />
       <CardBody>
-        <div className="gap-4 mb-6 flex flex-row">
+        <div className="gap-4 mb-4 flex flex-row">
           <Input
             type="text"
             label="Expiration"
+            // to avoid duplicated name, see https://github.com/adobe/react-spectrum/discussions/8037
+            aria-labelledby=""
             className="basis-80"
             defaultValue="7d"
             value={setting.expiration}
@@ -39,6 +41,7 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
           <Input
             type="password"
             label="Password"
+            aria-labelledby=""
             value={setting.password}
             onValueChange={(p) => onSettingChange({ ...setting, password: p })}
             placeholder={"Generated randomly"}

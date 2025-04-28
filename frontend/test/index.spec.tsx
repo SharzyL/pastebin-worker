@@ -26,17 +26,29 @@ describe("Pastebin", () => {
     const title = screen.getByText("Pastebin Worker")
     expect(title).toBeInTheDocument()
 
-    const editor = screen.getByPlaceholderText("Edit your paste here")
+    const editor = screen.getByRole("textbox", { name: "paste-edit" })
     expect(editor).toBeInTheDocument()
+
+    const submitter = screen.getByRole("button", { name: "Upload" })
+    expect(submitter).toBeInTheDocument()
+    expect(submitter).not.toBeEnabled()
+
     await userEvent.type(editor, "something")
 
-    const submitter = screen.getByText("Upload")
-    expect(submitter).toBeInTheDocument()
     expect(submitter).toBeEnabled()
     await userEvent.click(submitter)
 
     expect(screen.getByText(mockedPasteUpload.url)).toBeInTheDocument()
     expect(screen.getByText(mockedPasteUpload.manageUrl)).toBeInTheDocument()
+  })
+
+  it("refuse illegal settings", async () => {
+    render(<PasteBin />)
+    // due to bugs https://github.com/adobe/react-spectrum/discussions/8037, we need to use duplicated name here
+    const expire = screen.getByRole("textbox", { name: "Expiration" })
+    expect(expire).toBeValid()
+    await userEvent.type(expire, "xxx")
+    expect(expire).toBeInvalid()
   })
 })
 
@@ -49,10 +61,10 @@ describe("Pastebin admin page", () => {
     })
     render(<PasteBin />)
 
-    const edit = screen.getByTestId("pastebin-edit")
-    await userEvent.click(edit) // meaningless click, just ensure useEffect is done
-    expect(edit).toBeInTheDocument()
-    expect((edit as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent)
+    const editor = screen.getByRole("textbox", { name: "paste-edit" })
+    await userEvent.click(editor) // meaningless click, just ensure useEffect is done
+    expect(editor).toBeInTheDocument()
+    expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent)
   })
 })
 
@@ -60,8 +72,8 @@ describe("Pastebin dark mode", () => {
   it("renders light mode", async () => {
     render(<PasteBin />)
 
-    const main = screen.getByTestId("pastebin-main")
-    const toggler = screen.getByTestId("pastebin-darkmode-toggle")
+    const main = screen.getByRole("main")
+    const toggler = screen.getByRole("button", { name: "Toggle Dark Mode" })
     expect(main).toHaveClass("light")
     await userEvent.click(toggler)
     expect(main).toHaveClass("dark")
