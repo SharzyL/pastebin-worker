@@ -20,10 +20,11 @@ import {
   ModalContent,
   ModalHeader,
   ModalFooter,
-  Tooltip,
 } from "@heroui/react"
 
 import { PasteResponse, parsePath, parseFilenameFromContentDisposition } from "../src/shared.js"
+
+import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./components/darkModeToggle.js"
 
 import {
   verifyExpiration,
@@ -36,20 +37,9 @@ import {
 } from "./utils.js"
 
 import "./style.css"
-import { computerIcon, moonIcon, sunIcon } from "./icons.js"
 
 type EditKind = "edit" | "file"
 type UploadKind = "short" | "long" | "custom" | "manage"
-type DarkMode = "dark" | "light" | "system"
-
-function defaultDarkMode(): DarkMode {
-  const storedDarkModeSelect = localStorage.getItem("darkModeSelect")
-  if (storedDarkModeSelect !== null && ["light", "dark", "system"].includes(storedDarkModeSelect)) {
-    return storedDarkModeSelect as DarkMode
-  } else {
-    return "system"
-  }
-}
 
 export function PasteBin() {
   const [editKind, setEditKind] = useState<EditKind>("edit")
@@ -71,10 +61,6 @@ export function PasteBin() {
   const [modalErrTitle, setModalErrTitle] = useState("")
 
   const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
-
-  // when matchMedia not available (e.g. in tests), set to light mode
-  const systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : false
-  const isDark = darkModeSelect === "system" ? systemDark : darkModeSelect === "dark"
 
   function showModal(err: string, title: string) {
     setModalErrMsg(err)
@@ -242,35 +228,10 @@ export function PasteBin() {
     }
   }
 
-  const iconsMap = new Map([
-    ["system", computerIcon],
-    ["dark", moonIcon],
-    ["light", sunIcon],
-  ])
-  const toggleDarkModeButton = (
-    <Tooltip content="Toggle Dark Mode">
-      <span
-        className="absolute right-0"
-        data-testid="pastebin-darkmode-toggle"
-        onClick={() => {
-          if (darkModeSelect === "system") {
-            setDarkModeSelect("dark")
-          } else if (darkModeSelect === "dark") {
-            setDarkModeSelect("light")
-          } else {
-            setDarkModeSelect("system")
-          }
-        }}
-      >
-        {iconsMap.get(darkModeSelect)}
-      </span>
-    </Tooltip>
-  )
-
   const info = (
     <div className="mx-4 lg:mx-0">
       <h1 className="text-3xl mt-8 mb-4 relative">
-        {INDEX_PAGE_TITLE} {toggleDarkModeButton}
+        {INDEX_PAGE_TITLE} <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} />
       </h1>
       <p className="my-2">This is an open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
@@ -538,7 +499,7 @@ export function PasteBin() {
       data-testid="pastebin-main"
       className={
         "flex flex-col items-center min-h-screen font-sans bg-background text-foreground" +
-        (isDark ? " dark" : " light")
+        (shouldBeDark(darkModeSelect) ? " dark" : " light")
       }
     >
       <div className="grow w-full max-w-[64rem]">
