@@ -96,7 +96,6 @@ export function PasteBin() {
         if (!open) {
           setIsPasteLoading(false)
           setIsLoading(false)
-          console.log("set false isLoading")
         }
       }}
     >

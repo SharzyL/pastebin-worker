@@ -1980,6 +1980,18 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
+"@mjackson/headers@^0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@mjackson/headers/-/headers-0.10.0.tgz#89dff58fd1287024e5c0c7ca4a83831551e164d6"
+  integrity sha512-U1Eu1gF979k7ZoIBsJyD+T5l9MjtPONsZfoXfktsQHPJD0s7SokBGx+tLKDLsOY+gzVYAWS0yRFDNY8cgbQzWQ==
+
+"@mjackson/multipart-parser@^0.8.2":
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/@mjackson/multipart-parser/-/multipart-parser-0.8.2.tgz#881f85ed27113938286a8dfbc9e8c780ea18ff68"
+  integrity sha512-KltttyypazaJ9kD1GpiOTEop9/YA5aZPwKfpbmuMYoYSyJhQc+0pqaQcZSHUJVdJBvIWgx7TTQSDJdnNqP5dxA==
+  dependencies:
+    "@mjackson/headers" "^0.10.0"
+
 "@mswjs/interceptors@^0.37.0":
   version "0.37.6"
   resolved "https://registry.yarnpkg.com/@mswjs/interceptors/-/interceptors-0.37.6.tgz#2635319b7a81934e1ef1b5593ef7910347e2b761"

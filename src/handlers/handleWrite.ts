@@ -14,6 +14,7 @@ import {
   MAX_PASSWD_LEN,
   parseSize,
 } from "../shared.js"
+import { MaxFileSizeExceededError, MultipartParseError, parseMultipartRequest } from "@mjackson/multipart-parser"
 
 function suggestUrl(short: string, baseUrl: string, filename?: string, contentAsString?: string) {
   if (filename) {
@@ -25,38 +26,47 @@ function suggestUrl(short: string, baseUrl: string, filename?: string, contentAs
   }
 }
 
-async function getStringFromPart(part: string | null | File): Promise<string | undefined> {
-  if (part === null || typeof part == "string") {
-    return part || undefined
-  } else {
-    return decode(await part.arrayBuffer())
-  }
-}
-
-async function getFileFromPart(part: string | null | File): Promise<{
+type ParsedMultipartPart = {
   filename?: string
-  content?: ReadableStream | ArrayBuffer
+  content: ReadableStream | ArrayBuffer
   contentAsString?: string
   contentLength: number
-}> {
-  if (part === null) {
-    return { contentLength: 0 }
-  } else if (typeof part == "string") {
-    const encoded = new TextEncoder().encode(part)
-    return { filename: undefined, content: encoded.buffer, contentAsString: part, contentLength: encoded.length }
-  } else {
-    if (part.size < 1000) {
-      const arrayBuffer = await part.arrayBuffer()
-      return {
-        filename: part.name,
-        content: arrayBuffer,
-        contentAsString: decode(arrayBuffer),
-        contentLength: part.size,
+}
+
+async function multipartToMap(req: Request, sizeLimit: number): Promise<Map<string, ParsedMultipartPart>> {
+  const partsMap = new Map<string, ParsedMultipartPart>()
+  try {
+    await parseMultipartRequest(req, { maxFileSize: sizeLimit }, async (part) => {
+      if (part.name) {
+        if (part.isFile) {
+          const arrayBuffer = await part.arrayBuffer()
+          partsMap.set(part.name, {
+            filename: part.filename,
+            content: arrayBuffer,
+            contentLength: arrayBuffer.byteLength,
+          })
+        } else {
+          const arrayBuffer = await part.arrayBuffer()
+          partsMap.set(part.name, {
+            filename: part.filename,
+            content: arrayBuffer,
+            contentAsString: decode(arrayBuffer),
+            contentLength: arrayBuffer.byteLength,
+          })
+        }
       }
+    })
+  } catch (err) {
+    if (err instanceof MaxFileSizeExceededError) {
+      throw new WorkerError(413, `payload too large (max ${sizeLimit} bytes allowed)`)
+    } else if (err instanceof MultipartParseError) {
+      console.error(err)
+      throw new WorkerError(400, "Failed to parse multipart request")
     } else {
-      return { filename: part.name, content: part.stream(), contentLength: part.size }
+      throw err
     }
   }
+  return partsMap
 }
 
 export async function handlePostOrPut(
@@ -76,25 +86,24 @@ export async function handlePostOrPut(
   const contentType = request.headers.get("Content-Type") || ""
   const url = new URL(request.url)
 
+  // TODO: support multipart upload (https://developers.cloudflare.com/r2/api/workers/workers-multipart-usage/)
+
   // parse formdata
   if (!contentType.includes("multipart/form-data")) {
     throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
 
-  const form = await request.formData()
-  const { filename, content, contentAsString, contentLength } = await getFileFromPart(form.get("c"))
-  const nameFromForm = await getStringFromPart(form.get("n"))
-  const isPrivate = form.get("p") !== null
-  const passwdFromForm = await getStringFromPart(form.get("s"))
-  const expireFromPart: string | undefined = await getStringFromPart(form.get("e"))
-  const expire = expireFromPart !== undefined ? expireFromPart : env.DEFAULT_EXPIRATION
+  const parts = await multipartToMap(request, parseSize(env.R2_MAX_ALLOWED)!)
 
-  // check if paste content is legal
-  if (content === undefined) {
+  if (!parts.has("c")) {
     throw new WorkerError(400, "cannot find content in formdata")
-  } else if (contentLength > parseSize(env.R2_MAX_ALLOWED)!) {
-    throw new WorkerError(413, "payload too large")
   }
+  const { filename, content, contentAsString, contentLength } = parts.get("c")!
+  const nameFromForm = parts.get("n")?.contentAsString
+  const isPrivate = parts.has("p")
+  const passwdFromForm = parts.get("s")?.contentAsString
+  const expireFromPart: string | undefined = parts.get("e")?.contentAsString
+  const expire = expireFromPart ? expireFromPart : env.DEFAULT_EXPIRATION
 
   // parse expiration
   let expirationSeconds = parseExpiration(expire)

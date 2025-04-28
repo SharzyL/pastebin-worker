@@ -24,18 +24,27 @@ export async function workerFetch(ctx: ExecutionContext, req: Request | string) 
 export async function upload(
   ctx: ExecutionContext,
   kv: FormDataBuild,
-  method: "POST" | "PUT" = "POST",
-  url: string = BASE_URL,
+  options: {
+    method?: "POST" | "PUT"
+    url?: string
+    headers?: Record<string, string>
+    context?: string
+  } = {},
 ): Promise<PasteResponse> {
+  const method = options.method || "POST"
+  const url = options.url || BASE_URL
+  const headers = options.headers || {}
   const uploadResponse = await workerFetch(
     ctx,
     new Request(url, {
       method,
       body: createFormData(kv),
+      headers,
     }),
   )
   if (uploadResponse.status !== 200) {
-    const uploadMsg = await uploadResponse.text()
+    let uploadMsg = await uploadResponse.text()
+    if (options.context) uploadMsg += ` ${options.context}`
     throw new Error(uploadMsg)
   }
   expect(uploadResponse.headers.get("Content-Type")).toStrictEqual("application/json;charset=UTF-8")
@@ -46,18 +55,27 @@ export async function uploadExpectStatus(
   ctx: ExecutionContext,
   kv: FormDataBuild,
   expectedStatuus: number,
-  method: string = "POST",
-  url: string = BASE_URL,
+  options: {
+    method?: "POST" | "PUT"
+    url?: string
+    headers?: Record<string, string>
+    context?: string
+  } = {},
 ): Promise<void> {
+  const method = options.method || "POST"
+  const url = options.url || BASE_URL
+  const headers = options.headers || {}
   const uploadResponse = await workerFetch(
     ctx,
     new Request(url, {
       method,
       body: createFormData(kv),
+      headers,
     }),
   )
   if (uploadResponse.status !== expectedStatuus) {
-    const uploadMsg = await uploadResponse.text()
+    let uploadMsg = await uploadResponse.text()
+    if (options.context) uploadMsg += ` ${options.context}`
     throw new Error(uploadMsg)
   }
 }
@@ -68,7 +86,7 @@ export function createFormData(kv: FormDataBuild): FormData {
     if (typeof v === "string") {
       fd.set(k, v)
     } else if (v instanceof Blob) {
-      fd.set(k, v)
+      fd.set(k, v, "") // fd.set automatically set filename to k, not what we desired
     } else {
       // hack for typing
       const { content, filename } = v as { content: Blob; filename: string }
@@ -90,4 +108,10 @@ export function genRandomBlob(len: number): Blob {
 
 export async function areBlobsEqual(blob1: Blob, blob2: Blob) {
   return Buffer.from(await blob1.arrayBuffer()).compare(Buffer.from(await blob2.arrayBuffer())) === 0
+}
+
+// replace https://example.com/xxx to https://example.com/${role}/xxx
+export function addRole(url: string, role: string): string {
+  const splitPoint = env.DEPLOY_URL.length
+  return url.slice(0, splitPoint) + "/" + role + url.slice(splitPoint)
 }

@@ -4,10 +4,10 @@ import { verifyAuth } from "../auth.js"
 import mime from "mime/lite"
 import { makeMarkdown } from "../pages/markdown.js"
 import { makeHighlight } from "../pages/highlight.js"
-import { getPaste, PasteMetadata } from "../storage/storage.js"
-import { parsePath } from "../shared.js"
+import { getPaste, getPasteMetadata, PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
+import { MAX_URL_REDIRECT_LEN, MetaResponse, parsePath } from "../shared.js"
 
-type Headers = { [name: string]: string }
+type Headers = Record<string, string>
 
 async function decodeMaybeStream(content: ArrayBuffer | ReadableStream): Promise<string> {
   if (content instanceof ArrayBuffer) {
@@ -93,7 +93,13 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
   return null
 }
 
-export async function handleGet(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function getPasteWithoutContent(env: Env, name: string): Promise<PasteWithMetadata | null> {
+  const metadata = await getPasteMetadata(env, name)
+  return metadata && { paste: new ArrayBuffer(), metadata }
+}
+
+export async function handleGet(request: Request, env: Env, ctx: ExecutionContext, isHead: boolean): Promise<Response> {
+  // TODO: handle etag
   const staticPageResp = await handleStaticPages(request, env, ctx)
   if (staticPageResp !== null) {
     return staticPageResp
@@ -105,7 +111,13 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   const disp = url.searchParams.has("a") ? "attachment" : "inline"
 
-  const item = await getPaste(env, nameFromPath, ctx)
+  // when not isHead, always need to get paste unless "m"
+  // when isHead, no need to get paste unless "u"
+  const shouldGetPasteContent = (!isHead && role !== "m") || (isHead && role === "u")
+
+  const item: PasteWithMetadata | null = shouldGetPasteContent
+    ? await getPaste(env, nameFromPath, ctx)
+    : await getPasteWithoutContent(env, nameFromPath)
 
   // when paste is not found
   if (item === null) {
@@ -141,6 +153,9 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle URL redirection
   if (role === "u") {
+    if (item.metadata.sizeBytes > MAX_URL_REDIRECT_LEN) {
+      throw new WorkerError(400, `URL too long to be redirected (max ${MAX_URL_REDIRECT_LEN} bytes)`)
+    }
     const redirectURL = await decodeMaybeStream(item.paste)
     if (isLegalUrl(redirectURL)) {
       return Response.redirect(redirectURL)
@@ -151,10 +166,28 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle article (render as markdown)
   if (role === "a") {
-    const md = makeMarkdown(await decodeMaybeStream(item.paste))
-    return new Response(md, {
+    return new Response(shouldGetPasteContent ? makeMarkdown(await decodeMaybeStream(item.paste)) : null, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
+        ...pasteCacheHeader(env),
+        ...lastModifiedHeader(item.metadata),
+      },
+    })
+  }
+
+  // handle metadata access
+  if (role === "m") {
+    const returnedMetadata: MetaResponse = {
+      lastModifiedAt: new Date(item.metadata.lastModifiedAtUnix * 1000).toISOString(),
+      createdAt: new Date(item.metadata.createdAtUnix * 1000).toISOString(),
+      expireAt: new Date(item.metadata.willExpireAtUnix * 1000).toISOString(),
+      sizeBytes: item.metadata.sizeBytes,
+      filename: item.metadata.filename,
+      location: item.metadata.location,
+    }
+    return new Response(isHead ? null : JSON.stringify(returnedMetadata, null, 2), {
+      headers: {
+        "Content-Type": `application/json;charset=UTF-8`,
         ...pasteCacheHeader(env),
         ...lastModifiedHeader(item.metadata),
       },
@@ -164,7 +197,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   // handle language highlight
   const lang = url.searchParams.get("lang")
   if (lang) {
-    return new Response(makeHighlight(await decodeMaybeStream(item.paste), lang), {
+    return new Response(shouldGetPasteContent ? makeHighlight(await decodeMaybeStream(item.paste), lang) : null, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),
@@ -186,5 +219,10 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     headers["Content-Disposition"] = `${disp}`
   }
   headers["Access-Control-Expose-Headers"] = "Content-Disposition"
-  return new Response(item.paste, { headers })
+
+  // if content is nonempty, Content-Length will be set automatically
+  if (!shouldGetPasteContent) {
+    headers["Content-Length"] = item.metadata.sizeBytes.toString()
+  }
+  return new Response(shouldGetPasteContent ? item.paste : null, { headers })
 }

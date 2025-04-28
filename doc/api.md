@@ -65,6 +65,38 @@ $ firefox https://shz.al/u/i-p-
 $ curl -L https://shz.al/u/i-p-
 ```
 
+## GET `/m/<name>`
+
+Get the metadata of the paste of name `<name>`.
+
+If error occurs, the worker returns status code different from `200`:
+
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
+
+Usage example:
+
+```shell
+$ curl -L https://shz.al/m/i-p-
+{
+  "lastModifiedAt": "2025-05-05T10:33:06.114Z",
+  "createdAt": "2025-05-01T10:33:06.114Z",
+  "expireAt": "2025-05-08T10:33:06.114Z",
+  "sizeBytes": 4096,
+  "filename": "a.jpg",
+  "location": "KV"
+}
+```
+
+Explanation of the fields:
+
+- `lastModified`: String. An ISO String representing the last modification time of the paste.
+- `expireAt`: String. An ISO String representing when the paste will expire.
+- `expireAt`: String. An ISO String representing when the paste was created.
+- `sizeBytes`: Integer. The size of the content of the paste in bytes.
+- `filename`: Optional string. The file name of the paste.
+- `location`: String, either "KV" of "R2". Representing whether the paste content is stored in Cloudflare KV storage or R2 object storage.
+
 ## GET `/a/<name>`
 
 Return the HTML converted from the markdown file stored in the paste of name `<name>`. The markdown conversion follows GitHub Flavored Markdown (GFM) Spec, supported by [remark-gfm](https://github.com/remarkjs/remark-gfm).
@@ -118,6 +150,10 @@ $ curl -Fc=@test.md -Fn=test-md https://shz.al
 $ firefox https://shz.al/a/~test-md
 ```
 
+## **HEAD** `/*`
+
+Request a paste without returning the body. It accepts same parameters as all `GET` requests, and returns the same `Content-Type`, `Content-Disposition`, `Content-Length` and cache control headers with the corresponding `GET` request. Note that the `Content-Length` with `/a/<name>`, `?lang=<lang>` is the length of the paste instead of the length the actuala HTML page.
+
 ## **POST** `/`
 
 Upload your paste. It accept parameters in form-data:
@@ -146,7 +182,7 @@ Upload your paste. It accept parameters in form-data:
 Explanation of the fields:
 
 - `url`: String. The URL to fetch the paste. When using a customized name, it looks like `https//shz.al/~myname`.
-- `suggestedUrl`: String or null. The URL that may carry filename or URL redirection.
+- `suggestedUrl`: Optional string. The URL that may carry filename or URL redirection.
 - `manageUrl`: String. The URL to update and delete the paste, which is `url` suffixed by `~` and the password.
 - `expirationSeconds`: String. The expiration seconds.
 - `expireAt`: String. An ISO String representing when the paste will expire.

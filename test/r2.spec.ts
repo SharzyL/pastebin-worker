@@ -1,18 +1,13 @@
 import { expect, test, vi, beforeEach, afterEach } from "vitest"
-import { areBlobsEqual, genRandomBlob, upload, workerFetch } from "./testUtils"
-import { parseSize } from "../src/shared"
+import { addRole, areBlobsEqual, genRandomBlob, upload, workerFetch } from "./testUtils"
+import { MetaResponse, parseSize } from "../src/shared"
 import { createExecutionContext, createScheduledController, env, waitOnExecutionContext } from "cloudflare:test"
 import worker from "../src/index.js"
 
-beforeEach(() => {
-  vi.useFakeTimers()
-})
+beforeEach(vi.useFakeTimers)
+afterEach(vi.useRealTimers)
 
-afterEach(() => {
-  vi.useRealTimers()
-})
-
-test("basic", async () => {
+test("r2 basic", async () => {
   const blob1 = genRandomBlob(parseSize(env.R2_THRESHOLD)! * 2)
   const ctx = createExecutionContext()
 
@@ -27,16 +22,22 @@ test("basic", async () => {
 
   // test put
   const blob2 = genRandomBlob(parseSize(env.R2_THRESHOLD)! * 2)
-  const putResponseJson = await upload(ctx, { c: blob2 }, "PUT", uploadResponse.manageUrl)
+  const putResponseJson = await upload(ctx, { c: blob2 }, { method: "PUT", url: uploadResponse.manageUrl })
   expect(putResponseJson.url).toStrictEqual(url)
 
   // test revisit
   const revisitResp = await workerFetch(ctx, url)
   expect(revisitResp.status).toStrictEqual(200)
   expect(areBlobsEqual(await revisitResp.blob(), blob2)).toBeTruthy()
+
+  // test meta
+  const metaResp = await workerFetch(ctx, addRole(url, "m"))
+  expect(metaResp.status).toStrictEqual(200)
+  const meta: MetaResponse = await metaResp.json()
+  expect(meta.location).toStrictEqual("R2")
 })
 
-test("schedule", async () => {
+test("r2 schedule", async () => {
   const ctx = createExecutionContext()
 
   // upload

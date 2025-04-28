@@ -1,11 +1,22 @@
 // This file contains things shared with frontend
 
+export type PasteLocation = "KV" | "R2"
+
 export type PasteResponse = {
   url: string
   suggestedUrl?: string
   manageUrl: string
   expirationSeconds: number
   expireAt: string
+}
+
+export type MetaResponse = {
+  lastModifiedAt: string
+  createdAt: string
+  expireAt: string
+  sizeBytes: number
+  filename?: string
+  location: PasteLocation
 }
 
 export const CHAR_GEN = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
@@ -15,6 +26,7 @@ export const PRIVATE_PASTE_NAME_LEN = 24
 export const DEFAULT_PASSWD_LEN = 24
 export const MAX_PASSWD_LEN = 128
 export const MIN_PASSWD_LEN = 8
+export const MAX_URL_REDIRECT_LEN = 2000
 export const PASSWD_SEP = ":"
 
 export function parseSize(sizeStr: string): number | null {
@@ -71,21 +83,13 @@ export type ParsedPath = {
 }
 
 export function parsePath(pathname: string): ParsedPath {
-  // Example of paths (SEP=':'). Note: query string is not processed here
-  // > example.com/~stocking
-  // > example.com/~stocking:uLE4Fhb/d3414adlW653Vx0VSVw=
-  // > example.com/abcd
-  // > example.com/abcd.jpg
-  // > example.com/abcd/myphoto.jpg
-  // > example.com/u/abcd
-  // > example.com/abcd:3ffd2e7ff214989646e006bd9ad36c58d447065e
   pathname = pathname.slice(1) // strip the leading slash
 
-  let role: string | undefined = undefined,
-    ext: string | undefined = undefined,
-    filename: string | undefined = undefined,
-    passwd: string | undefined = undefined,
-    short: string | undefined = undefined
+  let role: string | undefined,
+    ext: string | undefined,
+    filename: string | undefined,
+    passwd: string | undefined,
+    short: string | undefined
 
   // extract and remove role
   if (pathname[1] === "/") {

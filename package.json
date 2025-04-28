@@ -36,11 +36,11 @@
     "jsdom": "^26.1.0",
     "msw": "^2.7.5",
     "prettier": "^3.5.3",
+    "toml": "^3.0.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.3",
     "vitest": "3.1.1",
-    "toml": "^3.0.0",
     "wrangler": "^4.13.2"
   },
   "prettier": {
@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@heroui/react": "2.8.0-beta.2",
+    "@mjackson/multipart-parser": "^0.8.2",
     "@tailwindcss/vite": "^4.1.4",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",

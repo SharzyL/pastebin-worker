@@ -1,7 +1,6 @@
 import { dateToUnix, WorkerError } from "../common.js"
 import { parseSize } from "../shared.js"
-
-export type PasteLocation = "KV" | "R2"
+import { PasteLocation } from "../shared.js"
 
 // since CF does not allow expiration shorter than 60s, extend the expiration to 70s
 const PASTE_EXPIRE_SPECIFIED_MIN = 70

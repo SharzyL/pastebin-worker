@@ -1,5 +1,5 @@
 import { createExecutionContext, env } from "cloudflare:test"
-import { expect, test } from "vitest"
+import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
 import { BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils.js"
 
@@ -34,10 +34,18 @@ test("mime type", async () => {
 })
 
 test("cache control", async () => {
+  beforeEach(vi.useFakeTimers)
+  afterEach(vi.useRealTimers)
+  const t1 = new Date(2035, 0, 0)
+  vi.setSystemTime(t1)
+
   const ctx = createExecutionContext()
   const uploadResp = await upload(ctx, { c: genRandomBlob(1024) })
   const url = uploadResp["url"]
   const resp = await workerFetch(ctx, url)
+  expect(resp.headers.has("Last-Modified")).toBeTruthy()
+  expect(new Date(resp.headers.get("Last-Modified")!).getTime()).toStrictEqual(t1.getTime())
+
   if ("CACHE_PASTE_AGE" in env) {
     expect(resp.headers.get("Cache-Control")).toStrictEqual(`public, max-age=${env.CACHE_PASTE_AGE}`)
   } else {
@@ -51,11 +59,12 @@ test("cache control", async () => {
     expect(indexResp.headers.get("Cache-Control")).toBeUndefined()
   }
 
+  const t2 = new Date(2035, 0, 1)
   const staleResp = await workerFetch(
     ctx,
     new Request(url, {
       headers: {
-        "If-Modified-Since": "Mon, 11 Mar 2030 00:00:00 GMT",
+        "If-Modified-Since": t2.toUTCString(),
       },
     }),
   )

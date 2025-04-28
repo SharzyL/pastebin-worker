@@ -38,7 +38,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       )
     } else {
       const err = e as Error
-      console.log(err.stack)
+      console.error(err.stack)
       return corsWrapResponse(new Response(`Error 500: ${err.message}\n`, { status: 500 }))
     }
   }
@@ -49,7 +49,9 @@ async function handleNormalRequest(request: Request, env: Env, ctx: ExecutionCon
   if (request.method === "POST") {
     return await handlePostOrPut(request, env, ctx, false)
   } else if (request.method === "GET") {
-    return await handleGet(request, env, ctx)
+    return await handleGet(request, env, ctx, false)
+  } else if (request.method === "HEAD") {
+    return await handleGet(request, env, ctx, true)
   } else if (request.method === "DELETE") {
     return await handleDelete(request, env, ctx)
   } else if (request.method === "PUT") {
@@ -58,7 +60,7 @@ async function handleNormalRequest(request: Request, env: Env, ctx: ExecutionCon
     return new Response(`method ${request.method} not allowed`, {
       status: 405,
       headers: {
-        Allow: "GET, PUT, POST, DELETE, OPTION",
+        Allow: "GET, HEAD, PUT, POST, DELETE, OPTION",
       },
     })
   }
