@@ -1,56 +1,33 @@
 import React, { useEffect, useState } from "react"
 
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  Divider,
-  Input,
-  Link,
-  Radio,
-  RadioGroup,
-  Skeleton,
-  Snippet,
-  Tab,
-  Tabs,
-  Textarea,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-} from "@heroui/react"
+import { Button, Card, CardBody, Link, Tab, Tabs, Textarea } from "@heroui/react"
 
 import { PasteResponse, parsePath, parseFilenameFromContentDisposition } from "../src/shared.js"
 
-import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./components/darkModeToggle.js"
+import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./components/DarkModeToggle.js"
+import { ErrorModal } from "./components/ErrorModal.js"
+import { PanelSettingsPanel, PasteSetting, UploadKind } from "./components/PasteSettingPanel.js"
 
-import {
-  verifyExpiration,
-  verifyManageUrl,
-  verifyName,
-  formatSize,
-  maxExpirationReadable,
-  BaseUrl,
-  APIUrl,
-} from "./utils.js"
+import { verifyExpiration, verifyManageUrl, verifyName, maxExpirationReadable, BaseUrl, APIUrl } from "./utils.js"
 
 import "./style.css"
-
-type EditKind = "edit" | "file"
-type UploadKind = "short" | "long" | "custom" | "manage"
+import { UploadedPanel } from "./components/UploadedPanel.js"
+import { PasteEditor, PasteEditState } from "./components/PasteEditor.js"
 
 export function PasteBin() {
-  const [editKind, setEditKind] = useState<EditKind>("edit")
-  const [pasteEdit, setPasteEdit] = useState("")
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [editorState, setEditorState] = useState<PasteEditState>({
+    editKind: "edit",
+    editContent: "",
+    file: null,
+  })
 
-  const [expiration, setExpiration] = useState(DEFAULT_EXPIRATION)
-  const [password, setPassword] = useState("")
-  const [customName, setCustomName] = useState("")
-  const [manageUrl, setManageUrl] = useState("")
-  const [uploadKind, setUploadKind] = useState<UploadKind>("short")
+  const [pasteSetting, setPasteSetting] = useState<PasteSetting>({
+    expiration: DEFAULT_EXPIRATION,
+    manageUrl: "",
+    name: "",
+    password: "",
+    uploadKind: "short",
+  })
 
   const [pasteResponse, setPasteResponse] = useState<PasteResponse | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -73,35 +50,6 @@ export function PasteBin() {
     const errText = (await resp.text()) || statusText
     showModal(errText, title)
   }
-
-  const errorModal = (
-    <Modal
-      isOpen={isModalOpen}
-      onOpenChange={(open) => {
-        setModalOpen(open)
-        if (!open) {
-          setIsPasteLoading(false)
-          setIsLoading(false)
-        }
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">{modalErrTitle}</ModalHeader>
-        <ModalBody>
-          <p>{modalErrMsg}</p>
-        </ModalBody>
-        <ModalFooter>
-          <Button color="danger" variant="light" onPress={() => setModalOpen(false)}>
-            Close
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  )
-
-  useEffect(() => {
-    localStorage.setItem("darkModeSelect", darkModeSelect)
-  }, [darkModeSelect])
 
   // handle admin URL
   useEffect(() => {
@@ -126,74 +74,70 @@ export function PasteBin() {
         const contentDisp = resp.headers.get("Content-Disposition")
 
         if (contentType && contentType.startsWith("text/")) {
-          setEditKind("edit")
-          const t = await resp.text()
-          setPasteEdit(t)
+          setEditorState({
+            editKind: "edit",
+            editContent: await resp.text(),
+            file: null,
+          })
         } else {
-          setEditKind("file")
           let pasteFilename = filename
           if (pasteFilename === undefined && contentDisp !== null) {
             pasteFilename = parseFilenameFromContentDisposition(contentDisp)
           }
-          setUploadFile(new File([await resp.blob()], pasteFilename || "[unknown filename]"))
+          setEditorState({
+            editKind: "file",
+            editContent: "",
+            file: new File([await resp.blob()], pasteFilename || "[unknown filename]"),
+          })
         }
       } finally {
         setIsPasteLoading(false)
       }
     }
-    if (passwd !== undefined && manageUrl === "") {
-      setUploadKind("manage")
-      setManageUrl(`${APIUrl}/${nameFromPath}:${passwd}`)
+    if (passwd !== undefined && pasteSetting.manageUrl === "") {
+      setPasteSetting({
+        ...pasteSetting,
+        uploadKind: "manage",
+        manageUrl: `${APIUrl}/${nameFromPath}:${passwd}`,
+      })
 
       fetchPaste().catch(console.error)
     }
   }, [])
 
-  function displayFileInfo(file: File | null) {
-    if (file === null) {
-      return null
-    } else {
-      return (
-        <span className="ml-4">
-          <code>{file.name}</code> ({formatSize(file.size)})
-        </span>
-      )
-    }
-  }
-
   async function uploadPaste(): Promise<void> {
     const fd = new FormData()
-    if (editKind === "file") {
-      if (uploadFile === null) {
+    if (editorState.editKind === "file") {
+      if (editorState.file === null) {
         showModal("No file selected", "Error on preparing upload")
         return
       }
-      fd.append("c", uploadFile)
+      fd.append("c", editorState.file)
     } else {
-      if (pasteEdit.length === 0) {
+      if (editorState.editContent.length === 0) {
         showModal("Empty paste", "Error on preparing upload")
         return
       }
-      fd.append("c", pasteEdit)
+      fd.append("c", editorState.editContent)
     }
 
-    fd.append("e", expiration)
-    if (password.length > 0) fd.append("s", password)
+    fd.append("e", pasteSetting.expiration)
+    if (pasteSetting.password.length > 0) fd.append("s", pasteSetting.password)
 
-    if (uploadKind === "long") fd.append("p", "true")
-    else if (uploadKind === "custom") fd.append("n", customName)
+    if (pasteSetting.uploadKind === "long") fd.append("p", "true")
+    else if (pasteSetting.uploadKind === "custom") fd.append("n", pasteSetting.name)
 
     try {
       setIsLoading(true)
       setPasteResponse(null)
-      const isUpdate = uploadKind !== "manage"
+      const isUpdate = pasteSetting.uploadKind !== "manage"
       // TODO: add progress indicator
       const resp = isUpdate
         ? await fetch(APIUrl, {
             method: "POST",
             body: fd,
           })
-        : await fetch(manageUrl, {
+        : await fetch(pasteSetting.manageUrl, {
             method: "PUT",
             body: fd,
           })
@@ -213,7 +157,7 @@ export function PasteBin() {
 
   async function deletePaste() {
     try {
-      const resp = await fetch(manageUrl, {
+      const resp = await fetch(pasteSetting.manageUrl, {
         method: "DELETE",
       })
       if (resp.ok) {
@@ -245,214 +189,20 @@ export function PasteBin() {
     </div>
   )
 
-  const editor = (
-    <Card className="mt-6 mb-4 mx-2 lg:mx-0">
-      <CardBody>
-        <Tabs
-          variant="underlined"
-          classNames={{
-            tabList: "ml-4 gap-6 w-full p-0 border-divider",
-            cursor: "w-full",
-            tab: "max-w-fit px-0 h-8",
-          }}
-          selectedKey={editKind}
-          onSelectionChange={(k) => {
-            setEditKind(k as EditKind)
-          }}
-        >
-          <Tab key={"edit"} title="Edit">
-            <Textarea
-              isClearable
-              data-testid="pastebin-edit"
-              placeholder={isPasteLoading ? "Loading..." : "Edit your paste here"}
-              isDisabled={isPasteLoading}
-              className="px-0 py-0"
-              classNames={{
-                input: "resize-y min-h-[30em] font-mono",
-              }}
-              name="c"
-              disableAutosize
-              disableAnimation
-              value={pasteEdit}
-              onValueChange={setPasteEdit}
-              variant="faded"
-              isRequired
-            ></Textarea>
-          </Tab>
-          <Tab key="file" title="File">
-            <Button radius="sm" color="primary" as="label">
-              <input
-                type="file"
-                className="w-0 h-0 overflow-hidden absolute inline"
-                onChange={(event) => {
-                  const files = event.target.files
-                  if (files && files.length) {
-                    setEditKind("file")
-                    setUploadFile(files[0])
-                  }
-                }}
-              />
-              Upload
-            </Button>
-            {displayFileInfo(uploadFile)}
-          </Tab>
-        </Tabs>
-      </CardBody>
-    </Card>
-  )
-
-  const setting = (
-    <Card className={"transition-width ease-in-out lg:w-1/2 w-full"}>
-      <CardHeader className="text-2xl">Settings</CardHeader>
-      <Divider />
-      <CardBody>
-        <div className="gap-4 mb-6 flex flex-row">
-          <Input
-            type="text"
-            label="Expiration"
-            className="basis-80"
-            defaultValue="7d"
-            value={expiration}
-            isRequired
-            onValueChange={setExpiration}
-            isInvalid={!verifyExpiration(expiration)[0]}
-            errorMessage={verifyExpiration(expiration)[1]}
-            description={verifyExpiration(expiration)[1]}
-          />
-          <Input
-            type="password"
-            label="Password"
-            value={password}
-            onValueChange={setPassword}
-            placeholder={"Generated randomly"}
-            description="Used to update/delete your paste"
-          />
-        </div>
-        <RadioGroup
-          className="gap-4 mb-2 w-full"
-          value={uploadKind}
-          onValueChange={(v) => setUploadKind(v as UploadKind)}
-        >
-          <Radio value="short" description={`Example: ${BaseUrl}/BxWH`}>
-            Generate a short random URL
-          </Radio>
-          <Radio
-            value="long"
-            description={`Example: ${BaseUrl}/5HQWYNmjA4h44SmybeThXXAm`}
-            classNames={{
-              description: "text-ellipsis max-w-[calc(100vw-5rem)] whitespace-nowrap overflow-hidden",
-            }}
-          >
-            Generate a long random URL
-          </Radio>
-          <Radio value="custom" description={`Example: ${BaseUrl}/~stocking`}>
-            Set by your own
-          </Radio>
-          {uploadKind === "custom" ? (
-            <Input
-              value={customName}
-              onValueChange={setCustomName}
-              type="text"
-              className="shrink"
-              isInvalid={!verifyName(customName)[0]}
-              errorMessage={verifyName(customName)[1]}
-              startContent={
-                <div className="pointer-events-none flex items-center">
-                  <span className="text-default-500 text-small w-max">{`${BaseUrl}/~`}</span>
-                </div>
-              }
-            />
-          ) : null}
-          <Radio value="manage">
-            <div className="">Update or delete</div>
-          </Radio>
-          {uploadKind === "manage" ? (
-            <Input
-              value={manageUrl}
-              onValueChange={setManageUrl}
-              type="text"
-              className="shrink"
-              isInvalid={!verifyManageUrl(manageUrl)[0]}
-              errorMessage={verifyManageUrl(manageUrl)[1]}
-              placeholder={`Manage URL`}
-            />
-          ) : null}
-        </RadioGroup>
-      </CardBody>
-    </Card>
-  )
-
-  const snippetClassNames = {
-    pre: "overflow-scroll leading-[2.5]",
-    base: "w-full py-2/3",
-    copyButton: "relative ml-[-12pt] left-[5pt]",
-  }
-  const firstColClassNames = "w-[7rem] whitespace-nowrap"
-  const uploaded = () => (
-    <Card className="w-full lg:w-1/2">
-      <CardHeader className="text-2xl">Uploaded Paste</CardHeader>
-      <Divider />
-      <CardBody>
-        <table className="border-spacing-2 border-separate table-fixed w-full">
-          <tbody>
-            <tr>
-              <td className={firstColClassNames}>Paste URL</td>
-              <td className="w-full">
-                <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl grow">
-                  <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
-                    {pasteResponse?.url}
-                  </Snippet>
-                </Skeleton>
-              </td>
-            </tr>
-            <tr>
-              <td className={firstColClassNames}>Manage URL</td>
-              <td className="w-full overflow-hidden">
-                <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl grow">
-                  <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
-                    {pasteResponse?.manageUrl}
-                  </Snippet>
-                </Skeleton>
-              </td>
-            </tr>
-            {pasteResponse?.suggestedUrl ? (
-              <tr>
-                <td className={firstColClassNames}>Suggested URL</td>
-                <td className="w-full">
-                  <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
-                    {pasteResponse?.suggestedUrl}
-                  </Snippet>
-                </td>
-              </tr>
-            ) : null}
-            <tr>
-              <td className={firstColClassNames}>Expire At</td>
-              <td className="w-full py-2">
-                <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl">
-                  {pasteResponse && new Date(pasteResponse.expireAt).toLocaleString()}
-                </Skeleton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </CardBody>
-    </Card>
-  )
-
   function canUpload(): boolean {
-    if (editKind === "edit" && pasteEdit.length === 0) {
+    if (editorState.editKind === "edit" && editorState.editContent.length === 0) {
       return false
-    } else if (editKind === "file" && uploadFile === null) {
+    } else if (editorState.editKind === "file" && editorState.file === null) {
       return false
     }
 
-    if (verifyExpiration(expiration)[0]) {
-      if (uploadKind === "short" || uploadKind === "long") {
+    if (verifyExpiration(pasteSetting.expiration)[0]) {
+      if (pasteSetting.uploadKind === "short" || pasteSetting.uploadKind === "long") {
         return true
-      } else if (uploadKind === "custom") {
-        return verifyName(customName)[0]
-      } else if (uploadKind === "manage") {
-        return verifyManageUrl(manageUrl)[0]
+      } else if (pasteSetting.uploadKind === "custom") {
+        return verifyName(pasteSetting.name)[0]
+      } else if (pasteSetting.uploadKind === "manage") {
+        return verifyManageUrl(pasteSetting.manageUrl)[0]
       } else {
         return false
       }
@@ -462,16 +212,16 @@ export function PasteBin() {
   }
 
   function canDelete(): boolean {
-    return verifyManageUrl(manageUrl)[0]
+    return verifyManageUrl(pasteSetting.manageUrl)[0]
   }
 
   const submitter = (
     <div className="my-4 mx-2 lg:mx-0">
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <Button color="primary" onPress={uploadPaste} className="mr-4" isDisabled={!canUpload()}>
-        {uploadKind === "manage" ? "Update" : "Upload"}
+        {pasteSetting.uploadKind === "manage" ? "Update" : "Upload"}
       </Button>
-      {uploadKind === "manage" ? (
+      {pasteSetting.uploadKind === "manage" ? (
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         <Button color="danger" onPress={deletePaste} isDisabled={!canDelete()}>
           Delete
@@ -504,15 +254,33 @@ export function PasteBin() {
     >
       <div className="grow w-full max-w-[64rem]">
         {info}
-        {editor}
+        <PasteEditor
+          isPasteLoading={isPasteLoading}
+          state={editorState}
+          onStateChange={setEditorState}
+          className="mt-6 mb-4 mx-2 lg:mx-0"
+        />
         <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
-          {setting}
-          {(pasteResponse || isLoading) && uploaded()}
+          <PanelSettingsPanel
+            className={"transition-width ease-in-out lg:w-1/2 w-full"}
+            setting={pasteSetting}
+            onSettingChange={setPasteSetting}
+          />
+          {(pasteResponse || isLoading) && <UploadedPanel pasteResponse={pasteResponse} className="w-full lg:w-1/2" />}
         </div>
         {submitter}
       </div>
       {footer}
-      {errorModal}
+      <ErrorModal
+        onDismiss={() => {
+          setIsPasteLoading(false)
+          setIsLoading(false)
+          setModalOpen(false)
+        }}
+        isOpen={isModalOpen}
+        title={modalErrTitle}
+        content={modalErrMsg}
+      />
     </main>
   )
 }

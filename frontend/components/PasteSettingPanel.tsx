@@ -1,0 +1,101 @@
+import { Card, CardBody, CardHeader, CardProps, Divider, Input, Radio, RadioGroup } from "@heroui/react"
+import { BaseUrl, verifyExpiration, verifyManageUrl, verifyName } from "../utils.js"
+import React from "react"
+
+export type UploadKind = "short" | "long" | "custom" | "manage"
+
+export type PasteSetting = {
+  uploadKind: UploadKind
+  expiration: string
+  password: string
+  name: string
+  manageUrl: string
+}
+
+interface PasteSettingPanelProps extends CardProps {
+  setting: PasteSetting
+  onSettingChange: (setting: PasteSetting) => void
+}
+
+export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteSettingPanelProps) {
+  return (
+    <Card {...rest}>
+      <CardHeader className="text-2xl">Settings</CardHeader>
+      <Divider />
+      <CardBody>
+        <div className="gap-4 mb-6 flex flex-row">
+          <Input
+            type="text"
+            label="Expiration"
+            className="basis-80"
+            defaultValue="7d"
+            value={setting.expiration}
+            isRequired
+            onValueChange={(e) => onSettingChange({ ...setting, expiration: e })}
+            isInvalid={!verifyExpiration(setting.expiration)[0]}
+            errorMessage={verifyExpiration(setting.expiration)[1]}
+            description={verifyExpiration(setting.expiration)[1]}
+          />
+          <Input
+            type="password"
+            label="Password"
+            value={setting.password}
+            onValueChange={(p) => onSettingChange({ ...setting, password: p })}
+            placeholder={"Generated randomly"}
+            description="Used to update/delete your paste"
+          />
+        </div>
+        <RadioGroup
+          className="gap-4 mb-2 w-full"
+          value={setting.uploadKind}
+          onValueChange={(v) => onSettingChange({ ...setting, uploadKind: v as UploadKind })}
+        >
+          <Radio value="short" description={`Example: ${BaseUrl}/BxWH`}>
+            Generate a short random URL
+          </Radio>
+          <Radio
+            value="long"
+            description={`Example: ${BaseUrl}/5HQWYNmjA4h44SmybeThXXAm`}
+            classNames={{
+              description: "text-ellipsis max-w-[calc(100vw-5rem)] whitespace-nowrap overflow-hidden",
+            }}
+          >
+            Generate a long random URL
+          </Radio>
+          <Radio value="custom" description={`Example: ${BaseUrl}/~stocking`}>
+            Set by your own
+          </Radio>
+          {setting.uploadKind === "custom" ? (
+            <Input
+              value={setting.name}
+              onValueChange={(n) => onSettingChange({ ...setting, name: n })}
+              type="text"
+              className="shrink"
+              isInvalid={!verifyName(setting.name)[0]}
+              errorMessage={verifyName(setting.name)[1]}
+              startContent={
+                <div className="pointer-events-none flex items-center">
+                  <span className="text-default-500 text-small w-max">{`${BaseUrl}/~`}</span>
+                </div>
+              }
+            />
+          ) : null}
+          <Radio value="manage">
+            <div className="">Update or delete</div>
+          </Radio>
+          {setting.uploadKind === "manage" ? (
+            <Input
+              value={setting.manageUrl}
+              onValueChange={(m) => onSettingChange({ ...setting, manageUrl: m })}
+              type="text"
+              className="shrink"
+              isInvalid={!verifyManageUrl(setting.manageUrl)[0]}
+              errorMessage={verifyManageUrl(setting.manageUrl)[1]}
+              placeholder={`Manage URL`}
+            />
+          ) : null}
+        </RadioGroup>
+      </CardBody>
+    </Card>
+  )
+}

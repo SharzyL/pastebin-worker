@@ -1,4 +1,4 @@
-import React, { JSX } from "react"
+import React, { JSX, useEffect } from "react"
 import { computerIcon, moonIcon, sunIcon } from "../icons.js"
 import { Tooltip, TooltipProps } from "@heroui/react"
 
@@ -32,6 +32,10 @@ export function shouldBeDark(mode: DarkMode): boolean {
 }
 
 export function DarkModeToggle({ mode, onModeChange, ...rest }: MyComponentProps) {
+  useEffect(() => {
+    localStorage.setItem("darkModeSelect", mode)
+  }, [mode])
+
   return (
     <Tooltip content="Toggle Dark Mode" {...rest}>
       <span
