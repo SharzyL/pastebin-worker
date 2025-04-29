@@ -113,7 +113,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // when not isHead, always need to get paste unless "m"
   // when isHead, no need to get paste unless "u"
-  const shouldGetPasteContent = (!isHead && role !== "m") || (isHead && role === "u")
+  const shouldGetPasteContent = (!isHead && role !== "m" && role !== "d") || (isHead && role === "u")
 
   const item: PasteWithMetadata | null = shouldGetPasteContent
     ? await getPaste(env, nameFromPath, ctx)
@@ -123,9 +123,6 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   if (item === null) {
     throw new WorkerError(404, `paste of name '${nameFromPath}' not found`)
   }
-
-  // check `if-modified-since`
-  const pasteLastModifiedUnix = item.metadata.lastModifiedAtUnix
 
   let inferred_mime =
     url.searchParams.get("mime") ||
@@ -138,6 +135,8 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     inferred_mime = "text/plain;charset=UTF-8"
   }
 
+  // check `if-modified-since`
+  const pasteLastModifiedUnix = item.metadata.lastModifiedAtUnix
   const headerModifiedSince = request.headers.get("If-Modified-Since")
   if (headerModifiedSince) {
     const headerModifiedSinceUnix = Date.parse(headerModifiedSince) / 1000
@@ -207,7 +206,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
       "{{PASTE_NAME}}",
       nameFromPath + (filename ? "/" + filename : ext ? ext : ""),
     )
-    return new Response(shouldGetPasteContent ? page : null, {
+    return new Response(isHead ? null : page, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),
