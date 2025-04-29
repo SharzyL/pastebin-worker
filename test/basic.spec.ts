@@ -14,7 +14,7 @@ import {
   addRole,
 } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
-import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN } from "../src/shared"
+import { DEFAULT_PASSWD_LEN, parsePath, PASTE_NAME_LEN } from "../src/shared"
 
 describe("upload", () => {
   const blob1 = genRandomBlob(1024)
@@ -128,10 +128,21 @@ test("GET special static pages", async () => {
   const resp = await upload(ctx, { c: blob1 })
 
   // test decryption page
-  const decUrl = addRole(resp.url, "e")
+  const decUrl = addRole(resp.url, "d")
+  const { nameFromPath } = parsePath(new URL(resp.url).pathname)
   const decResp = await workerFetch(ctx, decUrl)
   expect(decResp.status, `visiting ${decUrl}`).toStrictEqual(200)
   expect(decResp.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
+
+  const testPairs = [
+    [nameFromPath, nameFromPath],
+    [nameFromPath + ".jpg", nameFromPath + ".jpg"],
+    [nameFromPath + "/a.jpg", nameFromPath + "/a.jpg"],
+  ]
+  for (const [accessPath, expectedTitle] of testPairs) {
+    const resp = await (await workerFetch(ctx, `${BASE_URL}/d/${accessPath}`)).text()
+    expect(resp.includes(`/ ${expectedTitle}</title>`), `testing access ${accessPath}, returning ${resp}`).toBeTruthy()
+  }
 
   // test manage page
   const manageUrl = resp.manageUrl

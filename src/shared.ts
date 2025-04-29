@@ -133,7 +133,6 @@ export function parsePath(pathname: string): ParsedPath {
 export function parseFilenameFromContentDisposition(contentDisposition: string): string | undefined {
   let filename: string | undefined = undefined
 
-  // 尝试解析 filename*
   const filenameStarRegex = /filename\*=UTF-8''([^;]*)/i
   const filenameStarMatch = contentDisposition.match(filenameStarRegex)
 

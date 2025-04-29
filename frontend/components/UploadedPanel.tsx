@@ -9,7 +9,7 @@ interface UploadedPanelProps extends CardProps {
 
 const makeDecryptionUrl = (url: string, key: string) => {
   const urlParsed = new URL(url)
-  urlParsed.pathname = "/e" + urlParsed.pathname
+  urlParsed.pathname = "/d" + urlParsed.pathname
   return urlParsed.toString() + "#" + key
 }
 
@@ -47,16 +47,6 @@ export function UploadedPanel({ pasteResponse, encryptionKey, ...rest }: Uploade
                 </Skeleton>
               </td>
             </tr>
-            {pasteResponse?.suggestedUrl ? (
-              <tr>
-                <td className={firstColClassNames}>Suggested URL</td>
-                <td className="w-full">
-                  <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
-                    {pasteResponse?.suggestedUrl}
-                  </Snippet>
-                </td>
-              </tr>
-            ) : null}
             {encryptionKey ? (
               <tr>
                 <td className={firstColClassNames}>Decryption URL</td>

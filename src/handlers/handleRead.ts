@@ -130,8 +130,9 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   let inferred_mime =
     url.searchParams.get("mime") ||
     (ext && mime.getType(ext)) ||
+    (item.metadata.encryptionScheme && "application/octet-stream") ||
     (item.metadata.filename && mime.getType(item.metadata.filename)) ||
-    (item.metadata.encryptionScheme ? "application/octet-stream" : "text/plain;charset=UTF-8")
+    "text/plain;charset=UTF-8"
 
   if (env.DISALLOWED_MIME_FOR_PASTE.includes(inferred_mime)) {
     inferred_mime = "text/plain;charset=UTF-8"
@@ -149,7 +150,10 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   }
 
   // determine filename with priority: url path > meta
-  const returnFilename = filename || item.metadata?.filename
+  let returnFilename = filename || item.metadata?.filename
+  if (returnFilename && !filename && item.metadata.encryptionScheme) {
+    returnFilename = returnFilename + ".encrypted" // to avoid clients choose open method with extension
+  }
 
   // handle URL redirection
   if (role === "u") {
@@ -196,14 +200,16 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   }
 
   // handle encrypted
-  if (role === "e") {
+  if (role === "d") {
     const pageUrl = url
     pageUrl.pathname = "/decrypt.html"
-    const page = await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()
+    const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace(
+      "{{PASTE_NAME}}",
+      nameFromPath + (filename ? "/" + filename : ext ? ext : ""),
+    )
     return new Response(shouldGetPasteContent ? page : null, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
-        "Content-Length": page.byteLength.toString(),
         ...pasteCacheHeader(env),
         ...lastModifiedHeader(item.metadata),
       },

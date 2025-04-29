@@ -56,6 +56,7 @@
     "@tailwindcss/vite": "^4.1.4",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "binary-extensions": "^3.0.0",
     "framer-motion": "^12.7.4",
     "mdast-util-to-string": "^4.0.0",
     "mime": "^4.0.7",

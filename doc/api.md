@@ -4,13 +4,15 @@
 
 Return the index page.
 
-## **GET** `/<name>[.<ext>]` or `/<name>/<filename>[.<ext>]`
+## **GET** `/<name>[.<ext>]` or `/<name>/<filename>`
 
 Fetch the paste with name `<name>`. By default, it will return the raw content of the paste.
 
-The `Content-Type` header is set to `text/plain;charset=UTF-8`. If `<ext>` is given, the worker will infer mime-type from `<ext>` and change `Content-Type`. If the paste is uploaded with a filename, the worker will infer mime-type from the filename. This method accepts the following query string parameters:
+The `Content-Type` header is set to the mime type inferred from the filename of the paste, or `text/plain;charset=UTF-8` if no filename is present. If `<ext>` is given, the worker will infer mime-type from `<ext>` and change `Content-Type`. If the paste is uploaded with a filename, the worker will infer mime-type from the filename. This method accepts the following query string parameters:
 
-The `Content-Disposition` header is set to `inline` by default. But can be overriden by `?a` query string. If the paste is uploaded with filename, or `<filename>` is set in given request URL, `Content-Disposition` is appended with `filename*` indicating the filename (with `<ext>` if it exists).
+The `Content-Disposition` header is set to `inline` by default. But can be overriden by `?a` query string. If the paste is uploaded with filename, or `<filename>` is set in given request URL, `Content-Disposition` is appended with `filename*` indicating the filename. If the paste is encrypted, the filename is appended with `.encrypted` suffix.
+
+If the paste is encrypted, an `X-Encryption-Scheme` header will be set to the encryption scheme.
 
 - `?a=`: optional. Set `Content-Disposition` to `attachment` if present.
 
@@ -36,7 +38,10 @@ $ curl https://shz.al/~panty.jpg | feh -
 $ firefox 'https://shz.al/kf7z?lang=nix'
 
 $ curl 'https://shz.al/~panty.jpg?mime=image/png' -w '%{content_type}' -o /dev/null -sS
-image/png;charset=UTF-8
+image/png
+
+$ curl 'https://shz.al/kf7Z/panty.jpg?mime=image/png' -w '%{content_type}' -o /dev/null -sS
+image/png
 ```
 
 ## GET `/<name>:<passwd>`
@@ -65,6 +70,21 @@ $ firefox https://shz.al/u/i-p-
 $ curl -L https://shz.al/u/i-p-
 ```
 
+## GET `/d/<name>`
+
+Return the web page that will decrypt the paste of name `<name>` in browser.
+
+If error occurs, the worker returns status code different from `302`:
+
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
+
+Usage example:
+
+```shell
+$ firefox https://shz.al/e/i-p-
+```
+
 ## GET `/m/<name>`
 
 Get the metadata of the paste of name `<name>`.
@@ -83,8 +103,9 @@ $ curl -L https://shz.al/m/i-p-
   "createdAt": "2025-05-01T10:33:06.114Z",
   "expireAt": "2025-05-08T10:33:06.114Z",
   "sizeBytes": 4096,
+  "location": "KV",
   "filename": "a.jpg",
-  "location": "KV"
+  "encryptionScheme": "AES-GCM"
 }
 ```
 
@@ -96,6 +117,7 @@ Explanation of the fields:
 - `sizeBytes`: Integer. The size of the content of the paste in bytes.
 - `filename`: Optional string. The file name of the paste.
 - `location`: String, either "KV" of "R2". Representing whether the paste content is stored in Cloudflare KV storage or R2 object storage.
+- `encryptionScheme`: Optional string. Currently only "AES-GCM" is possible. The encryption scheme used to encrypt the pastused to encrypt the pastused to encrypt the pastused to encrypt the paste.
 
 ## GET `/a/<name>`
 
@@ -167,6 +189,8 @@ Upload your paste. It accept parameters in form-data:
 - `n`: optional. The customized **name** of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$=@,;/`.
 
 - `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used.
+-
+- `encryption-scheme`: optional. The encryption scheme used in the uploaded paste. It will be returned as `X-Encryption-Scheme` header on fetching paste. Note that this is not the encryption scheme that the backend will perform.
 
 `POST` method returns a JSON string by default, if no error occurs, for example:
 

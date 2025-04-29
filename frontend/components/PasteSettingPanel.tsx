@@ -1,6 +1,20 @@
-import { Card, CardBody, CardHeader, CardProps, Divider, Input, Radio, RadioGroup, Switch } from "@heroui/react"
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  CardProps,
+  Divider,
+  Input,
+  PopoverContent,
+  PopoverTrigger,
+  Popover,
+  Radio,
+  RadioGroup,
+  Switch,
+} from "@heroui/react"
 import { BaseUrl, verifyExpiration, verifyManageUrl, verifyName } from "../utils/utils.js"
 import React from "react"
+import { InfoIcon } from "./icons.js"
 
 export type UploadKind = "short" | "long" | "custom" | "manage"
 
@@ -101,10 +115,29 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
           ) : null}
         </RadioGroup>
         <Divider />
-        <div className="mt-2">
+        <div className="mt-2 flex flex-row items-center">
           <Switch isSelected={setting.doEncrypt} onValueChange={(v) => onSettingChange({ ...setting, doEncrypt: v })}>
             Encrypt paste
           </Switch>
+          <Popover>
+            <PopoverTrigger>
+              <InfoIcon className="inline size-5 ml-2" />
+            </PopoverTrigger>
+            <PopoverContent>
+              {(titleProps) => (
+                <div className="px-1 py-2 max-w-[20rem]">
+                  <h3 className="text-normal font-bold mb-2" {...titleProps}>
+                    Encrypted Paste
+                  </h3>
+                  <div className="text-small">
+                    Enable client-side encryption. Your paste is shared via a URL containing the decryption key in the
+                    hash. Decryption happens in the browser, so only those with the key (not the server) can view the
+                    original content.
+                  </div>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
       </CardBody>
     </Card>
