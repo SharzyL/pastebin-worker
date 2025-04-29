@@ -7,6 +7,20 @@ export const APIUrl = API_URL
 export const maxExpirationSeconds = parseExpiration(MAX_EXPIRATION)!
 export const maxExpirationReadable = parseExpirationReadable(MAX_EXPIRATION)!
 
+export class ErrorWithTitle extends Error {
+  public title: string
+
+  constructor(title: string, msg: string) {
+    super(msg)
+    this.title = title
+  }
+}
+
+export async function makeErrorMsg(resp: Response): Promise<string> {
+  const statusText = resp.statusText === "error" ? "Unknown error" : resp.statusText
+  return (await resp.text()) || statusText
+}
+
 export function formatSize(size: number): string {
   if (!size) return "0"
   if (size < 1024) {

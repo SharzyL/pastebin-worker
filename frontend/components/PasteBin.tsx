@@ -16,22 +16,16 @@ import {
   maxExpirationReadable,
   BaseUrl,
   APIUrl,
+  ErrorWithTitle,
+  makeErrorMsg,
 } from "../utils/utils.js"
 
 import "../style.css"
 import { UploadedPanel } from "./UploadedPanel.js"
 import { PasteEditor, PasteEditState } from "./PasteEditor.js"
-import { genKey, encodeKey, encrypt, EncryptionScheme } from "../utils/encryption.js"
-
-async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Array) {
-  const key = await genKey(scheme)
-  const plaintext = typeof content === "string" ? new TextEncoder().encode(content) : content
-  const ciphertext = await encrypt(scheme, key, plaintext)
-  return { key: await encodeKey(key), ciphertext }
-}
+import { uploadPaste } from "../utils/uploader.js"
 
 export function PasteBin() {
-  const encryptionScheme: EncryptionScheme = "AES-GCM"
   const [editorState, setEditorState] = useState<PasteEditState>({
     editKind: "edit",
     editContent: "",
@@ -57,7 +51,7 @@ export function PasteBin() {
 
   const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
 
-  function showModal(content: string, title: string) {
+  function showModal(title: string, content: string) {
     setErrorState({ title, content, isOpen: true })
   }
 
@@ -121,84 +115,31 @@ export function PasteBin() {
     }
   }, [])
 
-  async function uploadPaste(): Promise<void> {
-    const fd = new FormData()
-    if (editorState.editKind === "file") {
-      if (editorState.file === null) {
-        showModal("No file selected", "Error on preparing upload")
-        return
-      }
-      if (pasteSetting.doEncrypt) {
-        const { key, ciphertext } = await genAndEncrypt(encryptionScheme, await editorState.file.bytes())
-        const file = new File([ciphertext], editorState.file.name)
-        setUploadedEncryptionKey(key)
-        fd.append("c", file)
-        fd.append("encryption-scheme", encryptionScheme)
-      } else {
-        fd.append("c", editorState.file)
-      }
-    } else {
-      if (editorState.editContent.length === 0) {
-        showModal("Empty paste", "Error on preparing upload")
-        return
-      }
-      if (pasteSetting.doEncrypt) {
-        const { key, ciphertext } = await genAndEncrypt(encryptionScheme, editorState.editContent)
-        setUploadedEncryptionKey(key)
-        fd.append("c", new File([ciphertext], ""))
-        fd.append("encryption-scheme", encryptionScheme)
-      } else {
-        fd.append("c", editorState.editContent)
-      }
-    }
-
-    fd.append("e", pasteSetting.expiration)
-    if (pasteSetting.password.length > 0) fd.append("s", pasteSetting.password)
-
-    if (pasteSetting.uploadKind === "long") fd.append("p", "true")
-    else if (pasteSetting.uploadKind === "custom") fd.append("n", pasteSetting.name)
-
+  async function onUploadPaste(): Promise<void> {
     try {
-      setIsLoading(true)
-      setPasteResponse(null)
-      const isUpdate = pasteSetting.uploadKind !== "manage"
-      // TODO: add progress indicator
-      const resp = isUpdate
-        ? await fetch(APIUrl, {
-            method: "POST",
-            body: fd,
-          })
-        : await fetch(pasteSetting.manageUrl, {
-            method: "PUT",
-            body: fd,
-          })
-      if (resp.ok) {
-        const respParsed = JSON.parse(await resp.text()) as PasteResponse
-        setPasteResponse(respParsed)
-        setIsLoading(false)
+      const uploaded = await uploadPaste(pasteSetting, editorState, setUploadedEncryptionKey, setIsLoading)
+      setPasteResponse(uploaded)
+    } catch (error) {
+      console.log(error)
+      if (error instanceof ErrorWithTitle) {
+        showModal(error.title, (error as Error).message)
       } else {
-        await reportResponseError(resp, `Error ${resp.status}`)
-        // will setIsLoading(false) on closing modal
+        showModal("Error on Uploading Paste", (error as Error).message)
       }
-    } catch (e) {
-      showModal((e as Error).toString(), "Error on uploading paste")
-      console.error(e)
     }
   }
 
   async function deletePaste() {
     try {
-      const resp = await fetch(pasteSetting.manageUrl, {
-        method: "DELETE",
-      })
+      const resp = await fetch(pasteSetting.manageUrl, { method: "DELETE" })
       if (resp.ok) {
-        showModal("It may takes 60 seconds for the deletion to propagate to the world", "Deletion succeeded")
+        showModal("Deleted Successfully", "It may takes 60 seconds for the deletion to propagate to the world")
         setPasteResponse(null)
       } else {
-        await reportResponseError(resp, `Error ${resp.status}`)
+        showModal("Error From Server", await makeErrorMsg(resp))
       }
     } catch (e) {
-      showModal((e as Error).message, "Error on deleting paste")
+      showModal("Error on Deleting Paste", (e as Error).message)
       console.error(e)
     }
   }
@@ -250,7 +191,7 @@ export function PasteBin() {
   const submitter = (
     <div className="my-4 mx-2 lg:mx-0">
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <Button color="primary" onPress={uploadPaste} className="mr-4" isDisabled={!canUpload() || isLoading}>
+      <Button color="primary" onPress={onUploadPaste} className="mr-4" isDisabled={!canUpload() || isLoading}>
         {pasteSetting.uploadKind === "manage" ? "Update" : "Upload"}
       </Button>
       {pasteSetting.uploadKind === "manage" ? (
@@ -299,6 +240,7 @@ export function PasteBin() {
           />
           {(pasteResponse || isLoading) && (
             <UploadedPanel
+              isLoading={isLoading}
               pasteResponse={pasteResponse}
               encryptionKey={uploadedEncryptionKey}
               className="w-full lg:w-1/2"

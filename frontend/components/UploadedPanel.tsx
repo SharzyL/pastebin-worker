@@ -3,6 +3,7 @@ import React from "react"
 import { PasteResponse } from "../../shared/interfaces.js"
 
 interface UploadedPanelProps extends CardProps {
+  isLoading: boolean
   pasteResponse: PasteResponse | null
   encryptionKey: string | null
 }
@@ -13,7 +14,7 @@ const makeDecryptionUrl = (url: string, key: string) => {
   return urlParsed.toString() + "#" + key
 }
 
-export function UploadedPanel({ pasteResponse, encryptionKey, ...rest }: UploadedPanelProps) {
+export function UploadedPanel({ isLoading, pasteResponse, encryptionKey, ...rest }: UploadedPanelProps) {
   const snippetClassNames = {
     pre: "overflow-scroll leading-[2.5] font-sans",
     base: "w-full py-1/3",
@@ -30,7 +31,7 @@ export function UploadedPanel({ pasteResponse, encryptionKey, ...rest }: Uploade
             <tr>
               <td className={firstColClassNames}>Paste URL</td>
               <td className="w-full">
-                <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl grow">
+                <Skeleton isLoaded={!isLoading} className="rounded-2xl grow">
                   <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
                     {pasteResponse?.url}
                   </Snippet>
@@ -40,7 +41,7 @@ export function UploadedPanel({ pasteResponse, encryptionKey, ...rest }: Uploade
             <tr>
               <td className={firstColClassNames}>Manage URL</td>
               <td className="w-full">
-                <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl grow">
+                <Skeleton isLoaded={!isLoading} className="rounded-2xl grow">
                   <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
                     {pasteResponse?.manageUrl}
                   </Snippet>
@@ -51,7 +52,7 @@ export function UploadedPanel({ pasteResponse, encryptionKey, ...rest }: Uploade
               <tr>
                 <td className={firstColClassNames}>Decryption URL</td>
                 <td className="w-full">
-                  <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl grow">
+                  <Skeleton isLoaded={!isLoading} className="rounded-2xl grow">
                     <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
                       {pasteResponse && makeDecryptionUrl(pasteResponse.url, encryptionKey)}
                     </Snippet>
@@ -62,7 +63,7 @@ export function UploadedPanel({ pasteResponse, encryptionKey, ...rest }: Uploade
             <tr>
               <td className={firstColClassNames}>Expire At</td>
               <td className="w-full py-2">
-                <Skeleton isLoaded={pasteResponse !== null} className="rounded-2xl">
+                <Skeleton isLoaded={!isLoading} className="rounded-2xl">
                   {pasteResponse && new Date(pasteResponse.expireAt).toLocaleString()}
                 </Skeleton>
               </td>
