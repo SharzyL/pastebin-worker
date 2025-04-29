@@ -1,5 +1,5 @@
-import { Card, CardBody, CardHeader, CardProps, Divider, Input, Radio, RadioGroup } from "@heroui/react"
-import { BaseUrl, verifyExpiration, verifyManageUrl, verifyName } from "../utils.js"
+import { Card, CardBody, CardHeader, CardProps, Divider, Input, Radio, RadioGroup, Switch } from "@heroui/react"
+import { BaseUrl, verifyExpiration, verifyManageUrl, verifyName } from "../utils/utils.js"
 import React from "react"
 
 export type UploadKind = "short" | "long" | "custom" | "manage"
@@ -10,6 +10,8 @@ export type PasteSetting = {
   password: string
   name: string
   manageUrl: string
+
+  doEncrypt: boolean
 }
 
 interface PasteSettingPanelProps extends CardProps {
@@ -98,6 +100,12 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
             />
           ) : null}
         </RadioGroup>
+        <Divider />
+        <div className="mt-2">
+          <Switch isSelected={setting.doEncrypt} onValueChange={(v) => onSettingChange({ ...setting, doEncrypt: v })}>
+            Encrypt paste
+          </Switch>
+        </div>
       </CardBody>
     </Card>
   )

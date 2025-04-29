@@ -2,19 +2,35 @@ import React, { useEffect, useState } from "react"
 
 import { Button, Link } from "@heroui/react"
 
-import { PasteResponse, parsePath, parseFilenameFromContentDisposition } from "../src/shared.js"
+import { PasteResponse, parsePath, parseFilenameFromContentDisposition } from "../../src/shared.js"
 
-import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./components/DarkModeToggle.js"
-import { ErrorModal } from "./components/ErrorModal.js"
-import { PanelSettingsPanel, PasteSetting } from "./components/PasteSettingPanel.js"
+import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./DarkModeToggle.js"
+import { ErrorModal, ErrorState } from "./ErrorModal.js"
+import { PanelSettingsPanel, PasteSetting } from "./PasteSettingPanel.js"
 
-import { verifyExpiration, verifyManageUrl, verifyName, maxExpirationReadable, BaseUrl, APIUrl } from "./utils.js"
+import {
+  verifyExpiration,
+  verifyManageUrl,
+  verifyName,
+  maxExpirationReadable,
+  BaseUrl,
+  APIUrl,
+} from "../utils/utils.js"
 
-import "./style.css"
-import { UploadedPanel } from "./components/UploadedPanel.js"
-import { PasteEditor, PasteEditState } from "./components/PasteEditor.js"
+import "../style.css"
+import { UploadedPanel } from "./UploadedPanel.js"
+import { PasteEditor, PasteEditState } from "./PasteEditor.js"
+import { genKey, encodeKey, encrypt, EncryptionScheme } from "../utils/encryption.js"
+
+async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Array) {
+  const key = await genKey(scheme)
+  const plaintext = typeof content === "string" ? new TextEncoder().encode(content) : content
+  const ciphertext = await encrypt(scheme, key, plaintext)
+  return { key: await encodeKey(key), ciphertext }
+}
 
 export function PasteBin() {
+  const encryptionScheme: EncryptionScheme = "AES-GCM"
   const [editorState, setEditorState] = useState<PasteEditState>({
     editKind: "edit",
     editContent: "",
@@ -27,22 +43,21 @@ export function PasteBin() {
     name: "",
     password: "",
     uploadKind: "short",
+    doEncrypt: false,
   })
 
   const [pasteResponse, setPasteResponse] = useState<PasteResponse | null>(null)
+  const [uploadedEncryptionKey, setUploadedEncryptionKey] = useState<string | null>(null)
+
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isPasteLoading, setIsPasteLoading] = useState<boolean>(false)
 
-  const [isModalOpen, setModalOpen] = useState(false)
-  const [modalErrMsg, setModalErrMsg] = useState("")
-  const [modalErrTitle, setModalErrTitle] = useState("")
+  const [errorState, setErrorState] = useState<ErrorState>({ isOpen: false, content: "", title: "" })
 
   const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
 
-  function showModal(err: string, title: string) {
-    setModalErrMsg(err)
-    setModalErrTitle(title)
-    setModalOpen(true)
+  function showModal(content: string, title: string) {
+    setErrorState({ title, content, isOpen: true })
   }
 
   async function reportResponseError(resp: Response, title: string) {
@@ -112,13 +127,28 @@ export function PasteBin() {
         showModal("No file selected", "Error on preparing upload")
         return
       }
-      fd.append("c", editorState.file)
+      if (pasteSetting.doEncrypt) {
+        const { key, ciphertext } = await genAndEncrypt(encryptionScheme, await editorState.file.bytes())
+        const file = new File([ciphertext], editorState.file.name)
+        setUploadedEncryptionKey(key)
+        fd.append("c", file)
+        fd.append("encryption-scheme", encryptionScheme)
+      } else {
+        fd.append("c", editorState.file)
+      }
     } else {
       if (editorState.editContent.length === 0) {
         showModal("Empty paste", "Error on preparing upload")
         return
       }
-      fd.append("c", editorState.editContent)
+      if (pasteSetting.doEncrypt) {
+        const { key, ciphertext } = await genAndEncrypt(encryptionScheme, editorState.editContent)
+        setUploadedEncryptionKey(key)
+        fd.append("c", new File([ciphertext], ""))
+        fd.append("encryption-scheme", encryptionScheme)
+      } else {
+        fd.append("c", editorState.editContent)
+      }
     }
 
     fd.append("e", pasteSetting.expiration)
@@ -172,24 +202,6 @@ export function PasteBin() {
     }
   }
 
-  const info = (
-    <div className="mx-4 lg:mx-0">
-      <div className="mt-8 mb-4 relative">
-        <h1 className="text-3xl inline">{INDEX_PAGE_TITLE}</h1>
-        <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} />
-      </div>
-      <p className="my-2">This is an open source pastebin deployed on Cloudflare Workers. </p>
-      <p className="my-2">
-        <b>Usage</b>: paste any text here, submit, then share it with URL. (
-        <Link href={`${BaseUrl}/api`}>API Documentation</Link>)
-      </p>
-      <p className="my-2">
-        <b>Warning</b>: Only for temporary share <b>(max {maxExpirationReadable})</b>. Files could be deleted without
-        notice!
-      </p>
-    </div>
-  )
-
   function canUpload(): boolean {
     if (editorState.editKind === "edit" && editorState.editContent.length === 0) {
       return false
@@ -216,10 +228,28 @@ export function PasteBin() {
     return verifyManageUrl(pasteSetting.manageUrl)[0]
   }
 
+  const info = (
+    <div className="mx-4 lg:mx-0">
+      <div className="mt-8 mb-4 relative">
+        <h1 className="text-3xl inline">{INDEX_PAGE_TITLE}</h1>
+        <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} className="absolute right-0" />
+      </div>
+      <p className="my-2">This is an open source pastebin deployed on Cloudflare Workers. </p>
+      <p className="my-2">
+        <b>Usage</b>: paste any text here, submit, then share it with URL. (
+        <Link href={`${BaseUrl}/api`}>API Documentation</Link>)
+      </p>
+      <p className="my-2">
+        <b>Warning</b>: Only for temporary share <b>(max {maxExpirationReadable})</b>. Files could be deleted without
+        notice!
+      </p>
+    </div>
+  )
+
   const submitter = (
     <div className="my-4 mx-2 lg:mx-0">
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <Button color="primary" onPress={uploadPaste} className="mr-4" isDisabled={!canUpload()}>
+      <Button color="primary" onPress={uploadPaste} className="mr-4" isDisabled={!canUpload() || isLoading}>
         {pasteSetting.uploadKind === "manage" ? "Update" : "Upload"}
       </Button>
       {pasteSetting.uploadKind === "manage" ? (
@@ -247,7 +277,6 @@ export function PasteBin() {
 
   return (
     <main
-      data-testid="pastebin-main"
       className={
         "flex flex-col items-center min-h-screen font-sans bg-background text-foreground" +
         (shouldBeDark(darkModeSelect) ? " dark" : " light")
@@ -267,7 +296,13 @@ export function PasteBin() {
             setting={pasteSetting}
             onSettingChange={setPasteSetting}
           />
-          {(pasteResponse || isLoading) && <UploadedPanel pasteResponse={pasteResponse} className="w-full lg:w-1/2" />}
+          {(pasteResponse || isLoading) && (
+            <UploadedPanel
+              pasteResponse={pasteResponse}
+              encryptionKey={uploadedEncryptionKey}
+              className="w-full lg:w-1/2"
+            />
+          )}
         </div>
         {submitter}
       </div>
@@ -276,11 +311,9 @@ export function PasteBin() {
         onDismiss={() => {
           setIsPasteLoading(false)
           setIsLoading(false)
-          setModalOpen(false)
+          setErrorState({ isOpen: false, content: "", title: "" })
         }}
-        isOpen={isModalOpen}
-        title={modalErrTitle}
-        content={modalErrMsg}
+        state={errorState}
       />
     </main>
   )

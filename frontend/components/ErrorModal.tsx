@@ -1,17 +1,21 @@
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react"
 import React from "react"
 
-type ErrorModalProps = {
-  onDismiss: () => void
-  isOpen: boolean
+export type ErrorState = {
   title: string
   content: string
+  isOpen: boolean
 }
 
-export function ErrorModal({ onDismiss, title, content, isOpen }: ErrorModalProps) {
+type ErrorModalProps = {
+  onDismiss: () => void
+  state: ErrorState
+}
+
+export function ErrorModal({ onDismiss, state }: ErrorModalProps) {
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen={state.isOpen}
       onOpenChange={(open) => {
         if (!open) {
           onDismiss()
@@ -19,9 +23,9 @@ export function ErrorModal({ onDismiss, title, content, isOpen }: ErrorModalProp
       }}
     >
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">{title}</ModalHeader>
+        <ModalHeader className="flex flex-col gap-1">{state.title}</ModalHeader>
         <ModalBody>
-          <p>{content}</p>
+          <p>{state.content}</p>
         </ModalBody>
         <ModalFooter>
           <Button color="danger" variant="light" onPress={() => onDismiss()}>

@@ -4,9 +4,16 @@ import { PasteResponse } from "../../src/shared.js"
 
 interface UploadedPanelProps extends CardProps {
   pasteResponse: PasteResponse | null
+  encryptionKey: string | null
 }
 
-export function UploadedPanel({ pasteResponse, ...rest }: UploadedPanelProps) {
+const makeDecryptionUrl = (url: string, key: string) => {
+  const urlParsed = new URL(url)
+  urlParsed.pathname = "/e" + urlParsed.pathname
+  return urlParsed.toString() + "#" + key
+}
+
+export function UploadedPanel({ pasteResponse, encryptionKey, ...rest }: UploadedPanelProps) {
   const snippetClassNames = {
     pre: "overflow-scroll leading-[2.5] font-sans",
     base: "w-full py-1/3",
@@ -46,6 +53,16 @@ export function UploadedPanel({ pasteResponse, ...rest }: UploadedPanelProps) {
                 <td className="w-full">
                   <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
                     {pasteResponse?.suggestedUrl}
+                  </Snippet>
+                </td>
+              </tr>
+            ) : null}
+            {encryptionKey ? (
+              <tr>
+                <td className={firstColClassNames}>Decryption URL</td>
+                <td className="w-full">
+                  <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
+                    {pasteResponse && makeDecryptionUrl(pasteResponse.url, encryptionKey)}
                   </Snippet>
                 </td>
               </tr>

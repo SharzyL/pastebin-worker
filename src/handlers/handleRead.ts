@@ -131,10 +131,10 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     url.searchParams.get("mime") ||
     (ext && mime.getType(ext)) ||
     (item.metadata.filename && mime.getType(item.metadata.filename)) ||
-    "text/plain"
+    (item.metadata.encryptionScheme ? "application/octet-stream" : "text/plain;charset=UTF-8")
 
   if (env.DISALLOWED_MIME_FOR_PASTE.includes(inferred_mime)) {
-    inferred_mime = "text/plain"
+    inferred_mime = "text/plain;charset=UTF-8"
   }
 
   const headerModifiedSince = request.headers.get("If-Modified-Since")
@@ -182,12 +182,28 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
       createdAt: new Date(item.metadata.createdAtUnix * 1000).toISOString(),
       expireAt: new Date(item.metadata.willExpireAtUnix * 1000).toISOString(),
       sizeBytes: item.metadata.sizeBytes,
-      filename: item.metadata.filename,
       location: item.metadata.location,
+      filename: item.metadata.filename,
+      encryptionScheme: item.metadata.encryptionScheme,
     }
     return new Response(isHead ? null : JSON.stringify(returnedMetadata, null, 2), {
       headers: {
         "Content-Type": `application/json;charset=UTF-8`,
+        ...pasteCacheHeader(env),
+        ...lastModifiedHeader(item.metadata),
+      },
+    })
+  }
+
+  // handle encrypted
+  if (role === "e") {
+    const pageUrl = url
+    pageUrl.pathname = "/decrypt.html"
+    const page = await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()
+    return new Response(shouldGetPasteContent ? page : null, {
+      headers: {
+        "Content-Type": `text/html;charset=UTF-8`,
+        "Content-Length": page.byteLength.toString(),
         ...pasteCacheHeader(env),
         ...lastModifiedHeader(item.metadata),
       },
@@ -208,17 +224,24 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle default
   const headers: Headers = {
-    "Content-Type": `${inferred_mime};charset=UTF-8`,
+    "Content-Type": `${inferred_mime}`,
     ...pasteCacheHeader(env),
     ...lastModifiedHeader(item.metadata),
   }
+  const exposeHeaders = ["Content-Disposition"]
+
+  if (item.metadata.encryptionScheme) {
+    headers["X-Encryption-Scheme"] = item.metadata.encryptionScheme
+    exposeHeaders.push("X-Encryption-Scheme")
+  }
+
   if (returnFilename) {
     const encodedFilename = encodeURIComponent(returnFilename)
     headers["Content-Disposition"] = `${disp}; filename*=UTF-8''${encodedFilename}`
   } else {
     headers["Content-Disposition"] = `${disp}`
   }
-  headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+  headers["Access-Control-Expose-Headers"] = exposeHeaders.join(", ")
 
   // if content is nonempty, Content-Length will be set automatically
   if (!shouldGetPasteContent) {

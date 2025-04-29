@@ -1,18 +1,18 @@
 import React, { JSX, useEffect } from "react"
-import { ComputerIcon, MoonIcon, SunIcon } from "../icons.js"
-import { Tooltip, TooltipProps } from "@heroui/react"
+import { ComputerIcon, MoonIcon, SunIcon } from "./icons.js"
+import { Button, ButtonProps, Tooltip } from "@heroui/react"
 
 export type DarkMode = "dark" | "light" | "system"
 
-interface MyComponentProps extends TooltipProps {
+interface MyComponentProps extends ButtonProps {
   mode: DarkMode
   onModeChange: (newMode: DarkMode) => void
 }
 
 const icons: { name: DarkMode; icon: JSX.Element }[] = [
   { name: "system", icon: <ComputerIcon className="size-6 inline" /> },
-  { name: "dark", icon: <MoonIcon className="size-6 inline" /> },
   { name: "light", icon: <SunIcon className="size-6 inline" /> },
+  { name: "dark", icon: <MoonIcon className="size-6 inline" /> },
 ]
 
 export function defaultDarkMode(): DarkMode {
@@ -31,25 +31,25 @@ export function shouldBeDark(mode: DarkMode): boolean {
   return mode === "system" ? systemDark : mode === "dark"
 }
 
-export function DarkModeToggle({ mode, onModeChange, ...rest }: MyComponentProps) {
+export function DarkModeToggle({ mode, onModeChange, className, ...rest }: MyComponentProps) {
   useEffect(() => {
     localStorage.setItem("darkModeSelect", mode)
   }, [mode])
 
   return (
-    <Tooltip content={`Toggle dark mode (${mode} mode now)`} {...rest}>
-      <span
-        className="absolute right-0"
-        data-testid="pastebin-darkmode-toggle"
-        role="button"
-        aria-label="Toggle Dark Mode"
-        onClick={() => {
+    <Tooltip content={`Toggle dark mode (currently ${mode})`}>
+      <Button
+        isIconOnly
+        className={"mr-2 rounded-full bg-background" + " " + className}
+        aria-label="Toggle dark mode"
+        onPress={() => {
           const curModeIdx = icons.findIndex(({ name }) => name === mode)
           onModeChange(icons[(curModeIdx + 1) % icons.length].name)
         }}
+        {...rest}
       >
         {icons.find(({ name }) => name === mode)!.icon}
-      </span>
+      </Button>
     </Tooltip>
   )
 }

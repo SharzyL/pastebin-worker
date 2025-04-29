@@ -1,5 +1,6 @@
 import { expect, test } from "vitest"
 import {
+  addRole,
   areBlobsEqual,
   BASE_URL,
   genRandomBlob,
@@ -9,7 +10,7 @@ import {
   workerFetch,
 } from "./testUtils"
 import { createExecutionContext, env } from "cloudflare:test"
-import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, parseExpiration, PRIVATE_PASTE_NAME_LEN } from "../src/shared"
+import { MAX_PASSWD_LEN, MetaResponse, MIN_PASSWD_LEN, parseExpiration, PRIVATE_PASTE_NAME_LEN } from "../src/shared"
 
 test("privacy url with option p", async () => {
   const blob1 = genRandomBlob(1024)
@@ -110,4 +111,22 @@ test("custom passwd with option s", async () => {
   const putResponseJson = await upload(ctx, { c: blob1, s: wrongPasswd }, { method: "PUT", url: manageUrl })
   expect(putResponseJson.url).toStrictEqual(url) // url will not change
   expect(putResponseJson.manageUrl).toStrictEqual(`${url}:${wrongPasswd}`) // passwd may change
+})
+
+test("encryption with option encryption-scheme", async () => {
+  const blob1 = genRandomBlob(1024)
+  const ctx = createExecutionContext()
+
+  // check good name upload
+  const uploadResponseJson = await upload(ctx, { c: blob1, "encryption-scheme": "AES-GCM" })
+  const url = uploadResponseJson.url
+
+  const fetchPaste = await workerFetch(ctx, url)
+  await fetchPaste.bytes()
+  expect(fetchPaste.headers.get("Content-Type")).toStrictEqual("application/octet-stream")
+  expect(fetchPaste.headers.get("X-Encryption-Scheme")).toStrictEqual("AES-GCM")
+  expect(fetchPaste.headers.get("Access-Control-Expose-Headers")?.includes("X-Encryption-Scheme")).toBeTruthy()
+
+  const fetchMeta: MetaResponse = await (await workerFetch(ctx, addRole(url, "m"))).json()
+  expect(fetchMeta.encryptionScheme).toStrictEqual("AES-GCM")
 })

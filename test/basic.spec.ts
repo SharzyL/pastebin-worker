@@ -11,6 +11,7 @@ import {
   RAND_NAME_REGEX,
   uploadExpectStatus,
   staticPages,
+  addRole,
 } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
 import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN } from "../src/shared"
@@ -119,4 +120,22 @@ test("static pages", async () => {
     const url = `${BASE_URL}/${page}`
     expect((await workerFetch(ctx, url)).status, `visiting ${url}`).toStrictEqual(200)
   }
+})
+
+test("GET special static pages", async () => {
+  const blob1 = genRandomBlob(1024)
+  const ctx = createExecutionContext()
+  const resp = await upload(ctx, { c: blob1 })
+
+  // test decryption page
+  const decUrl = addRole(resp.url, "e")
+  const decResp = await workerFetch(ctx, decUrl)
+  expect(decResp.status, `visiting ${decUrl}`).toStrictEqual(200)
+  expect(decResp.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
+
+  // test manage page
+  const manageUrl = resp.manageUrl
+  const manageResp = await workerFetch(ctx, manageUrl)
+  expect(manageResp.status, `visiting ${manageUrl}`).toStrictEqual(200)
+  expect(manageResp.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
 })

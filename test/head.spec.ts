@@ -32,7 +32,7 @@ test("HEAD", async () => {
     }),
   )
   expect(headResp1.status).toStrictEqual(200)
-  expect(headResp1.headers.get("Content-Type")).toStrictEqual("image/jpeg;charset=UTF-8")
+  expect(headResp1.headers.get("Content-Type")).toStrictEqual("image/jpeg")
   expect(headResp1.headers.get("Content-Length")).toStrictEqual(blob2.size.toString())
   expect(headResp1.headers.has("Last-Modified")).toBeTruthy()
   expect(headResp1.headers.get("Content-Disposition")).toStrictEqual("inline; filename*=UTF-8''a.jpg")

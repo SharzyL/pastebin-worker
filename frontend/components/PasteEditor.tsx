@@ -1,7 +1,7 @@
-import { Button, Card, CardBody, CardProps, Tab, Tabs, Textarea } from "@heroui/react"
+import { Card, CardBody, CardProps, Tab, Tabs, Textarea } from "@heroui/react"
 import React, { useRef, useState, DragEvent } from "react"
-import { formatSize } from "../utils.js"
-import { XIcon } from "../icons.js"
+import { formatSize } from "../utils/utils.js"
+import { XIcon } from "./icons.js"
 
 export type EditKind = "edit" | "file"
 
@@ -31,7 +31,6 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
     if (items) {
       for (let i = 0; i < items.length; i++) {
         if (items[i].kind === "file") {
-          console.log(items)
           const file = items[i].getAsFile()!
           setFile(file)
           break
@@ -60,14 +59,13 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
           <Tab key={"edit"} title="Edit">
             <Textarea
               isClearable
-              data-testid="pastebin-edit"
               placeholder={isPasteLoading ? "Loading..." : "Edit your paste here"}
               isDisabled={isPasteLoading}
               className="px-0 py-0"
               classNames={{
                 input: "resize-y min-h-[30em] font-mono",
               }}
-              aria-label="paste-edit"
+              aria-label="Paste editor"
               disableAutosize
               disableAnimation
               value={state.editContent}
@@ -84,6 +82,8 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
                 "w-full h-[20rem] rounded-xl flex flex-col items-center justify-center cursor-pointer relative" +
                 (isDragged ? " bg-primary-100" : " bg-primary-50")
               }
+              role="button"
+              aria-label="Select file"
               onDrop={onDrop}
               onDragEnter={() => setDragged(true)}
               onDragLeave={() => setDragged(false)}
@@ -92,9 +92,8 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
             >
               <input
                 type="file"
-                aria-label="paste-file"
                 ref={fileInput}
-                className="w-0 h-0 overflow-hidden absolute inline"
+                className="hidden"
                 onChange={(e) => {
                   const files = e.target.files
                   if (files && files.length) {
@@ -112,6 +111,8 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
               </p>
               {state.file && (
                 <XIcon
+                  aria-label="Remove file"
+                  role="button"
                   className="h-6 inline absolute top-2 right-2 text-red-400"
                   onClick={(e) => {
                     e.stopPropagation()

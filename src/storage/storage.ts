@@ -25,6 +25,7 @@ export type PasteMetadata = {
   accessCounter: number // a counter representing how frequent it is accessed, to administration usage
   sizeBytes: number
   filename?: string
+  encryptionScheme?: string
 }
 
 type PasteMetadataInStorage = {
@@ -39,6 +40,7 @@ type PasteMetadataInStorage = {
   accessCounter?: number
   sizeBytes?: number
   filename?: string
+  encryptionScheme?: string
 }
 
 function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
@@ -54,6 +56,7 @@ function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
     accessCounter: original.accessCounter || 0,
     sizeBytes: original.sizeBytes || 0,
     filename: original.filename,
+    encryptionScheme: original.encryptionScheme,
   }
 }
 
@@ -149,6 +152,7 @@ export async function updatePaste(
     expirationSeconds: number
     passwd: string
     filename?: string
+    encryptionScheme?: string
   },
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
@@ -171,6 +175,7 @@ export async function updatePaste(
     willExpireAtUnix: expirationUnix,
     accessCounter: originalMetadata.accessCounter,
     sizeBytes: options.contentLength,
+    encryptionScheme: options.encryptionScheme,
   }
 
   await env.PB.put(pasteName, originalMetadata.location === "R2" ? "" : content, {
@@ -189,6 +194,7 @@ export async function createPaste(
     passwd: string
     filename?: string
     contentLength: number
+    encryptionScheme?: string
   },
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
@@ -214,6 +220,7 @@ export async function createPaste(
     willExpireAtUnix: expirationUnix,
     accessCounter: 0,
     sizeBytes: options.contentLength,
+    encryptionScheme: options.encryptionScheme,
   }
 
   await env.PB.put(pasteName, location === "R2" ? "" : content, {

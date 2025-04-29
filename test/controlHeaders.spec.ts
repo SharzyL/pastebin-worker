@@ -5,13 +5,9 @@ import { BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils.js"
 
 test("mime type", async () => {
   const ctx = createExecutionContext()
-  const url = (await upload(ctx, { c: genRandomBlob(1024) }))["url"]
+  const url = (await upload(ctx, { c: genRandomBlob(1024) })).url
 
-  const url_pic = (
-    await upload(ctx, {
-      c: { content: genRandomBlob(1024), filename: "xx.jpg" },
-    })
-  )["url"]
+  const url_pic = (await upload(ctx, { c: { content: genRandomBlob(1024), filename: "xx.jpg" } })).url
 
   async function testMime(accessUrl: string, mime: string) {
     const resp = await workerFetch(ctx, accessUrl)
@@ -19,14 +15,14 @@ test("mime type", async () => {
   }
 
   await testMime(url, "text/plain;charset=UTF-8")
-  await testMime(`${url}.jpg`, "image/jpeg;charset=UTF-8")
-  await testMime(`${url}/test.jpg`, "image/jpeg;charset=UTF-8")
-  await testMime(`${url}?mime=random-mime`, "random-mime;charset=UTF-8")
-  await testMime(`${url}.jpg?mime=random-mime`, "random-mime;charset=UTF-8")
-  await testMime(`${url}/test.jpg?mime=random-mime`, "random-mime;charset=UTF-8")
+  await testMime(`${url}.jpg`, "image/jpeg")
+  await testMime(`${url}/test.jpg`, "image/jpeg")
+  await testMime(`${url}?mime=random-mime`, "random-mime")
+  await testMime(`${url}.jpg?mime=random-mime`, "random-mime")
+  await testMime(`${url}/test.jpg?mime=random-mime`, "random-mime")
 
-  await testMime(url_pic, "image/jpeg;charset=UTF-8")
-  await testMime(`${url_pic}.png`, "image/png;charset=UTF-8")
+  await testMime(url_pic, "image/jpeg")
+  await testMime(`${url_pic}.png`, "image/png")
 
   // test disallowed mimetypes
   await testMime(`${url_pic}.html`, "text/plain;charset=UTF-8")
@@ -79,6 +75,9 @@ test("content disposition without specifying filename", async () => {
   const uploadResp = await upload(ctx, { c: content })
   const url = uploadResp["url"]
 
+  expect(
+    (await workerFetch(ctx, url)).headers.get("Access-Control-Expose-Headers")?.includes("Content-Disposition"),
+  ).toBeTruthy()
   expect((await workerFetch(ctx, url)).headers.get("Content-Disposition")).toStrictEqual("inline")
   expect((await workerFetch(ctx, `${url}?a`)).headers.get("Content-Disposition")).toStrictEqual("attachment")
 

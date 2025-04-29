@@ -103,6 +103,7 @@ export async function handlePostOrPut(
   const isPrivate = parts.has("p")
   const passwdFromForm = parts.get("s")?.contentAsString
   const expireFromPart: string | undefined = parts.get("e")?.contentAsString
+  const encryptionScheme: string | undefined = parts.get("encryption-scheme")?.contentAsString
   const expire = expireFromPart ? expireFromPart : env.DEFAULT_EXPIRATION
 
   // parse expiration
@@ -167,6 +168,7 @@ export async function handlePostOrPut(
         passwd: newPasswd,
         contentLength,
         filename,
+        encryptionScheme,
       })
       return makeResponse({
         url: accessUrl(pasteName),
@@ -193,6 +195,7 @@ export async function handlePostOrPut(
       passwd,
       filename,
       contentLength,
+      encryptionScheme,
     })
 
     return makeResponse({

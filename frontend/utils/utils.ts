@@ -1,4 +1,4 @@
-import { NAME_REGEX, parseExpiration, parseExpirationReadable, PASSWD_SEP } from "../src/shared.js"
+import { NAME_REGEX, parseExpiration, parseExpirationReadable, PASSWD_SEP } from "../../src/shared.js"
 
 export const BaseUrl = DEPLOY_URL
 export const APIUrl = API_URL

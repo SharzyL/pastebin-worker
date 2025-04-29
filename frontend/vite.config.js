@@ -1,4 +1,7 @@
+/* global __dirname */
+
 import { defineConfig } from "vite"
+import { resolve } from "path"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { readFileSync } from "node:fs"
@@ -42,6 +45,14 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
+    },
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, "index.html"),
+          decrypt: resolve(__dirname, "decrypt.html"),
+        },
+      },
     },
   }
 })

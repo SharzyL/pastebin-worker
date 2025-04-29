@@ -15,8 +15,9 @@ export type MetaResponse = {
   createdAt: string
   expireAt: string
   sizeBytes: number
-  filename?: string
   location: PasteLocation
+  filename?: string
+  encryptionScheme?: string
 }
 
 export const CHAR_GEN = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
