@@ -145,7 +145,7 @@ export function DecryptPaste() {
   return (
     <main
       className={
-        "flex flex-col items-center min-h-screen bg-background text-foreground mx-2" +
+        "flex flex-col items-center min-h-screen bg-background text-foreground w-full p-2" +
         (shouldBeDark(darkModeSelect) ? " dark" : " light")
       }
     >
