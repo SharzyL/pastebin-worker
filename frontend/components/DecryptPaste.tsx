@@ -109,11 +109,11 @@ export function DecryptPaste() {
   )
 
   const binaryFileIndicator = pasteFile && (
-    <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center">
+    <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full">
       <div className="text-foreground-600 mb-2">{`${pasteFile?.name} (${formatSize(pasteFile.size)})`}</div>
-      <div>
+      <div className="w-fit text-center">
         Possibly Binary file{" "}
-        <button className="text-primary-500" onClick={() => setForceShowBinary(true)}>
+        <button className="text-primary-500 inline" onClick={() => setForceShowBinary(true)}>
           (Click to show)
         </button>
       </div>
@@ -153,7 +153,7 @@ export function DecryptPaste() {
         <div className="flex flex-row my-4 items-center justify-between">
           <h1 className="text-xl md:text-2xl grow inline-flex items-center">
             <Link href="/" className="text-foreground-500 text-[length:inherited]">
-              <Button isIconOnly aria-label="Home" className={buttonClasses + " md:hidden"}>
+              <Button isIconOnly aria-label={INDEX_PAGE_TITLE} className={buttonClasses + " md:hidden"}>
                 <HomeIcon className="size-6" />
               </Button>
               <span className="hidden md:inline">{INDEX_PAGE_TITLE}</span>
