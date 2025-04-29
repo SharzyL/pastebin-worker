@@ -1,5 +1,11 @@
 import { expect, test } from "vitest"
-import { parsePath, ParsedPath, parseFilenameFromContentDisposition, parseExpiration } from "../src/shared"
+import {
+  parsePath,
+  ParsedPath,
+  parseFilenameFromContentDisposition,
+  parseExpiration,
+  parseExpirationReadable,
+} from "../src/shared"
 
 test("parsePath", () => {
   const testPairs: [string, ParsedPath][] = [
@@ -43,29 +49,35 @@ test("parseFilenameFromContentDisposition", () => {
 })
 
 test("parseExpiration", () => {
-  const testPairs: [string, number | null][] = [
-    ["100", 100],
-    ["10.1", 10.1],
-    ["10m", 600],
-    ["10.0m", 600],
-    ["10h", 10 * 60 * 60],
-    ["10.0h", 10 * 60 * 60],
-    ["10d", 10 * 24 * 60 * 60],
-    ["10 d", 10 * 24 * 60 * 60],
-    ["10  d", 10 * 24 * 60 * 60],
-    ["10  ", 10],
-    [" 10  ", 10],
+  const testPairs: [string, number | null, string | null][] = [
+    ["1", 1, "1 second"],
+    ["1m", 60, "1 minute"],
+    ["0.5d", 12 * 60 * 60, "0.5 day"],
+    ["100", 100, "100 seconds"],
+    ["10.1", 10.1, "10.1 seconds"],
+    ["10m", 600, "10 minutes"],
+    ["10.0m", 600, "10 minutes"],
+    ["10h", 10 * 60 * 60, "10 hours"],
+    ["10.0h", 10 * 60 * 60, "10 hours"],
+    ["10d", 10 * 24 * 60 * 60, "10 days"],
+    ["10 d", 10 * 24 * 60 * 60, "10 days"],
+    ["10  d", 10 * 24 * 60 * 60, "10 days"],
+    ["10  ", 10, "10 seconds"],
+    [" 10  ", 10, "10 seconds"],
 
-    [" 10  g", null],
-    ["10g", null],
-    ["-10", null],
-    ["-10d", null],
-    ["10M", null],
-    ["10Y", null],
-    ["d", null],
+    [" 10  g", null, null],
+    ["10g", null, null],
+    ["-10", null, null],
+    ["-10d", null, null],
+    ["10M", null, null],
+    ["10Y", null, null],
+    ["d", null, null],
   ]
-  for (const [input, output] of testPairs) {
-    const parsed = parseExpiration(input)
-    expect(parsed, `checking expiration of ${input}`).toStrictEqual(output)
+  for (const [input, parsed, readableParsed] of testPairs) {
+    const expiration = parseExpiration(input)
+    expect(expiration, `checking expiration of ${input}`).toStrictEqual(parsed)
+
+    const readable = parseExpirationReadable(input)
+    expect(readable, `checking readable expiration of ${input}`).toStrictEqual(readableParsed)
   }
 })

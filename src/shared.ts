@@ -67,12 +67,12 @@ export function parseExpirationReadable(expirationStr: string): string | null {
     return null
   }
 
-  const expirationSeconds = parseFloat(expirationStr)
+  const num = parseFloat(expirationStr)
   const lastChar = expirationStr[expirationStr.length - 1]
-  if (lastChar === "m") return `${expirationSeconds} minutes`
-  else if (lastChar === "h") return `${expirationSeconds} hours`
-  else if (lastChar === "d") return `${expirationSeconds} days`
-  return `${expirationSeconds} seconds`
+  if (lastChar === "m") return `${num} minute${num > 1 ? "s" : ""}`
+  else if (lastChar === "h") return `${num} hour${num > 1 ? "s" : ""}`
+  else if (lastChar === "d") return `${num} day${num > 1 ? "s" : ""}`
+  return `${num} second${num > 1 ? "s" : ""}`
 }
 
 export type ParsedPath = {
