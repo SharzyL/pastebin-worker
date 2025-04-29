@@ -5,7 +5,7 @@ import {
   parseFilenameFromContentDisposition,
   parseExpiration,
   parseExpirationReadable,
-} from "../src/shared"
+} from "../parsers.js"
 
 test("parsePath", () => {
   const testPairs: [string, ParsedPath][] = [

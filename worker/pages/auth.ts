@@ -1,4 +1,4 @@
-import { atob_utf8, btoa_utf8, WorkerError } from "./common.js"
+import { atob_utf8, btoa_utf8, WorkerError } from "../common.js"
 
 // Encoding function
 export function encodeBasicAuth(username: string, password: string): string {

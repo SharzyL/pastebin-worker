@@ -1,6 +1,6 @@
 import { Card, CardBody, CardHeader, CardProps, Divider, Skeleton, Snippet } from "@heroui/react"
 import React from "react"
-import { PasteResponse } from "../../src/shared.js"
+import { PasteResponse } from "../../shared/interfaces.js"
 
 interface UploadedPanelProps extends CardProps {
   pasteResponse: PasteResponse | null

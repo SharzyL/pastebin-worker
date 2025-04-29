@@ -6,7 +6,7 @@ import { Button, CircularProgress, Link, Tooltip } from "@heroui/react"
 import { CheckIcon, CopyIcon, DownloadIcon, HomeIcon } from "./icons.js"
 
 import "../style.css"
-import { parseFilenameFromContentDisposition, parsePath } from "../../src/shared.js"
+import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
 import { formatSize } from "../utils/utils.js"
 import { DarkMode, DarkModeToggle, defaultDarkMode, shouldBeDark } from "./DarkModeToggle.js"
 import binaryExtensions from "binary-extensions"

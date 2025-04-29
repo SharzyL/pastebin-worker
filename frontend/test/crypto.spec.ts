@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { encrypt, decrypt, genKey, encodeKey, decodeKey } from "../utils/encryption.js"
-import { genRandStr } from "../../src/common.js"
+import { genRandStr } from "../../worker/common.js"
 
 function randArray(len: number): Uint8Array {
   const arr = new Uint8Array(len)

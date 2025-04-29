@@ -2,7 +2,7 @@ name = "pb"
 compatibility_date = "2025-04-24"
 
 workers_dev = false
-main = "src/index.ts"
+main = "worker/index.ts"
 
 [[rules]]
 type = "Text"

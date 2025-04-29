@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react"
 
 import { Button, Link } from "@heroui/react"
 
-import { PasteResponse, parsePath, parseFilenameFromContentDisposition } from "../../src/shared.js"
+import { PasteResponse } from "../../shared/interfaces.js"
+import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
 
 import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./DarkModeToggle.js"
 import { ErrorModal, ErrorState } from "./ErrorModal.js"

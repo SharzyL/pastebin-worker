@@ -1,7 +1,7 @@
 import { createExecutionContext, env } from "cloudflare:test"
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
-import { BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils.js"
+import { BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils"
 
 test("mime type", async () => {
   const ctx = createExecutionContext()

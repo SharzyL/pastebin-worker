@@ -1,6 +1,6 @@
 // we will move this file to a shared directory later
 
-import { MPUCreateResponse, PasteResponse } from "./shared.js"
+import { MPUCreateResponse, PasteResponse } from "./interfaces.js"
 
 export class UploadError extends Error {
   public statusCode: number

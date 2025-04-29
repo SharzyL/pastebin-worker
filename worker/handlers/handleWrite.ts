@@ -1,19 +1,17 @@
-import { verifyAuth } from "../auth.js"
+import { verifyAuth } from "../pages/auth.js"
 import { decode, genRandStr, isLegalUrl, WorkerError } from "../common.js"
 import { createPaste, getPasteMetadata, pasteNameAvailable, updatePaste } from "../storage/storage.js"
 import {
   DEFAULT_PASSWD_LEN,
   NAME_REGEX,
   PASTE_NAME_LEN,
-  PasteResponse,
   PRIVATE_PASTE_NAME_LEN,
   PASSWD_SEP,
-  parseExpiration,
-  parsePath,
   MIN_PASSWD_LEN,
   MAX_PASSWD_LEN,
-  parseSize,
-} from "../shared.js"
+} from "../../shared/constants.js"
+import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
+import { PasteResponse } from "../../shared/interfaces.js"
 import { MaxFileSizeExceededError, MultipartParseError, parseMultipartRequest } from "@mjackson/multipart-parser"
 import { handleMPUComplete, handleMPUCreate, handleMPUCreateUpdate, handleMPUResume } from "./handleMPU.js"
 

@@ -1,6 +1,6 @@
 import { expect, test, it, describe, beforeEach, afterEach } from "vitest"
-import { areBlobsEqual, BASE_URL, genRandomBlob, upload, uploadExpectStatus, workerFetch } from "./testUtils.js"
-import { encodeBasicAuth, decodeBasicAuth } from "../src/auth.js"
+import { areBlobsEqual, BASE_URL, genRandomBlob, upload, uploadExpectStatus, workerFetch } from "./testUtils"
+import { encodeBasicAuth, decodeBasicAuth } from "../pages/auth"
 import { createExecutionContext, env } from "cloudflare:test"
 
 test("basic auth encode and decode", () => {

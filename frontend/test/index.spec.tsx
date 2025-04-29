@@ -35,7 +35,7 @@ afterAll(() => {
 
 import "@testing-library/jest-dom/vitest"
 import { userEvent } from "@testing-library/user-event"
-import { PasteResponse } from "../../src/shared.js"
+import { PasteResponse } from "../../shared/interfaces.js"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 

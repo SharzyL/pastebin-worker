@@ -1,8 +1,9 @@
-import { uploadMPU } from "../src/uploadMPU"
+import { uploadMPU } from "../../shared/uploadMPU"
 import { vi, test, describe, it, expect, afterAll, beforeEach } from "vitest"
 import { createExecutionContext } from "cloudflare:test"
 import { areBlobsEqual, BASE_URL, genRandomBlob, workerFetch } from "./testUtils"
-import { parsePath, PRIVATE_PASTE_NAME_LEN } from "../src/shared"
+import { PRIVATE_PASTE_NAME_LEN } from "../../shared/constants"
+import { parsePath } from "../../shared/parsers"
 
 const ctx = createExecutionContext()
 beforeEach(() => {

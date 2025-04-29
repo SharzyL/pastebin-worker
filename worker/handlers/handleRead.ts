@@ -1,11 +1,13 @@
 import { decode, isLegalUrl, WorkerError } from "../common.js"
 import { getDocPage } from "../pages/docs.js"
-import { verifyAuth } from "../auth.js"
+import { verifyAuth } from "../pages/auth.js"
 import mime from "mime/lite"
 import { makeMarkdown } from "../pages/markdown.js"
 import { makeHighlight } from "../pages/highlight.js"
 import { getPaste, getPasteMetadata, PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
-import { MAX_URL_REDIRECT_LEN, MetaResponse, parsePath } from "../shared.js"
+import { MetaResponse } from "../../shared/interfaces.js"
+import { parsePath } from "../../shared/parsers.js"
+import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 
 type Headers = Record<string, string>
 

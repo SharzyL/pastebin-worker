@@ -1,7 +1,7 @@
 import { expect, it, beforeEach, vi, afterEach } from "vitest"
-import { genRandomBlob, upload, workerFetch } from "./testUtils.js"
+import { genRandomBlob, upload, workerFetch } from "./testUtils"
 import { createExecutionContext, env, waitOnExecutionContext } from "cloudflare:test"
-import { PasteMetadata } from "../src/storage/storage"
+import { PasteMetadata } from "../storage/storage"
 
 beforeEach(() => {
   vi.spyOn(Math, "random").mockReturnValue(0)

@@ -10,7 +10,9 @@ import {
   workerFetch,
 } from "./testUtils"
 import { createExecutionContext, env } from "cloudflare:test"
-import { MAX_PASSWD_LEN, MetaResponse, MIN_PASSWD_LEN, parseExpiration, PRIVATE_PASTE_NAME_LEN } from "../src/shared"
+import { MetaResponse } from "../../shared/interfaces"
+import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants"
+import { parseExpiration } from "../../shared/parsers"
 
 test("privacy url with option p", async () => {
   const blob1 = genRandomBlob(1024)

@@ -5,7 +5,7 @@ export default defineWorkspace([
   defineWorkersProject({
     test: {
       name: "Workers",
-      include: ["test/**/*.spec.ts"],
+      include: ["worker/test/**/*.spec.ts"],
       coverage: {
         provider: "istanbul", // v8 is not supported due for cf workers
         reporter: ["text", "json-summary", "html", "json"],

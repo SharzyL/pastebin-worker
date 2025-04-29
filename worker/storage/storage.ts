@@ -1,6 +1,6 @@
 import { dateToUnix, WorkerError } from "../common.js"
-import { parseSize } from "../shared.js"
-import { PasteLocation } from "../shared.js"
+import { parseSize } from "../../shared/parsers.js"
+import { PasteLocation } from "../../shared/interfaces.js"
 
 // since CF does not allow expiration shorter than 60s, extend the expiration to 70s
 const PASTE_EXPIRE_SPECIFIED_MIN = 70

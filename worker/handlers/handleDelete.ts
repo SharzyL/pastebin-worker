@@ -1,6 +1,6 @@
 import { WorkerError } from "../common.js"
 import { deletePaste, getPasteMetadata } from "../storage/storage.js"
-import { parsePath } from "../shared.js"
+import { parsePath } from "../../shared/parsers.js"
 
 export async function handleDelete(request: Request, env: Env, _: ExecutionContext) {
   const url = new URL(request.url)

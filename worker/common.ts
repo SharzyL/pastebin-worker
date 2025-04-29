@@ -1,4 +1,4 @@
-import { CHAR_GEN } from "./shared.js"
+import { CHAR_GEN } from "../shared/constants.js"
 
 export function decode(arrayBuffer: ArrayBuffer): string {
   return new TextDecoder().decode(arrayBuffer)
