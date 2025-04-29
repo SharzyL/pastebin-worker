@@ -40,14 +40,14 @@ export function DecryptPaste() {
   // const url = new URL("http://localhost:8787/d/dHYQ.jpg.txt#uqeULsBTb2I3iC7rD6AaYh4oJ5lMjJA2nYR+H0U8bEA=")
   const url = location
 
-  const { nameFromPath, ext, filename } = parsePath(url.pathname)
+  const { name, ext, filename } = parsePath(url.pathname)
   const keyString = url.hash.slice(1)
 
   useEffect(() => {
     if (keyString.length === 0) {
       showModal("No encryption key is given. You should append the key after a “#” character in the URL", "Error")
     }
-    const pasteUrl = `${API_URL}/${nameFromPath}`
+    const pasteUrl = `${API_URL}/${name}`
 
     const fetchPaste = async () => {
       try {
@@ -82,7 +82,7 @@ export function DecryptPaste() {
               ) || undefined
             : undefined
 
-          const inferredFilename = filename || (ext && nameFromPath + ext) || filenameFromDispTrimmed || nameFromPath
+          const inferredFilename = filename || (ext && name + ext) || filenameFromDispTrimmed || name
           setPasteFile(new File([decrypted], inferredFilename))
           setPasteContentBuffer(decrypted)
           setFileBinary(isBinaryPath(inferredFilename))
@@ -159,7 +159,7 @@ export function DecryptPaste() {
               <span className="hidden md:inline">{INDEX_PAGE_TITLE}</span>
             </Link>
             <span className="mx-2">{" / "}</span>
-            <code>{nameFromPath}</code>
+            <code>{name}</code>
             <span className="ml-1">{isLoading ? " (Loading…)" : pasteFile ? " (Decrypted)" : ""}</span>
           </h1>
           {showFileContent && (

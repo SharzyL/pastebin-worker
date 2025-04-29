@@ -70,13 +70,13 @@ export function PasteBin() {
   useEffect(() => {
     // TODO: do not fetch paste for a large file paste
     const pathname = location.pathname
-    const { nameFromPath, passwd, filename, ext } = parsePath(pathname)
+    const { name, password, filename, ext } = parsePath(pathname)
 
     const fetchPaste = async () => {
       try {
         setIsPasteLoading(true)
 
-        let pasteUrl = `${APIUrl}/${nameFromPath}`
+        let pasteUrl = `${APIUrl}/${name}`
         if (filename) pasteUrl = `${pasteUrl}/${filename}`
         if (ext) pasteUrl = `${pasteUrl}${ext}`
 
@@ -109,11 +109,11 @@ export function PasteBin() {
         setIsPasteLoading(false)
       }
     }
-    if (passwd !== undefined && pasteSetting.manageUrl === "") {
+    if (password !== undefined && pasteSetting.manageUrl === "") {
       setPasteSetting({
         ...pasteSetting,
         uploadKind: "manage",
-        manageUrl: `${APIUrl}/${nameFromPath}:${passwd}`,
+        manageUrl: `${APIUrl}/${name}:${password}`,
       })
 
       fetchPaste().catch(console.error)

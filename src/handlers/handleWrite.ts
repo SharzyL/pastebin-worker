@@ -15,6 +15,7 @@ import {
   parseSize,
 } from "../shared.js"
 import { MaxFileSizeExceededError, MultipartParseError, parseMultipartRequest } from "@mjackson/multipart-parser"
+import { handleMPUComplete, handleMPUCreate, handleMPUCreateUpdate, handleMPUResume } from "./handleMPU.js"
 
 function suggestUrl(short: string, baseUrl: string, filename?: string, contentAsString?: string) {
   if (filename) {
@@ -83,8 +84,22 @@ export async function handlePostOrPut(
     }
   }
 
-  const contentType = request.headers.get("Content-Type") || ""
   const url = new URL(request.url)
+
+  let isMPUComplete = false
+  if (url.pathname === "/mpu/create" && !isPut) {
+    return handleMPUCreate(request, env)
+  } else if (url.pathname === "/mpu/create-update" && !isPut) {
+    return handleMPUCreateUpdate(request, env)
+  } else if (url.pathname === "/mpu/resume" && isPut) {
+    return handleMPUResume(request, env)
+  } else if (url.pathname === "/mpu/complete") {
+    isMPUComplete = true // we will handle mpu complete later since it is uploaded with formdata
+  } else if (url.pathname.startsWith("/mpu/")) {
+    throw new WorkerError(400, "illegal mpu operation")
+  }
+
+  const contentType = request.headers.get("Content-Type") || ""
 
   // TODO: support multipart upload (https://developers.cloudflare.com/r2/api/workers/workers-multipart-usage/)
 
@@ -102,9 +117,14 @@ export async function handlePostOrPut(
   const nameFromForm = parts.get("n")?.contentAsString
   const isPrivate = parts.has("p")
   const passwdFromForm = parts.get("s")?.contentAsString
-  const expireFromPart: string | undefined = parts.get("e")?.contentAsString
+  const expireFromForm: string | undefined = parts.get("e")?.contentAsString
   const encryptionScheme: string | undefined = parts.get("encryption-scheme")?.contentAsString
-  const expire = expireFromPart ? expireFromPart : env.DEFAULT_EXPIRATION
+  const expire = expireFromForm ? expireFromForm : env.DEFAULT_EXPIRATION
+
+  if (isMPUComplete && contentAsString === undefined) {
+    throw new WorkerError(400, `field c in formdata mistakenly carries a filename for MPU complete`)
+  }
+  const uploadedParts = isMPUComplete ? (JSON.parse(contentAsString!) as R2UploadedPart[]) : undefined
 
   // parse expiration
   let expirationSeconds = parseExpiration(expire)
@@ -127,16 +147,15 @@ export async function handlePostOrPut(
       throw new WorkerError(400, `password should not contain newline`)
     }
   }
-  const passwd = passwdFromForm || genRandStr(DEFAULT_PASSWD_LEN)
 
   // check if name is legal
   if (nameFromForm !== undefined && !NAME_REGEX.test(nameFromForm)) {
     throw new WorkerError(400, `Name ${nameFromForm} not satisfying regexp ${NAME_REGEX}`)
   }
 
-  function makeResponse(created: PasteResponse): Response {
+  function makeResponse(created: PasteResponse, additionalHeaders: Record<string, string | undefined> = {}): Response {
     return new Response(JSON.stringify(created, null, 2), {
-      headers: { "Content-Type": "application/json;charset=UTF-8" },
+      headers: { "Content-Type": "application/json;charset=UTF-8", ...additionalHeaders },
     })
   }
 
@@ -150,37 +169,63 @@ export async function handlePostOrPut(
 
   const now = new Date()
   if (isPut) {
-    const { nameFromPath, passwd } = parsePath(url.pathname)
-    const originalMetadata = await getPasteMetadata(env, nameFromPath)
-
-    if (originalMetadata === null) {
-      throw new WorkerError(404, `paste of name '${nameFromPath}' is not found`)
-    } else if (passwd === undefined) {
-      throw new WorkerError(403, `no password for paste '${nameFromPath}`)
-    } else if (passwd !== originalMetadata.passwd) {
-      throw new WorkerError(403, `incorrect password for paste '${nameFromPath}`)
+    let pasteName: string | undefined
+    let password: string | undefined
+    // if isMPCComplete, we cannot parse path
+    if (!isMPUComplete) {
+      const parsed = parsePath(url.pathname)
+      if (parsed.password === undefined) {
+        throw new WorkerError(403, `no password for PUT request`)
+      }
+      pasteName = parsed.name
+      password = parsed.password
     } else {
-      const pasteName = nameFromPath || genRandStr(isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
-      const newPasswd = passwdFromForm || passwd
-      await updatePaste(env, pasteName, content, originalMetadata, {
-        expirationSeconds,
-        now,
-        passwd: newPasswd,
-        contentLength,
-        filename,
-        encryptionScheme,
-      })
-      return makeResponse({
+      pasteName = url.searchParams.get("name") || undefined
+      if (pasteName === undefined) {
+        throw new WorkerError(400, `no name for MPU complete`)
+      }
+    }
+
+    const etag = isMPUComplete ? await handleMPUComplete(request, env, uploadedParts!) : undefined
+
+    const originalMetadata = await getPasteMetadata(env, pasteName)
+    if (originalMetadata === null) {
+      throw new WorkerError(404, `paste of name ‘${pasteName}’ is not found`)
+    }
+
+    // no need to check password for MPCComplete, it is already checked on creation
+    if (!isMPUComplete && password !== originalMetadata.passwd) {
+      throw new WorkerError(403, `incorrect password for paste ‘${pasteName}’`)
+    }
+
+    const newPasswd = passwdFromForm || originalMetadata.passwd
+    await updatePaste(env, pasteName, content, originalMetadata, {
+      expirationSeconds,
+      now,
+      passwd: newPasswd,
+      contentLength,
+      filename,
+      encryptionScheme,
+    })
+    return makeResponse(
+      {
         url: accessUrl(pasteName),
         suggestedUrl: suggestUrl(pasteName, env.DEPLOY_URL, filename, contentAsString),
         manageUrl: manageUrl(pasteName, newPasswd),
         expirationSeconds,
         expireAt: new Date(now.getTime() + 1000 * expirationSeconds).toISOString(),
-      })
-    }
+      },
+      { etag },
+    )
   } else {
     let pasteName: string | undefined
-    if (nameFromForm !== undefined) {
+    if (isMPUComplete) {
+      if (url.searchParams.has("name")) {
+        pasteName = url.searchParams.get("name")!
+      } else {
+        throw new WorkerError(400, `no name for MPU complete`)
+      }
+    } else if (nameFromForm !== undefined) {
       pasteName = "~" + nameFromForm
       if (!(await pasteNameAvailable(env, pasteName))) {
         throw new WorkerError(409, `name '${pasteName}' is already used`)
@@ -189,21 +234,28 @@ export async function handlePostOrPut(
       pasteName = genRandStr(isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
     }
 
+    const etag = isMPUComplete ? await handleMPUComplete(request, env, uploadedParts!) : undefined
+
+    const password = passwdFromForm || genRandStr(DEFAULT_PASSWD_LEN)
     await createPaste(env, pasteName, content, {
       expirationSeconds,
       now,
-      passwd,
+      passwd: password,
       filename,
       contentLength,
       encryptionScheme,
+      isMPUComplete,
     })
 
-    return makeResponse({
-      url: accessUrl(pasteName),
-      suggestedUrl: suggestUrl(pasteName, env.DEPLOY_URL, filename, contentAsString),
-      manageUrl: manageUrl(pasteName, passwd),
-      expirationSeconds,
-      expireAt: new Date(now.getTime() + 1000 * expirationSeconds).toISOString(),
-    })
+    return makeResponse(
+      {
+        url: accessUrl(pasteName),
+        suggestedUrl: suggestUrl(pasteName, env.DEPLOY_URL, filename, contentAsString),
+        manageUrl: manageUrl(pasteName, password),
+        expirationSeconds,
+        expireAt: new Date(now.getTime() + 1000 * expirationSeconds).toISOString(),
+      },
+      { etag },
+    )
   }
 }

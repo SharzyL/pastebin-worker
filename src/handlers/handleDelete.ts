@@ -4,15 +4,15 @@ import { parsePath } from "../shared.js"
 
 export async function handleDelete(request: Request, env: Env, _: ExecutionContext) {
   const url = new URL(request.url)
-  const { nameFromPath, passwd } = parsePath(url.pathname)
-  const metadata = await getPasteMetadata(env, nameFromPath)
+  const { name, password } = parsePath(url.pathname)
+  const metadata = await getPasteMetadata(env, name)
   if (metadata === null) {
-    throw new WorkerError(404, `paste of name '${nameFromPath}' not found`)
+    throw new WorkerError(404, `paste of name '${name}' not found`)
   } else {
-    if (passwd !== metadata.passwd) {
-      throw new WorkerError(403, `incorrect password for paste '${nameFromPath}`)
+    if (password !== metadata.passwd) {
+      throw new WorkerError(403, `incorrect password for paste '${name}`)
     } else {
-      await deletePaste(env, nameFromPath, metadata)
+      await deletePaste(env, name, metadata)
       return new Response("the paste will be deleted in seconds")
     }
   }

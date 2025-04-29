@@ -20,6 +20,12 @@ export type MetaResponse = {
   encryptionScheme?: string
 }
 
+export type MPUCreateResponse = {
+  name: string
+  key: string
+  uploadId: string
+}
+
 export const CHAR_GEN = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
 export const NAME_REGEX = /^[a-zA-Z0-9+_\-[\]*$@,;]{3,}$/
 export const PASTE_NAME_LEN = 4
@@ -76,9 +82,9 @@ export function parseExpirationReadable(expirationStr: string): string | null {
 }
 
 export type ParsedPath = {
-  nameFromPath: string
+  name: string
   role?: string
-  passwd?: string
+  password?: string
   ext?: string
   filename?: string
 }
@@ -127,7 +133,7 @@ export function parsePath(pathname: string): ParsedPath {
     short = pathname.slice(0, endOfShort)
     passwd = pathname.slice(endOfShort + 1)
   }
-  return { role, nameFromPath: short, passwd, ext, filename }
+  return { role, name: short, password: passwd, ext, filename }
 }
 
 export function parseFilenameFromContentDisposition(contentDisposition: string): string | undefined {

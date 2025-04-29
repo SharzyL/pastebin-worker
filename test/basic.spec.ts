@@ -129,15 +129,15 @@ test("GET special static pages", async () => {
 
   // test decryption page
   const decUrl = addRole(resp.url, "d")
-  const { nameFromPath } = parsePath(new URL(resp.url).pathname)
+  const { name } = parsePath(new URL(resp.url).pathname)
   const decResp = await workerFetch(ctx, decUrl)
   expect(decResp.status, `visiting ${decUrl}`).toStrictEqual(200)
   expect(decResp.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
 
   const testPairs = [
-    [nameFromPath, nameFromPath],
-    [nameFromPath + ".jpg", nameFromPath + ".jpg"],
-    [nameFromPath + "/a.jpg", nameFromPath + "/a.jpg"],
+    [name, name],
+    [name + ".jpg", name + ".jpg"],
+    [name + "/a.jpg", name + "/a.jpg"],
   ]
   for (const [accessPath, expectedTitle] of testPairs) {
     const resp = await (await workerFetch(ctx, `${BASE_URL}/d/${accessPath}`)).text()

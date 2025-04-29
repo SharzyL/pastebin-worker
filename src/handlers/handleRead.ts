@@ -107,7 +107,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   const url = new URL(request.url)
 
-  const { role, nameFromPath, ext, filename } = parsePath(url.pathname)
+  const { role, name, ext, filename } = parsePath(url.pathname)
 
   const disp = url.searchParams.has("a") ? "attachment" : "inline"
 
@@ -116,12 +116,12 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   const shouldGetPasteContent = (!isHead && role !== "m" && role !== "d") || (isHead && role === "u")
 
   const item: PasteWithMetadata | null = shouldGetPasteContent
-    ? await getPaste(env, nameFromPath, ctx)
-    : await getPasteWithoutContent(env, nameFromPath)
+    ? await getPaste(env, name, ctx)
+    : await getPasteWithoutContent(env, name)
 
   // when paste is not found
   if (item === null) {
-    throw new WorkerError(404, `paste of name '${nameFromPath}' not found`)
+    throw new WorkerError(404, `paste of name '${name}' not found`)
   }
 
   let inferred_mime =
@@ -204,7 +204,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     pageUrl.pathname = "/decrypt.html"
     const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace(
       "{{PASTE_NAME}}",
-      nameFromPath + (filename ? "/" + filename : ext ? ext : ""),
+      name + (filename ? "/" + filename : ext ? ext : ""),
     )
     return new Response(isHead ? null : page, {
       headers: {

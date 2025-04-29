@@ -195,6 +195,7 @@ export async function createPaste(
     filename?: string
     contentLength: number
     encryptionScheme?: string
+    isMPUComplete: boolean
   },
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds

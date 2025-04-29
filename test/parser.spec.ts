@@ -9,28 +9,28 @@ import {
 
 test("parsePath", () => {
   const testPairs: [string, ParsedPath][] = [
-    ["/abcd", { nameFromPath: "abcd" }],
-    ["/abcd:1245", { nameFromPath: "abcd", passwd: "1245" }],
-    ["/~abc", { nameFromPath: "~abc" }],
-    ["/a/~abc", { nameFromPath: "~abc", role: "a" }],
-    ["/abcd.jpg", { nameFromPath: "abcd", ext: ".jpg" }],
-    ["/abcd.txt.jpg", { nameFromPath: "abcd", ext: ".txt.jpg" }],
-    ["/u/abcd.jpg", { nameFromPath: "abcd", ext: ".jpg", role: "u" }],
-    ["/a/abcd/efg.jpg", { nameFromPath: "abcd", filename: "efg.jpg", ext: ".jpg", role: "a" }],
-    ["/a/abcd/efg.txt.jpg", { nameFromPath: "abcd", filename: "efg.txt.jpg", ext: ".txt.jpg", role: "a" }],
-    ["/a/abcd/.jpg", { nameFromPath: "abcd", filename: ".jpg", ext: ".jpg", role: "a" }],
-    ["/a/abcd/cef", { nameFromPath: "abcd", filename: "cef", role: "a" }],
-    ["/a/abcd:xxxxxxxx/.jpg", { nameFromPath: "abcd", filename: ".jpg", ext: ".jpg", role: "a", passwd: "xxxxxxxx" }],
-    ["/abcd:xxxxxxxx.jpg", { nameFromPath: "abcd", ext: ".jpg", passwd: "xxxxxxxx" }],
-    ["/~abcd:xxxxxxxx.jpg", { nameFromPath: "~abcd", ext: ".jpg", passwd: "xxxxxxxx" }],
-    ["/a/abcd:xxxxxxxx", { nameFromPath: "abcd", role: "a", passwd: "xxxxxxxx" }],
+    ["/abcd", { name: "abcd" }],
+    ["/abcd:1245", { name: "abcd", password: "1245" }],
+    ["/~abc", { name: "~abc" }],
+    ["/a/~abc", { name: "~abc", role: "a" }],
+    ["/abcd.jpg", { name: "abcd", ext: ".jpg" }],
+    ["/abcd.txt.jpg", { name: "abcd", ext: ".txt.jpg" }],
+    ["/u/abcd.jpg", { name: "abcd", ext: ".jpg", role: "u" }],
+    ["/a/abcd/efg.jpg", { name: "abcd", filename: "efg.jpg", ext: ".jpg", role: "a" }],
+    ["/a/abcd/efg.txt.jpg", { name: "abcd", filename: "efg.txt.jpg", ext: ".txt.jpg", role: "a" }],
+    ["/a/abcd/.jpg", { name: "abcd", filename: ".jpg", ext: ".jpg", role: "a" }],
+    ["/a/abcd/cef", { name: "abcd", filename: "cef", role: "a" }],
+    ["/a/abcd:xxxxxxxx/.jpg", { name: "abcd", filename: ".jpg", ext: ".jpg", role: "a", password: "xxxxxxxx" }],
+    ["/abcd:xxxxxxxx.jpg", { name: "abcd", ext: ".jpg", password: "xxxxxxxx" }],
+    ["/~abcd:xxxxxxxx.jpg", { name: "~abcd", ext: ".jpg", password: "xxxxxxxx" }],
+    ["/a/abcd:xxxxxxxx", { name: "abcd", role: "a", password: "xxxxxxxx" }],
   ]
 
   for (const [input, output] of testPairs) {
     const parsed = parsePath(input)
-    expect(parsed.nameFromPath, `checking nameFromPath of ${input}`).toStrictEqual(output.nameFromPath)
+    expect(parsed.name, `checking nameFromPath of ${input}`).toStrictEqual(output.name)
     expect(parsed.role, `checking role of ${input}`).toStrictEqual(output.role)
-    expect(parsed.passwd, `checking passwd of ${input}`).toStrictEqual(output.passwd)
+    expect(parsed.password, `checking passwd of ${input}`).toStrictEqual(output.password)
     expect(parsed.ext, `checking ext of ${input}`).toStrictEqual(output.ext)
     expect(parsed.filename, `checking filename of ${input}`).toStrictEqual(output.filename)
   }
