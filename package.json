@@ -7,7 +7,8 @@
   "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
-    "build:frontend": "vite build frontend --outDir ../dist/frontend --emptyOutDir",
+    "prebuild:frontend": "mkdir -p dist/frontend",
+    "build:frontend": "yarn prebuild:frontend && vite build frontend --outDir ../dist/frontend --emptyOutDir",
     "build:frontend:dev": "vite build frontend --mode development --outDir ../dist/frontend --emptyOutDir",
     "dev:frontend": "vite serve frontend --mode development",
     "dev": "wrangler dev --var DEPLOY_URL:http://localhost:8787 --port 8787",
