@@ -5,12 +5,10 @@ import {
   CardProps,
   Divider,
   Input,
-  PopoverContent,
-  PopoverTrigger,
-  Popover,
   Radio,
   RadioGroup,
   Switch,
+  Tooltip,
 } from "@heroui/react"
 import { BaseUrl, verifyExpiration, verifyManageUrl, verifyName } from "../utils/utils.js"
 import React from "react"
@@ -115,29 +113,24 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
           ) : null}
         </RadioGroup>
         <Divider />
-        <div className="mt-2 flex flex-row items-center">
+        <div className="mt-3 flex flex-row items-center">
           <Switch isSelected={setting.doEncrypt} onValueChange={(v) => onSettingChange({ ...setting, doEncrypt: v })}>
-            Encrypt paste
+            Client-side encryption
           </Switch>
-          <Popover>
-            <PopoverTrigger>
-              <InfoIcon className="inline size-5 ml-2" />
-            </PopoverTrigger>
-            <PopoverContent>
-              {(titleProps) => (
-                <div className="px-1 py-2 max-w-[20rem]">
-                  <h3 className="text-normal font-bold mb-2" {...titleProps}>
-                    Encrypted Paste
-                  </h3>
-                  <div className="text-small">
-                    Enable client-side encryption. Your paste is shared via a URL containing the decryption key in the
-                    hash. Decryption happens in the browser, so only those with the key (not the server) can view the
-                    original content.
-                  </div>
+          <Tooltip
+            content={
+              <div className="px-1 py-2 max-w-[20rem]">
+                <h3 className="text-normal font-bold mb-2">Client-side encryption</h3>
+                <div className="text-small">
+                  Your paste is shared via a URL containing the decryption key in the URL hash, which is never sent to
+                  the server. Decryption happens in the browser, so only those with the key (not the server) can view
+                  the decrypted content.
                 </div>
-              )}
-            </PopoverContent>
-          </Popover>
+              </div>
+            }
+          >
+            <InfoIcon className="inline size-5 ml-2" />
+          </Tooltip>
         </div>
       </CardBody>
     </Card>
