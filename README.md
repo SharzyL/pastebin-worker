@@ -6,14 +6,12 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 
 **Features**:
 
-1. Share your paste with as short as 4 characters
-2. Customize the paste URL
-3. **Update** and **delete** your paste as you want
-4. **Expire** your paste after a period of time
-5. **Syntax highlighting** powered by PrismJS
-6. Display **markdown** file as HTML
-7. Used as a URL shortener
-8. Customize returned mimetype
+1. Share your paste with as short as 4 characters, or even customized URL.
+1. **Syntax highlighting** powered by PrismJS
+1. Client-side encryption
+1. Render **markdown** file as HTML
+1. URL shortener
+1. Customize returned `Content-Type`
 
 ## Usage
 
