@@ -1,6 +1,7 @@
 import React, { JSX, useEffect } from "react"
 import { ComputerIcon, MoonIcon, SunIcon } from "./icons.js"
 import { Button, ButtonProps, Tooltip } from "@heroui/react"
+import { tst } from "../utils/overrides.js"
 
 export type DarkMode = "dark" | "light" | "system"
 
@@ -40,7 +41,7 @@ export function DarkModeToggle({ mode, onModeChange, className, ...rest }: MyCom
     <Tooltip content={`Toggle dark mode (currently ${mode})`}>
       <Button
         isIconOnly
-        className={"mr-2 rounded-full bg-background hover:bg-default-100" + " " + className}
+        className={`mr-2 rounded-full ${tst} bg-background hover:bg-default-100` + " " + className}
         aria-label="Toggle dark mode"
         onPress={() => {
           const curModeIdx = icons.findIndex(({ name }) => name === mode)

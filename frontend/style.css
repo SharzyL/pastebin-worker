@@ -11,3 +11,15 @@
   --font-mono:
     "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
+
+.color-tst {
+  transition-property: background-color, color, border-color;
+  transition-duration: var(--default-transition-duration);
+}
+
+@layer utilities {
+  .\!color-tst {
+    transition-property: background-color, color, border-color;
+    transition-duration: var(--default-transition-duration) !important;
+  }
+}

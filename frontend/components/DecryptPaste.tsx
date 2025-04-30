@@ -10,6 +10,7 @@ import { parseFilenameFromContentDisposition, parsePath } from "../../shared/par
 import { formatSize } from "../utils/utils.js"
 import { DarkMode, DarkModeToggle, defaultDarkMode, shouldBeDark } from "./DarkModeToggle.js"
 import binaryExtensions from "binary-extensions"
+import { tst } from "../utils/overrides.js"
 
 function isBinaryPath(path: string) {
   return binaryExtensions.includes(path.replace(/.*\./, ""))
@@ -141,11 +142,11 @@ export function DecryptPaste() {
 
   const showFileContent = pasteFile && (!isFileBinary || forceShowBinary)
 
-  const buttonClasses = "rounded-full bg-background hover:bg-default-100"
+  const buttonClasses = `rounded-full bg-background hover:bg-default-100 ${tst}`
   return (
     <main
       className={
-        "flex flex-col items-center min-h-screen transition-transform-background bg-background text-foreground w-full p-2" +
+        `flex flex-col items-center min-h-screen transition-transform-background bg-background ${tst} text-foreground w-full p-2` +
         (shouldBeDark(darkModeSelect) ? " dark" : " light")
       }
     >
@@ -181,7 +182,7 @@ export function DecryptPaste() {
           <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} className={buttonClasses} />
         </div>
         <div className="my-4">
-          <div className="min-h-[30rem] w-full bg-secondary-50 rounded-lg p-3 relative">
+          <div className={`min-h-[30rem] w-full bg-secondary-50 rounded-lg p-3 relative ${tst}`}>
             {isLoading ? (
               <CircularProgress className="absolute top-[50%] left-[50%] translate-[-50%]" />
             ) : (

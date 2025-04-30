@@ -1,7 +1,8 @@
-import { Card, CardBody, CardProps, Tab, Tabs, Textarea } from "@heroui/react"
+import { Card, CardBody, CardProps, mergeClasses, Tab, Tabs, Textarea } from "@heroui/react"
 import React, { useRef, useState, DragEvent } from "react"
 import { formatSize } from "../utils/utils.js"
 import { XIcon } from "./icons.js"
+import { cardOverrides, textAreaOverrides, tst } from "../utils/overrides.js"
 
 export type EditKind = "edit" | "file"
 
@@ -41,14 +42,14 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
   }
 
   return (
-    <Card aria-label="Pastebin editor panel" {...rest}>
+    <Card aria-label="Pastebin editor panel" classNames={cardOverrides} {...rest}>
       <CardBody>
         <Tabs
           variant="underlined"
           classNames={{
-            tabList: "gap-2 w-full px-2 py-0 border-divider",
-            cursor: "w-[80%]",
-            tab: "max-w-fit px-2 h-8 px-2",
+            tabList: `gap-2 w-full px-2 py-0 border-divider`,
+            cursor: `w-[80%] ${tst}`,
+            tab: `max-w-fit px-2 h-8 px-2`,
             panel: "pb-1",
           }}
           selectedKey={state.editKind}
@@ -62,9 +63,7 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
               placeholder={isPasteLoading ? "Loading..." : "Edit your paste here"}
               isDisabled={isPasteLoading}
               className="px-0 py-0"
-              classNames={{
-                input: "resize-y min-h-[30em] font-mono",
-              }}
+              classNames={mergeClasses(textAreaOverrides, { input: "resize-y min-h-[30rem] font-mono" })}
               aria-label="Paste editor"
               disableAutosize
               disableAnimation
@@ -79,7 +78,7 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
           <Tab key="file" title="File">
             <div
               className={
-                "w-full h-[20rem] rounded-xl flex flex-col items-center justify-center cursor-pointer relative" +
+                `w-full h-[20rem] rounded-xl flex flex-col items-center justify-center cursor-pointer relative ${tst}` +
                 (isDragged ? " bg-primary-100" : " bg-primary-50")
               }
               role="button"
@@ -102,7 +101,7 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
                 }}
               />
               <div className="text-2xl my-2 font-bold">Select File</div>
-              <p className="text-1xl text-foreground-500 relative">
+              <p className={`text-1xl text-foreground-500 ${tst} relative`}>
                 <span>
                   {state.file !== null
                     ? `${state.file.name} (${formatSize(state.file.size)})`
@@ -113,7 +112,7 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
                 <XIcon
                   aria-label="Remove file"
                   role="button"
-                  className="h-6 inline absolute top-2 right-2 text-red-400"
+                  className={`h-6 inline absolute top-2 right-2 text-red-400 ${tst}`}
                   onClick={(e) => {
                     e.stopPropagation()
                     setFile(null)

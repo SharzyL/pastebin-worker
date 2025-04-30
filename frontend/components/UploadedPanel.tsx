@@ -1,6 +1,7 @@
-import { Card, CardBody, CardHeader, CardProps, Divider, Skeleton, Snippet } from "@heroui/react"
+import { Card, CardBody, CardHeader, CardProps, Divider, mergeClasses, Skeleton, Snippet } from "@heroui/react"
 import React from "react"
 import { PasteResponse } from "../../shared/interfaces.js"
+import { tst } from "../utils/overrides.js"
 
 interface UploadedPanelProps extends CardProps {
   isLoading: boolean
@@ -14,15 +15,15 @@ const makeDecryptionUrl = (url: string, key: string) => {
   return urlParsed.toString() + "#" + key
 }
 
-export function UploadedPanel({ isLoading, pasteResponse, encryptionKey, ...rest }: UploadedPanelProps) {
+export function UploadedPanel({ isLoading, pasteResponse, className, encryptionKey, ...rest }: UploadedPanelProps) {
   const snippetClassNames = {
-    pre: "overflow-scroll leading-[2.5] font-sans",
-    base: "w-full py-1/3",
-    copyButton: "relative ml-[-12pt] left-[5pt]",
+    pre: `overflow-scroll leading-[2.5] font-sans ${tst}`,
+    base: `w-full py-1/3 ${tst}`,
+    copyButton: `relative ml-[-12pt] left-[5pt] ${tst}`,
   }
   const firstColClassNames = "w-[8rem] mr-4 whitespace-nowrap"
   return (
-    <Card {...rest}>
+    <Card classNames={mergeClasses({ base: tst }, { base: className })} {...rest}>
       <CardHeader className="text-2xl">Uploaded Paste</CardHeader>
       <Divider />
       <CardBody>

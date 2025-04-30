@@ -24,6 +24,7 @@ import "../style.css"
 import { UploadedPanel } from "./UploadedPanel.js"
 import { PasteEditor, PasteEditState } from "./PasteEditor.js"
 import { uploadPaste } from "../utils/uploader.js"
+import { tst } from "../utils/overrides.js"
 
 export function PasteBin() {
   const [editorState, setEditorState] = useState<PasteEditState>({
@@ -179,7 +180,10 @@ export function PasteBin() {
       <p className="my-2">An open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
         <b>Usage</b>: Paste text or file here; submit; share it with a URL. (
-        <Link href={`${BaseUrl}/api`}>API Documentation</Link>)
+        <Link className={tst} href={`${BaseUrl}/api`}>
+          API Documentation
+        </Link>
+        )
       </p>
       <p className="my-2">
         <b>Warning</b>: Only for temporary share <b>(max {maxExpirationReadable})</b>. Files could be deleted without
@@ -191,12 +195,12 @@ export function PasteBin() {
   const submitter = (
     <div className="my-4 mx-2 lg:mx-0">
       {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <Button color="primary" onPress={onUploadPaste} className="mr-4" isDisabled={!canUpload() || isLoading}>
+      <Button color="primary" onPress={onUploadPaste} className={`mr-4 ${tst}`} isDisabled={!canUpload() || isLoading}>
         {pasteSetting.uploadKind === "manage" ? "Update" : "Upload"}
       </Button>
       {pasteSetting.uploadKind === "manage" ? (
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        <Button color="danger" onPress={deletePaste} isDisabled={!canDelete()}>
+        <Button color="danger" onPress={deletePaste} className={tst} isDisabled={!canDelete()}>
           Delete
         </Button>
       ) : null}
@@ -206,11 +210,11 @@ export function PasteBin() {
   const footer = (
     <footer className="px-3 my-4 text-center">
       <p>
-        <Link href={`${BaseUrl}/tos`} className="d-inline-block">
+        <Link href={`${BaseUrl}/tos`} className={`d-inline-block ${tst}`}>
           Terms & Conditions
         </Link>
         {" / "}
-        <Link href={REPO} className="d-inline-block">
+        <Link href={REPO} className={`d-inline-block ${tst}`}>
           Repository
         </Link>
       </p>
@@ -220,7 +224,7 @@ export function PasteBin() {
   return (
     <main
       className={
-        "flex flex-col items-center min-h-screen font-sans transition-transform-background bg-background text-foreground" +
+        `flex flex-col items-center min-h-screen font-sans ${tst} bg-background text-foreground` +
         (shouldBeDark(darkModeSelect) ? " dark" : " light")
       }
     >
@@ -234,7 +238,7 @@ export function PasteBin() {
         />
         <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
           <PanelSettingsPanel
-            className={"transition-width ease-in-out lg:w-1/2 w-full"}
+            className={"transition-width lg:w-1/2 w-full"}
             setting={pasteSetting}
             onSettingChange={setPasteSetting}
           />
