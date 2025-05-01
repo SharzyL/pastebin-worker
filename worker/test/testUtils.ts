@@ -107,7 +107,17 @@ export function genRandomBlob(len: number): Blob {
 }
 
 export async function areBlobsEqual(blob1: Blob, blob2: Blob) {
-  return Buffer.from(await blob1.arrayBuffer()).compare(Buffer.from(await blob2.arrayBuffer())) === 0
+  if (blob1.size !== blob2.size) {
+    return false
+  }
+  const array1 = await blob1.bytes()
+  const array2 = await blob2.bytes()
+  for (let i = 0; i < blob1.size; i++) {
+    if (array1[i] != array2[i]) {
+      return false
+    }
+  }
+  return true
 }
 
 // replace https://example.com/xxx to https://example.com/${role}/xxx

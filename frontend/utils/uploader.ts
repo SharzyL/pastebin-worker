@@ -1,8 +1,9 @@
-import { PasteSetting } from "../components/PasteSettingPanel.js"
-import { PasteEditState } from "../components/PasteEditor.js"
-import { APIUrl, ErrorWithTitle, makeErrorMsg } from "./utils.js"
-import { PasteResponse } from "../../shared/interfaces.js"
+import type { PasteSetting } from "../components/PasteSettingPanel.js"
+import type { PasteEditState } from "../components/PasteEditor.js"
+import { APIUrl, ErrorWithTitle } from "./utils.js"
+import type { PasteResponse } from "../../shared/interfaces.js"
 import { encodeKey, encrypt, EncryptionScheme, genKey } from "./encryption.js"
+import { UploadError, uploadMPU, uploadNormal, UploadOptions } from "../../shared/uploadMPU.js"
 
 async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Array) {
   const key = await genKey(scheme)
@@ -13,63 +14,71 @@ async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Ar
 
 const encryptionScheme: EncryptionScheme = "AES-GCM"
 
+const minChunkSize = 5 * 1024 * 1024
+
 export async function uploadPaste(
   pasteSetting: PasteSetting,
   editorState: PasteEditState,
-  onEncryptionKeyChange: (k: string) => void,
-  onLoadingStateChange: (isLoading: boolean) => void,
+  onEncryptionKeyChange: (k: string | undefined) => void, // we only generate key on upload, so need a callback of key generation
+  onProgress?: (progress: number | undefined) => void,
 ): Promise<PasteResponse> {
-  const fd = new FormData()
-  if (editorState.editKind === "file") {
-    if (editorState.file === null) {
-      throw new ErrorWithTitle("Error on Preparing Upload", "No file selected")
-    }
-    if (pasteSetting.doEncrypt) {
-      const { key, ciphertext } = await genAndEncrypt(encryptionScheme, await editorState.file.bytes())
-      const file = new File([ciphertext], editorState.file.name)
-      onEncryptionKeyChange(key)
-      fd.append("c", file)
-      fd.append("encryption-scheme", encryptionScheme)
+  async function constructContent(): Promise<string | File> {
+    if (editorState.editKind === "file") {
+      if (editorState.file === null) {
+        throw new ErrorWithTitle("Error on Preparing Upload", "No file selected")
+      }
+      if (pasteSetting.doEncrypt) {
+        const { key, ciphertext } = await genAndEncrypt(encryptionScheme, await editorState.file.bytes())
+        const file = new File([ciphertext], editorState.file.name)
+        onEncryptionKeyChange(key)
+        return file
+      } else {
+        onEncryptionKeyChange(undefined)
+        return editorState.file
+      }
     } else {
-      fd.append("c", editorState.file)
-    }
-  } else {
-    if (editorState.editContent.length === 0) {
-      throw new ErrorWithTitle("Error on Preparing Upload", "Empty paste")
-    }
-    if (pasteSetting.doEncrypt) {
-      const { key, ciphertext } = await genAndEncrypt(encryptionScheme, editorState.editContent)
-      onEncryptionKeyChange(key)
-      fd.append("c", new File([ciphertext], ""))
-      fd.append("encryption-scheme", encryptionScheme)
-    } else {
-      fd.append("c", editorState.editContent)
+      if (editorState.editContent.length === 0) {
+        throw new ErrorWithTitle("Error on Preparing Upload", "Empty paste")
+      }
+      if (pasteSetting.doEncrypt) {
+        const { key, ciphertext } = await genAndEncrypt(encryptionScheme, editorState.editContent)
+        onEncryptionKeyChange(key)
+        return new File([ciphertext], "")
+      } else {
+        return editorState.editContent
+      }
     }
   }
 
-  fd.append("e", pasteSetting.expiration)
-  if (pasteSetting.password.length > 0) fd.append("s", pasteSetting.password)
+  const options: UploadOptions = {
+    content: await constructContent(),
+    isUpdate: pasteSetting.uploadKind === "manage",
+    isPrivate: pasteSetting.uploadKind === "long",
+    password: pasteSetting.password.length ? pasteSetting.password : undefined,
+    expire: pasteSetting.expiration,
+    name: pasteSetting.uploadKind === "custom" ? pasteSetting.name : undefined,
+    encryptionScheme: pasteSetting.doEncrypt ? encryptionScheme : undefined,
+    manageUrl: pasteSetting.manageUrl,
+  }
 
-  if (pasteSetting.uploadKind === "long") fd.append("p", "true")
-  else if (pasteSetting.uploadKind === "custom") fd.append("n", pasteSetting.name)
+  const contentLength = typeof options.content === "string" ? options.content.length : options.content.size
+  const apiUrlOrManageUrl = options.isUpdate ? pasteSetting.manageUrl : APIUrl
 
-  onLoadingStateChange(true)
-  // setPasteResponse(null)
-  const isUpdate = pasteSetting.uploadKind !== "manage"
-  // TODO: add progress indicator
-  const resp = isUpdate
-    ? await fetch(APIUrl, {
-        method: "POST",
-        body: fd,
+  try {
+    if (contentLength < 5 * 1024 * 1024) {
+      return await uploadNormal(apiUrlOrManageUrl, options)
+    } else {
+      if (onProgress) onProgress(0)
+      return await uploadMPU(apiUrlOrManageUrl, minChunkSize, options, (doneBytes, allBytes) => {
+        if (onProgress) onProgress((100 * doneBytes) / allBytes)
       })
-    : await fetch(pasteSetting.manageUrl, {
-        method: "PUT",
-        body: fd,
-      })
-  if (resp.ok) {
-    onLoadingStateChange(false)
-    return JSON.parse(await resp.text()) as PasteResponse
-  } else {
-    throw new ErrorWithTitle("Error From Server", await makeErrorMsg(resp))
+    }
+  } catch (e) {
+    if (e instanceof UploadError) {
+      throw new ErrorWithTitle("Error on Upload", e.message)
+    }
+    throw e
+  } finally {
+    if (onProgress) onProgress(undefined)
   }
 }

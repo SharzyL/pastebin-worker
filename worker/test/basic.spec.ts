@@ -49,7 +49,7 @@ describe("upload", () => {
     const resp = await upload(ctx, { c: blob1 })
     const revisitSesponse = await workerFetch(ctx, resp.url)
     expect(revisitSesponse.status).toStrictEqual(200)
-    expect(await areBlobsEqual(await revisitSesponse.blob(), blob1)).toBeTruthy()
+    expect(await areBlobsEqual(await revisitSesponse.blob(), blob1)).toStrictEqual(true)
   })
 
   it("should return 404 for non-existent", async () => {
@@ -86,7 +86,7 @@ describe("update", () => {
     const revisitModifiedResponse = await workerFetch(ctx, resp.url)
     expect(revisitModifiedResponse.status).toStrictEqual(200)
     const revisitBlob = await revisitModifiedResponse.blob()
-    expect(await areBlobsEqual(revisitBlob, blob2)).toBeTruthy()
+    expect(await areBlobsEqual(revisitBlob, blob2)).toStrictEqual(true)
   })
 })
 
@@ -142,7 +142,10 @@ test("GET special static pages", async () => {
   ]
   for (const [accessPath, expectedTitle] of testPairs) {
     const resp = await (await workerFetch(ctx, `${BASE_URL}/d/${accessPath}`)).text()
-    expect(resp.includes(`/ ${expectedTitle}</title>`), `testing access ${accessPath}, returning ${resp}`).toBeTruthy()
+    expect(
+      resp.includes(`/ ${expectedTitle}</title>`),
+      `testing access ${accessPath}, returning ${resp}`,
+    ).toStrictEqual(true)
   }
 
   // test manage page

@@ -5,6 +5,7 @@ import {
   CardProps,
   Divider,
   Input,
+  mergeClasses,
   Radio,
   RadioGroup,
   Switch,
@@ -33,12 +34,13 @@ interface PasteSettingPanelProps extends CardProps {
 }
 
 export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteSettingPanelProps) {
+  const radioClassNames = mergeClasses(radioOverrides, { labelWrapper: "ml-2.5" })
   return (
     <Card aria-label="Pastebin setting panel" classNames={cardOverrides} {...rest}>
-      <CardHeader className="text-2xl">Settings</CardHeader>
+      <CardHeader className="text-2xl pl-4 pb-2">Settings</CardHeader>
       <Divider className={tst} />
       <CardBody>
-        <div className="gap-4 mb-4 flex flex-row">
+        <div className="gap-4 mb-3 flex flex-row">
           <Input
             type="text"
             label="Expiration"
@@ -68,11 +70,11 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
           />
         </div>
         <RadioGroup
-          className="gap-4 mb-2 w-full"
+          className="gap-4 mb-3 w-full"
           value={setting.uploadKind}
           onValueChange={(v) => onSettingChange({ ...setting, uploadKind: v as UploadKind })}
         >
-          <Radio value="short" description={`Example: ${BaseUrl}/BxWH`} classNames={radioOverrides}>
+          <Radio value="short" description={`Example: ${BaseUrl}/BxWH`} classNames={radioClassNames}>
             Generate a short random URL
           </Radio>
           <Radio
@@ -80,12 +82,12 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
             description={`Example: ${BaseUrl}/5HQWYNmjA4h44SmybeThXXAm`}
             classNames={{
               description: "text-ellipsis max-w-[calc(100vw-5rem)] whitespace-nowrap overflow-hidden",
-              ...radioOverrides,
+              ...radioClassNames,
             }}
           >
             Generate a long random URL
           </Radio>
-          <Radio value="custom" classNames={radioOverrides} description={`Example: ${BaseUrl}/~stocking`}>
+          <Radio value="custom" classNames={radioClassNames} description={`Example: ${BaseUrl}/~stocking`}>
             Set by your own
           </Radio>
           {setting.uploadKind === "custom" ? (
@@ -93,7 +95,7 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
               value={setting.name}
               onValueChange={(n) => onSettingChange({ ...setting, name: n })}
               type="text"
-              classNames={inputOverrides}
+              classNames={radioClassNames}
               isInvalid={!verifyName(setting.name)[0]}
               errorMessage={verifyName(setting.name)[1]}
               startContent={
@@ -103,7 +105,7 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
               }
             />
           ) : null}
-          <Radio value="manage" classNames={radioOverrides}>
+          <Radio value="manage" classNames={radioClassNames}>
             <div className="">Update or delete</div>
           </Radio>
           {setting.uploadKind === "manage" ? (

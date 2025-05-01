@@ -66,7 +66,7 @@ describe("basic auth", () => {
     const uploadResp1 = await upload(ctx, { c: blob1 }, { headers: authHeader })
     const revisitResp = await workerFetch(ctx, uploadResp1.url)
     expect(revisitResp.status).toStrictEqual(200)
-    expect(areBlobsEqual(await revisitResp.blob(), blob1)).toBeTruthy()
+    expect(await areBlobsEqual(await revisitResp.blob(), blob1)).toStrictEqual(true)
   })
 
   it("should allow update without auth", async () => {
@@ -75,7 +75,7 @@ describe("basic auth", () => {
     const updateResp = await upload(ctx, { c: blob2 }, { method: "PUT", url: uploadResp1.manageUrl })
     const revisitUpdatedResp = await workerFetch(ctx, updateResp.url)
     expect(revisitUpdatedResp.status).toStrictEqual(200)
-    expect(areBlobsEqual(await revisitUpdatedResp.blob(), blob2)).toBeTruthy()
+    expect(await areBlobsEqual(await revisitUpdatedResp.blob(), blob2)).toStrictEqual(true)
   })
 
   it("should delete without auth", async () => {

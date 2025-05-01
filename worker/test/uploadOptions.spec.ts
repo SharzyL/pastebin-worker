@@ -33,7 +33,7 @@ test("privacy url with option p", async () => {
   // check revisit
   const revisitSesponse = await workerFetch(ctx, url)
   expect(revisitSesponse.status).toStrictEqual(200)
-  expect(await areBlobsEqual(await revisitSesponse.blob(), blob1)).toBeTruthy()
+  expect(await areBlobsEqual(await revisitSesponse.blob(), blob1)).toStrictEqual(true)
 })
 
 test("expire with option e", async () => {
@@ -85,7 +85,7 @@ test("custom path with option n", async () => {
   // check revisit
   const revisitResponse = await workerFetch(ctx, uploadResponseJson["url"])
   expect(revisitResponse.status).toStrictEqual(200)
-  expect(await areBlobsEqual(await revisitResponse.blob(), blob1)).toBeTruthy()
+  expect(await areBlobsEqual(await revisitResponse.blob(), blob1)).toStrictEqual(true)
 })
 
 test("custom passwd with option s", async () => {
@@ -131,7 +131,7 @@ test("encryption with option encryption-scheme", async () => {
   expect(fetchPaste.headers.get("Content-Type")).toStrictEqual("application/octet-stream")
   expect(fetchPaste.headers.get("Content-Disposition")).toStrictEqual("inline; filename*=UTF-8''a.pdf.encrypted")
   expect(fetchPaste.headers.get("X-Encryption-Scheme")).toStrictEqual("AES-GCM")
-  expect(fetchPaste.headers.get("Access-Control-Expose-Headers")?.includes("X-Encryption-Scheme")).toBeTruthy()
+  expect(fetchPaste.headers.get("Access-Control-Expose-Headers")?.includes("X-Encryption-Scheme")).toStrictEqual(true)
 
   // fetch with filename, now the content-disposition and content-type should be changed
   const fetchPasteWithFilename = await workerFetch(ctx, url + "/b.pdf")

@@ -1,4 +1,4 @@
-import { dateToUnix, WorkerError } from "../common.js"
+import { dateToUnix, workerAssert, WorkerError } from "../common.js"
 import { parseSize } from "../../shared/parsers.js"
 import { PasteLocation } from "../../shared/interfaces.js"
 
@@ -90,9 +90,8 @@ export async function getPaste(env: Env, short: string, ctx: ExecutionContext): 
 
   if (item.value === null) {
     return null
-  } else if (item.metadata === null) {
-    throw new WorkerError(500, `paste of name '${short}' has no metadata`)
   } else {
+    workerAssert(item.metadata != null, `paste of name '${short}' has no metadata`)
     const metadata = migratePasteMetadata(item.metadata)
     const expired = metadata.willExpireAtUnix < new Date().getTime() / 1000
 
@@ -141,19 +140,22 @@ export async function getPasteMetadata(env: Env, short: string): Promise<PasteMe
   }
 }
 
+interface WriteOptions {
+  now: Date
+  contentLength: number
+  expirationSeconds: number
+  passwd: string
+  filename?: string
+  encryptionScheme?: string
+  isMPUComplete: boolean
+}
+
 export async function updatePaste(
   env: Env,
   pasteName: string,
   content: ArrayBuffer | ReadableStream,
   originalMetadata: PasteMetadata,
-  options: {
-    now: Date
-    contentLength: number
-    expirationSeconds: number
-    passwd: string
-    filename?: string
-    encryptionScheme?: string
-  },
+  options: WriteOptions,
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
   let expirationUnixSpecified =
@@ -162,11 +164,19 @@ export async function updatePaste(
   if (originalMetadata.location === "R2") {
     expirationUnixSpecified = expirationUnixSpecified + PASTE_EXPIRE_EXTENSION_FOR_R2
 
-    await env.R2.put(pasteName, content)
+    if (!options.isMPUComplete) {
+      await env.R2.put(pasteName, content)
+    }
   }
+
+  // if the paste is previous on R2, we keep it on R2 to avoid losing reference to it
+  const newLocation =
+    originalMetadata.location === "R2" || options.isMPUComplete || options.contentLength > parseSize(env.R2_THRESHOLD)!
+      ? "R2"
+      : "KV"
   const metadata: PasteMetadata = {
     schemaVersion: 1,
-    location: originalMetadata.location,
+    location: newLocation,
     filename: options.filename || originalMetadata.filename,
     passwd: options.passwd,
 
@@ -188,26 +198,20 @@ export async function createPaste(
   env: Env,
   pasteName: string,
   content: ArrayBuffer | ReadableStream,
-  options: {
-    expirationSeconds: number
-    now: Date
-    passwd: string
-    filename?: string
-    contentLength: number
-    encryptionScheme?: string
-    isMPUComplete: boolean
-  },
+  options: WriteOptions,
 ) {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
 
   let expirationUnixSpecified =
     dateToUnix(options.now) + Math.max(options.expirationSeconds, PASTE_EXPIRE_SPECIFIED_MIN)
 
-  const location = options.contentLength > parseSize(env.R2_THRESHOLD)! ? "R2" : "KV"
+  const location = options.isMPUComplete || options.contentLength > parseSize(env.R2_THRESHOLD)! ? "R2" : "KV"
   if (location === "R2") {
     expirationUnixSpecified = expirationUnixSpecified + PASTE_EXPIRE_EXTENSION_FOR_R2
 
-    await env.R2.put(pasteName, content)
+    if (!options.isMPUComplete) {
+      await env.R2.put(pasteName, content)
+    }
   }
 
   const metadata: PasteMetadata = {

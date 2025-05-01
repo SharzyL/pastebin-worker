@@ -23,6 +23,12 @@ export class WorkerError extends Error {
   }
 }
 
+export function workerAssert(condition: boolean, msg: string): asserts condition {
+  if (!condition) {
+    throw new WorkerError(500, `Assertion failed: ${msg}`)
+  }
+}
+
 export function dateToUnix(date: Date): number {
   return Math.floor(date.getTime() / 1000)
 }

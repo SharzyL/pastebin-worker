@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useTransition } from "react"
 
 import { Button, Link } from "@heroui/react"
 
-import { PasteResponse } from "../../shared/interfaces.js"
+import type { PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
 
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
-import { ErrorModal, ErrorState } from "../components/ErrorModal.js"
+import { useErrorModal } from "../components/ErrorModal.js"
 import { PanelSettingsPanel, PasteSetting } from "../components/PasteSettingPanel.js"
+import { UploadedPanel } from "../components/UploadedPanel.js"
+import { PasteEditor, PasteEditState } from "../components/PasteEditor.js"
 
 import {
   verifyExpiration,
@@ -16,15 +18,11 @@ import {
   maxExpirationReadable,
   BaseUrl,
   APIUrl,
-  ErrorWithTitle,
-  makeErrorMsg,
 } from "../utils/utils.js"
-
-import "../style.css"
-import { UploadedPanel } from "../components/UploadedPanel.js"
-import { PasteEditor, PasteEditState } from "../components/PasteEditor.js"
 import { uploadPaste } from "../utils/uploader.js"
 import { tst } from "../utils/overrides.js"
+
+import "../style.css"
 
 export function PasteBin() {
   const [editorState, setEditorState] = useState<PasteEditState>({
@@ -42,25 +40,16 @@ export function PasteBin() {
     doEncrypt: false,
   })
 
-  const [pasteResponse, setPasteResponse] = useState<PasteResponse | null>(null)
-  const [uploadedEncryptionKey, setUploadedEncryptionKey] = useState<string | null>(null)
+  const [pasteResponse, setPasteResponse] = useState<PasteResponse | undefined>(undefined)
+  const [uploadedEncryptionKey, setUploadedEncryptionKey] = useState<string | undefined>(undefined)
 
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [isPasteLoading, setIsPasteLoading] = useState<boolean>(false)
-
-  const [errorState, setErrorState] = useState<ErrorState>({ isOpen: false, content: "", title: "" })
+  const [isUploadPending, startUpload] = useTransition()
+  const [loadingProgress, setLoadingProgress] = useState<number | undefined>(undefined)
+  const [isInitPasteLoading, startFetchingInitPaste] = useTransition()
 
   const [isDark, modeSelection, setModeSelection] = useDarkModeSelection()
 
-  function showModal(title: string, content: string) {
-    setErrorState({ title, content, isOpen: true })
-  }
-
-  async function reportResponseError(resp: Response, title: string) {
-    const statusText = resp.statusText === "error" ? "Unknown error" : resp.statusText
-    const errText = (await resp.text()) || statusText
-    showModal(errText, title)
-  }
+  const { ErrorModal, showModal, handleError, handleFailedResp } = useErrorModal()
 
   // handle admin URL
   useEffect(() => {
@@ -68,43 +57,6 @@ export function PasteBin() {
     const pathname = location.pathname
     const { name, password, filename, ext } = parsePath(pathname)
 
-    const fetchPaste = async () => {
-      try {
-        setIsPasteLoading(true)
-
-        let pasteUrl = `${APIUrl}/${name}`
-        if (filename) pasteUrl = `${pasteUrl}/${filename}`
-        if (ext) pasteUrl = `${pasteUrl}${ext}`
-
-        const resp = await fetch(pasteUrl)
-        if (!resp.ok) {
-          await reportResponseError(resp, `Error on fetching ${pasteUrl}`)
-          return
-        }
-        const contentType = resp.headers.get("Content-Type")
-        const contentDisp = resp.headers.get("Content-Disposition")
-
-        if (contentType && contentType.startsWith("text/")) {
-          setEditorState({
-            editKind: "edit",
-            editContent: await resp.text(),
-            file: null,
-          })
-        } else {
-          let pasteFilename = filename
-          if (pasteFilename === undefined && contentDisp !== null) {
-            pasteFilename = parseFilenameFromContentDisposition(contentDisp)
-          }
-          setEditorState({
-            editKind: "file",
-            editContent: "",
-            file: new File([await resp.blob()], pasteFilename || "[unknown filename]"),
-          })
-        }
-      } finally {
-        setIsPasteLoading(false)
-      }
-    }
     if (password !== undefined && pasteSetting.manageUrl === "") {
       setPasteSetting({
         ...pasteSetting,
@@ -112,37 +64,69 @@ export function PasteBin() {
         manageUrl: `${APIUrl}/${name}:${password}`,
       })
 
-      fetchPaste().catch(console.error)
+      let pasteUrl = `${APIUrl}/${name}`
+      if (filename) pasteUrl = `${pasteUrl}/${filename}`
+      if (ext) pasteUrl = `${pasteUrl}${ext}`
+
+      startFetchingInitPaste(async () => {
+        try {
+          const resp = await fetch(pasteUrl)
+          if (!resp.ok) {
+            await handleFailedResp(`Error on Fetching ${pasteUrl}`, resp)
+            return
+          }
+          const contentType = resp.headers.get("Content-Type")
+          const contentDisp = resp.headers.get("Content-Disposition")
+
+          if (contentType && contentType.startsWith("text/")) {
+            setEditorState({
+              editKind: "edit",
+              editContent: await resp.text(),
+              file: null,
+            })
+          } else {
+            let pasteFilename = filename
+            if (pasteFilename === undefined && contentDisp !== null) {
+              pasteFilename = parseFilenameFromContentDisposition(contentDisp)
+            }
+            setEditorState({
+              editKind: "file",
+              editContent: "",
+              file: new File([await resp.blob()], pasteFilename || "[unknown filename]"),
+            })
+          }
+        } catch (e) {
+          handleError(`Error on Fetching ${pasteUrl}`, e as Error)
+        }
+      })
     }
   }, [])
 
-  async function onUploadPaste(): Promise<void> {
-    try {
-      const uploaded = await uploadPaste(pasteSetting, editorState, setUploadedEncryptionKey, setIsLoading)
-      setPasteResponse(uploaded)
-    } catch (error) {
-      console.log(error)
-      if (error instanceof ErrorWithTitle) {
-        showModal(error.title, (error as Error).message)
-      } else {
-        showModal("Error on Uploading Paste", (error as Error).message)
+  function onStartUpload() {
+    startUpload(async () => {
+      try {
+        const uploaded = await uploadPaste(pasteSetting, editorState, setUploadedEncryptionKey, setLoadingProgress)
+        setPasteResponse(uploaded)
+      } catch (e) {
+        handleError("Error on Uploading Paste", e as Error)
       }
-    }
+    })
   }
 
-  async function deletePaste() {
-    try {
-      const resp = await fetch(pasteSetting.manageUrl, { method: "DELETE" })
-      if (resp.ok) {
-        showModal("Deleted Successfully", "It may takes 60 seconds for the deletion to propagate to the world")
-        setPasteResponse(null)
-      } else {
-        showModal("Error From Server", await makeErrorMsg(resp))
+  function onStartDelete() {
+    startUpload(async () => {
+      try {
+        const resp = await fetch(pasteSetting.manageUrl, { method: "DELETE" })
+        if (resp.ok) {
+          showModal("Deleted Successfully", "It may takes 60 seconds for the deletion to propagate to the world")
+          setPasteResponse(undefined)
+        } else {
+          await handleFailedResp("Error on Delete Paste", resp)
+        }
+      } catch (e) {
+        handleError("Error on Delete Paste", e as Error)
       }
-    } catch (e) {
-      showModal("Error on Deleting Paste", (e as Error).message)
-      console.error(e)
-    }
+    })
   }
 
   function canUpload(): boolean {
@@ -183,11 +167,11 @@ export function PasteBin() {
       </div>
       <p className="my-2">An open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
-        <b>Usage</b>: Paste text or file here; submit; share it with a URL. (
+        <b>Usage</b>: Paste text or file here. Upload. Share it with a URL. Or access with our{" "}
         <Link className={tst} href={`${BaseUrl}/api`}>
-          API Documentation
+          APIs
         </Link>
-        )
+        .
       </p>
       <p className="my-2">
         <b>Warning</b>: Only for temporary share <b>(max {maxExpirationReadable})</b>. Files could be deleted without
@@ -198,13 +182,16 @@ export function PasteBin() {
 
   const submitter = (
     <div className="my-4 mx-2 lg:mx-0">
-      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <Button color="primary" onPress={onUploadPaste} className={`mr-4 ${tst}`} isDisabled={!canUpload() || isLoading}>
+      <Button
+        color="primary"
+        onPress={onStartUpload}
+        className={`mr-4 ${tst}`}
+        isDisabled={!canUpload() || isUploadPending}
+      >
         {pasteSetting.uploadKind === "manage" ? "Update" : "Upload"}
       </Button>
       {pasteSetting.uploadKind === "manage" ? (
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        <Button color="danger" onPress={deletePaste} className={tst} isDisabled={!canDelete()}>
+        <Button color="danger" onPress={onStartDelete} className={tst} isDisabled={!canDelete()}>
           Delete
         </Button>
       ) : null}
@@ -235,7 +222,7 @@ export function PasteBin() {
       <div className="grow w-full max-w-[64rem]">
         {info}
         <PasteEditor
-          isPasteLoading={isPasteLoading}
+          isPasteLoading={isInitPasteLoading}
           state={editorState}
           onStateChange={setEditorState}
           className="mt-6 mb-4 mx-2 lg:mx-0"
@@ -246,9 +233,10 @@ export function PasteBin() {
             setting={pasteSetting}
             onSettingChange={setPasteSetting}
           />
-          {(pasteResponse || isLoading) && (
+          {(pasteResponse || isUploadPending) && (
             <UploadedPanel
-              isLoading={isLoading}
+              isLoading={isUploadPending}
+              loadingProgress={loadingProgress}
               pasteResponse={pasteResponse}
               encryptionKey={uploadedEncryptionKey}
               className="w-full lg:w-1/2"
@@ -258,14 +246,7 @@ export function PasteBin() {
         {submitter}
       </div>
       {footer}
-      <ErrorModal
-        onDismiss={() => {
-          setIsPasteLoading(false)
-          setIsLoading(false)
-          setErrorState({ isOpen: false, content: "", title: "" })
-        }}
-        state={errorState}
-      />
+      <ErrorModal />
     </main>
   )
 }

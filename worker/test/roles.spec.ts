@@ -32,7 +32,7 @@ alert("Script should be removed")
 2. second
 
 \`\`\`js
-console.log("hello world")
+(!+[]+[]+![]).length
 \`\`\`
 
 > Quotation
@@ -135,10 +135,10 @@ test("highlight with param lang", async () => {
   const resp = await workerFetch(ctx, `${url}?lang=html`)
   expect(resp.status).toStrictEqual(200)
   const body = await resp.text()
-  expect(body.includes("language-html")).toBeTruthy()
-  expect(body.includes("print(&quot&lt;hello world&gt;&quot)")).toBeTruthy()
+  expect(body.includes("language-html")).toStrictEqual(true)
+  expect(body.includes("print(&quot&lt;hello world&gt;&quot)")).toStrictEqual(true)
 
   const resp1 = await workerFetch(ctx, `${url}?lang=<html>`)
   const body1 = await resp1.text()
-  expect(body1.includes("language-&lt;html&gt;")).toBeTruthy()
+  expect(body1.includes("language-&lt;html&gt;")).toStrictEqual(true)
 })

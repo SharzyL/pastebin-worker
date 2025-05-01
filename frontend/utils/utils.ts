@@ -16,11 +16,6 @@ export class ErrorWithTitle extends Error {
   }
 }
 
-export async function makeErrorMsg(resp: Response): Promise<string> {
-  const statusText = resp.statusText === "error" ? "Unknown error" : resp.statusText
-  return (await resp.text()) || statusText
-}
-
 export function formatSize(size: number): string {
   if (!size) return "0"
   if (size < 1024) {

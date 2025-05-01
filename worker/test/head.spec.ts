@@ -19,7 +19,7 @@ test("HEAD", async () => {
   expect(headResp.status).toStrictEqual(200)
   expect(headResp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
   expect(headResp.headers.get("Content-Length")).toStrictEqual(blob1.size.toString())
-  expect(headResp.headers.has("Last-Modified")).toBeTruthy()
+  expect(headResp.headers.has("Last-Modified")).toStrictEqual(true)
   expect(headResp.headers.get("Content-Disposition")).toStrictEqual("inline")
 
   // test head with filename and big blog
@@ -34,7 +34,7 @@ test("HEAD", async () => {
   expect(headResp1.status).toStrictEqual(200)
   expect(headResp1.headers.get("Content-Type")).toStrictEqual("image/jpeg")
   expect(headResp1.headers.get("Content-Length")).toStrictEqual(blob2.size.toString())
-  expect(headResp1.headers.has("Last-Modified")).toBeTruthy()
+  expect(headResp1.headers.has("Last-Modified")).toStrictEqual(true)
   expect(headResp1.headers.get("Content-Disposition")).toStrictEqual("inline; filename*=UTF-8''a.jpg")
 })
 

@@ -147,6 +147,9 @@ export async function handlePostOrPut(
   }
 
   // check if name is legal
+  if (nameFromForm !== undefined && isPut) {
+    throw new WorkerError(400, `Cannot set name for a PUT request`)
+  }
   if (nameFromForm !== undefined && !NAME_REGEX.test(nameFromForm)) {
     throw new WorkerError(400, `Name ${nameFromForm} not satisfying regexp ${NAME_REGEX}`)
   }
@@ -204,6 +207,7 @@ export async function handlePostOrPut(
       contentLength,
       filename,
       encryptionScheme,
+      isMPUComplete,
     })
     return makeResponse(
       {

@@ -2,6 +2,7 @@ import { MPUCreateResponse } from "../../shared/interfaces.js"
 import { NAME_REGEX, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
 import { genRandStr, WorkerError } from "../common.js"
 import { getPasteMetadata, pasteNameAvailable } from "../storage/storage.js"
+import { parseSize } from "../../shared/parsers.js"
 
 // POST /mpu/create?n=<optional n>&p=<optional isPrivate>
 // returns JSON { name: string, key: string, uploadId: string }
@@ -94,10 +95,14 @@ export async function handleMPUComplete(request: Request, env: Env, completeBody
   }
 
   const multipartUpload = env.R2.resumeMultipartUpload(key, uploadId)
+  if (name !== multipartUpload.key) {
+    throw new WorkerError(400, `name ‘${name}’ is not consistent with the originally specified name`)
+  }
 
   const object = await multipartUpload.complete(completeBody)
-  if (name !== object.key) {
-    throw new WorkerError(400, `name ‘${name}’ is not consistent with the originally specified name`)
+  if (object.size > parseSize(env.R2_MAX_ALLOWED)!) {
+    await env.R2.delete(object.key)
+    throw new WorkerError(413, `payload too large (max ${parseSize(env.R2_MAX_ALLOWED)!} bytes allowed)`)
   }
   return object.httpEtag
 }

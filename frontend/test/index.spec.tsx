@@ -61,8 +61,12 @@ describe("Pastebin", () => {
     expect(submitter).toBeEnabled()
     await userEvent.click(submitter)
 
-    expect(screen.getByText(mockedPasteUpload.url)).toBeInTheDocument()
-    expect(screen.getByText(mockedPasteUpload.manageUrl)).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const urlShow = screen.getByRole("textbox", { name: "Paste URL" })
+    expect((urlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.url)
+
+    const manageUrlShow = screen.getByRole("textbox", { name: "Manage URL" })
+    expect((manageUrlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.manageUrl)
   })
 
   it("refuse illegal settings", async () => {

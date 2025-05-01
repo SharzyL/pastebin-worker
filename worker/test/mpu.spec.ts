@@ -19,36 +19,53 @@ afterAll(() => {
 test("uploadMPU", async () => {
   const content = genRandomBlob(1024 * 1024 * 20)
   const callBack = vi.fn()
-  const uploadResp = await uploadMPU(BASE_URL, await content.arrayBuffer(), false, 1024 * 1024 * 5, {
-    progressCallback: callBack,
-  })
+  const uploadResp = await uploadMPU(
+    BASE_URL,
+    1024 * 1024 * 5,
+    {
+      isUpdate: false,
+      content: new File([await content.arrayBuffer()], ""),
+    },
+    callBack,
+  )
   expect(callBack).toBeCalledTimes(4)
 
   const getResp = await workerFetch(ctx, uploadResp.url)
-  expect(areBlobsEqual(await getResp.blob(), content)).toBeTruthy()
-
-  const { name, password } = parsePath(new URL(uploadResp.manageUrl).pathname)
+  expect(await areBlobsEqual(await getResp.blob(), content)).toStrictEqual(true)
 
   const newContent = genRandomBlob(1024 * 1024 * 20)
-  await uploadMPU(BASE_URL, await content.arrayBuffer(), true, 1024 * 1024 * 5, { name, password })
+  await uploadMPU(
+    BASE_URL,
+    1024 * 1024 * 5,
+    {
+      content: new File([await newContent.arrayBuffer()], ""),
+      isUpdate: true,
+      manageUrl: uploadResp.manageUrl,
+    },
+    callBack,
+  )
 
   const reGetResp = await workerFetch(ctx, uploadResp.url)
-  expect(areBlobsEqual(await reGetResp.blob(), newContent)).toBeTruthy()
+  expect(await areBlobsEqual(await reGetResp.blob(), newContent)).toStrictEqual(true)
 })
 
 describe("uploadMPU with variant parameters", () => {
   const content = genRandomBlob(1024 * 1024 * 10)
   it("handles specified name", async () => {
-    const uploadResp = await uploadMPU(BASE_URL, await content.arrayBuffer(), false, 1024 * 1024 * 5, {
+    const uploadResp = await uploadMPU(BASE_URL, 1024 * 1024 * 5, {
+      isUpdate: false,
+      content: new File([await content.arrayBuffer()], ""),
       name: "foobarfoobar",
       expire: "100",
     })
     expect(uploadResp.expirationSeconds).toStrictEqual(100)
-    expect(uploadResp.url.includes("/~foobarfoobar")).toBeTruthy()
+    expect(uploadResp.url.includes("/~foobarfoobar")).toStrictEqual(true)
   })
 
   it("handles long paste name", async () => {
-    const uploadResp = await uploadMPU(BASE_URL, await content.arrayBuffer(), false, 1024 * 1024 * 5, {
+    const uploadResp = await uploadMPU(BASE_URL, 1024 * 1024 * 5, {
+      isUpdate: false,
+      content: new File([await content.arrayBuffer()], ""),
       isPrivate: true,
     })
     const { name } = parsePath(new URL(uploadResp.url).pathname)

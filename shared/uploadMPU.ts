@@ -1,44 +1,102 @@
 // we will move this file to a shared directory later
 
 import { MPUCreateResponse, PasteResponse } from "./interfaces.js"
+import type { EncryptionScheme } from "../frontend/utils/encryption.js"
+import { parsePath } from "./parsers.js"
 
 export class UploadError extends Error {
   public statusCode: number
+
   constructor(statusCode: number, msg: string) {
     super(msg)
     this.statusCode = statusCode
   }
 }
 
+export type UploadOptions = {
+  content: string | File
+  isUpdate: boolean
+
+  // we allow it to be undefined for convenience
+  isPrivate?: boolean
+
+  password?: string
+  name?: string
+
+  encryptionScheme?: EncryptionScheme
+  expire?: string
+  manageUrl?: string
+}
+
+// note that apiUrl should be manageUrl when isUpload
+export async function uploadNormal(
+  apiUrl: string,
+  { content, isUpdate, isPrivate, password, name, encryptionScheme, expire, manageUrl }: UploadOptions,
+): Promise<PasteResponse> {
+  const fd = new FormData()
+
+  // typescript cannot handle overload on union types
+  if (typeof content === "string") {
+    fd.set("c", content)
+  } else {
+    fd.set("c", content)
+  }
+
+  if (isUpdate && manageUrl === undefined) {
+    throw TypeError("uploadMPU: no manageUrl specified in update")
+  }
+
+  if (expire !== undefined) fd.set("e", expire)
+  if (password !== undefined) fd.set("s", password)
+  if (!isUpdate && name !== undefined) fd.set("n", name)
+  if (encryptionScheme !== undefined) fd.set("encryption-scheme", encryptionScheme)
+  if (isPrivate) fd.set("p", "1")
+
+  const resp = isUpdate
+    ? await fetch(manageUrl!, {
+        method: "PUT",
+        body: fd,
+      })
+    : await fetch(apiUrl, {
+        method: "POST",
+        body: fd,
+      })
+
+  if (!resp.ok) {
+    throw new UploadError(resp.status, await resp.text())
+  }
+
+  return await resp.json()
+}
+
 export async function uploadMPU(
-  baseUrl: string,
-  content: ArrayBuffer,
-  isUpdate: boolean,
+  apiUrl: string,
   chunkSize: number,
-  options: {
-    name?: string
-    isPrivate?: boolean
-    password?: string
-    expire?: string
-    encryptionScheme?: string
-    progressCallback?: (doneBytes: number, allBytes: number) => void
-  },
+  { content, isUpdate, isPrivate, password, name, encryptionScheme, expire, manageUrl }: UploadOptions,
+  progressCallback?: (doneBytes: number, allBytes: number) => void,
 ) {
-  await fetch("https://shz.al")
-  const createReqUrl = isUpdate ? new URL(`${baseUrl}/mpu/create-update`) : new URL(`${baseUrl}/mpu/create`)
+  if (typeof content === "string") {
+    throw TypeError("Must use File when uploading as MPU")
+  }
+
+  const createReqUrl = isUpdate ? new URL(`${apiUrl}/mpu/create-update`) : new URL(`${apiUrl}/mpu/create`)
   if (!isUpdate) {
-    if (options.name !== undefined) {
-      createReqUrl.searchParams.set("n", options.name)
+    if (name !== undefined) {
+      createReqUrl.searchParams.set("n", name)
     }
-    if (options.isPrivate) {
+    if (isPrivate) {
       createReqUrl.searchParams.set("p", "1")
     }
   } else {
-    if (options.name === undefined || options.password === undefined) {
-      throw TypeError("uploadMPU: name or password not specified for update")
+    if (manageUrl === undefined) {
+      throw TypeError("uploadMPU: no manageUrl specified in update")
     }
-    createReqUrl.searchParams.set("name", options.name)
-    createReqUrl.searchParams.set("password", options.password)
+    const { name: nameFromUrl, password: passwordFromUrl } = parsePath(new URL(manageUrl).pathname)
+    if (passwordFromUrl === undefined) {
+      throw TypeError("uploadMPU: password not specified in manageUrl")
+    }
+    createReqUrl.searchParams.set("name", nameFromUrl)
+    createReqUrl.searchParams.set("password", passwordFromUrl)
   }
 
   const createReqResp = await fetch(createReqUrl, { method: "POST" })
@@ -47,13 +105,13 @@ export async function uploadMPU(
   }
   const createResp: MPUCreateResponse = await createReqResp.json()
 
-  const numParts = Math.ceil(content.byteLength / chunkSize)
+  const numParts = Math.ceil(content.size / chunkSize)
 
   // TODO: parallelize
   const uploadedParts: R2UploadedPart[] = []
   let uploadedBytes = 0
   for (let i = 0; i < numParts; i++) {
-    const resumeUrl = new URL(`${baseUrl}/mpu/resume`)
+    const resumeUrl = new URL(`${apiUrl}/mpu/resume`)
     resumeUrl.searchParams.set("key", createResp.key)
     resumeUrl.searchParams.set("uploadId", createResp.uploadId)
     resumeUrl.searchParams.set("partNumber", (i + 1).toString()) // because partNumber need to nonzero
@@ -64,28 +122,31 @@ export async function uploadMPU(
     }
     const resumeResp: R2UploadedPart = await resumeReqResp.json()
     uploadedParts.push(resumeResp)
-    uploadedBytes += chunk.byteLength
-    if (options.progressCallback) {
-      options.progressCallback(uploadedBytes, content.byteLength)
+    uploadedBytes += chunk.size
+    if (progressCallback) {
+      progressCallback(uploadedBytes, content.size)
     }
   }
 
   const completeFormData = new FormData()
-  const completeUrl = new URL(`${baseUrl}/mpu/complete`)
+  const completeUrl = new URL(`${apiUrl}/mpu/complete`)
   completeUrl.searchParams.set("name", createResp.name)
   completeUrl.searchParams.set("key", createResp.key)
   completeUrl.searchParams.set("uploadId", createResp.uploadId)
   completeFormData.set("c", JSON.stringify(uploadedParts))
-  if (options.expire !== undefined) {
-    completeFormData.set("e", options.expire)
+  if (expire !== undefined) {
+    completeFormData.set("e", expire)
   }
-  if (options.password !== undefined) {
-    completeFormData.set("s", options.password)
+  if (password !== undefined) {
+    completeFormData.set("s", password)
   }
-  if (options.encryptionScheme !== undefined) {
-    completeFormData.set("encryption-scheme", options.encryptionScheme)
+  if (encryptionScheme !== undefined) {
+    completeFormData.set("encryption-scheme", encryptionScheme)
   }
-  const completeReqResp = await fetch(completeUrl, { method: isUpdate ? "PUT" : "POST", body: completeFormData })
+  const completeReqResp = await fetch(completeUrl, {
+    method: isUpdate ? "PUT" : "POST",
+    body: completeFormData,
+  })
   if (!completeReqResp.ok) {
     throw new UploadError(completeReqResp.status, await completeReqResp.text())
   }

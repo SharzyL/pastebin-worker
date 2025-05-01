@@ -1,12 +1,16 @@
-import { Card, CardBody, CardHeader, CardProps, Divider, mergeClasses, Skeleton, Snippet } from "@heroui/react"
 import React from "react"
-import { PasteResponse } from "../../shared/interfaces.js"
+
+import { Card, CardBody, CardHeader, CardProps, CircularProgress, Divider, Input, mergeClasses } from "@heroui/react"
+
+import type { PasteResponse } from "../../shared/interfaces.js"
 import { tst } from "../utils/overrides.js"
+import { CopyWidget } from "./CopyWidget.js"
 
 interface UploadedPanelProps extends CardProps {
   isLoading: boolean
-  pasteResponse: PasteResponse | null
-  encryptionKey: string | null
+  loadingProgress?: number
+  pasteResponse?: PasteResponse
+  encryptionKey?: string
 }
 
 const makeDecryptionUrl = (url: string, key: string) => {
@@ -15,62 +19,79 @@ const makeDecryptionUrl = (url: string, key: string) => {
   return urlParsed.toString() + "#" + key
 }
 
-export function UploadedPanel({ isLoading, pasteResponse, className, encryptionKey, ...rest }: UploadedPanelProps) {
-  const snippetClassNames = {
-    pre: `overflow-scroll leading-[2.5] font-sans ${tst}`,
-    base: `w-full py-1/3 ${tst}`,
-    copyButton: `relative ml-[-12pt] left-[5pt] ${tst}`,
+export function UploadedPanel({
+  isLoading,
+  loadingProgress,
+  pasteResponse,
+  className,
+  encryptionKey,
+  ...rest
+}: UploadedPanelProps) {
+  const copyWidgetClassNames = `bg-transparent ${tst} translate-y-[10%]`
+  const inputProps = {
+    "aria-labelledby": "",
+    readOnly: true,
+    className: "mb-2",
   }
-  const firstColClassNames = "w-[8rem] mr-4 whitespace-nowrap"
+
   return (
     <Card classNames={mergeClasses({ base: tst }, { base: className })} {...rest}>
-      <CardHeader className="text-2xl">Uploaded Paste</CardHeader>
+      <CardHeader className="text-2xl pl-4 pb-2">Uploaded Paste</CardHeader>
       <Divider />
       <CardBody>
-        <table className="border-spacing-2 border-separate table-fixed w-full">
-          <tbody>
-            <tr>
-              <td className={firstColClassNames}>Paste URL</td>
-              <td className="w-full">
-                <Skeleton isLoaded={!isLoading} className="rounded-2xl grow">
-                  <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
-                    {pasteResponse?.url}
-                  </Snippet>
-                </Skeleton>
-              </td>
-            </tr>
-            <tr>
-              <td className={firstColClassNames}>Manage URL</td>
-              <td className="w-full">
-                <Skeleton isLoaded={!isLoading} className="rounded-2xl grow">
-                  <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
-                    {pasteResponse?.manageUrl}
-                  </Snippet>
-                </Skeleton>
-              </td>
-            </tr>
-            {encryptionKey ? (
-              <tr>
-                <td className={firstColClassNames}>Decryption URL</td>
-                <td className="w-full">
-                  <Skeleton isLoaded={!isLoading} className="rounded-2xl grow">
-                    <Snippet hideSymbol variant="bordered" classNames={snippetClassNames}>
-                      {pasteResponse && makeDecryptionUrl(pasteResponse.url, encryptionKey)}
-                    </Snippet>
-                  </Skeleton>
-                </td>
-              </tr>
-            ) : null}
-            <tr>
-              <td className={firstColClassNames}>Expire At</td>
-              <td className="w-full py-2">
-                <Skeleton isLoaded={!isLoading} className="rounded-2xl">
-                  {pasteResponse && new Date(pasteResponse.expireAt).toLocaleString()}
-                </Skeleton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {isLoading ? (
+          <div className={"min-h-[5rem] w-full relative"}>
+            <CircularProgress
+              aria-label={"Loading..."}
+              value={loadingProgress}
+              className={"absolute top-[50%] left-[50%] translate-[-50%]"}
+            />
+          </div>
+        ) : (
+          pasteResponse && (
+            <>
+              {encryptionKey && (
+                <Input
+                  {...inputProps}
+                  label={"Decryption URL"}
+                  color={"success"}
+                  value={makeDecryptionUrl(pasteResponse.url, encryptionKey)}
+                  endContent={
+                    <CopyWidget
+                      className={copyWidgetClassNames}
+                      getCopyContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
+                    />
+                  }
+                />
+              )}
+              <Input
+                {...inputProps}
+                label={"Paste URL"}
+                value={pasteResponse.url}
+                endContent={<CopyWidget className={copyWidgetClassNames} getCopyContent={() => pasteResponse.url} />}
+              />
+              <Input
+                {...inputProps}
+                label={"Manage URL"}
+                value={pasteResponse.manageUrl}
+                endContent={
+                  <CopyWidget className={copyWidgetClassNames} getCopyContent={() => pasteResponse.manageUrl} />
+                }
+              />
+              {pasteResponse.suggestedUrl && (
+                <Input
+                  {...inputProps}
+                  label={"Suggest URL"}
+                  value={pasteResponse.suggestedUrl}
+                  endContent={
+                    <CopyWidget className={copyWidgetClassNames} getCopyContent={() => pasteResponse.suggestedUrl!} />
+                  }
+                />
+              )}
+              <Input {...inputProps} label={"Expiration"} value={new Date(pasteResponse.expireAt).toLocaleString()} />
+            </>
+          )
+        )}
       </CardBody>
     </Card>
   )

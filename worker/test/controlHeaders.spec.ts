@@ -39,7 +39,7 @@ test("cache control", async () => {
   const uploadResp = await upload(ctx, { c: genRandomBlob(1024) })
   const url = uploadResp["url"]
   const resp = await workerFetch(ctx, url)
-  expect(resp.headers.has("Last-Modified")).toBeTruthy()
+  expect(resp.headers.has("Last-Modified")).toStrictEqual(true)
   expect(new Date(resp.headers.get("Last-Modified")!).getTime()).toStrictEqual(t1.getTime())
 
   if ("CACHE_PASTE_AGE" in env) {
@@ -77,7 +77,7 @@ test("content disposition without specifying filename", async () => {
 
   expect(
     (await workerFetch(ctx, url)).headers.get("Access-Control-Expose-Headers")?.includes("Content-Disposition"),
-  ).toBeTruthy()
+  ).toStrictEqual(true)
   expect((await workerFetch(ctx, url)).headers.get("Content-Disposition")).toStrictEqual("inline")
   expect((await workerFetch(ctx, `${url}?a`)).headers.get("Content-Disposition")).toStrictEqual("attachment")
 
@@ -127,7 +127,7 @@ test("other HTTP methods", async () => {
     }),
   )
   expect(resp.status).toStrictEqual(405)
-  expect(resp.headers.has("Allow")).toBeTruthy()
+  expect(resp.headers.has("Allow")).toStrictEqual(true)
 })
 
 test("option method", async () => {
@@ -144,9 +144,9 @@ test("option method", async () => {
     }),
   )
   expect(resp.status).toStrictEqual(200)
-  expect(resp.headers.has("Access-Control-Allow-Origin")).toBeTruthy()
-  expect(resp.headers.has("Access-Control-Allow-Methods")).toBeTruthy()
-  expect(resp.headers.has("Access-Control-Max-Age")).toBeTruthy()
+  expect(resp.headers.has("Access-Control-Allow-Origin")).toStrictEqual(true)
+  expect(resp.headers.has("Access-Control-Allow-Methods")).toStrictEqual(true)
+  expect(resp.headers.has("Access-Control-Max-Age")).toStrictEqual(true)
 
   const resp1 = await workerFetch(
     ctx,
@@ -158,5 +158,5 @@ test("option method", async () => {
     }),
   )
   expect(resp1.status).toStrictEqual(200)
-  expect(resp1.headers.has("Allow")).toBeTruthy()
+  expect(resp1.headers.has("Allow")).toStrictEqual(true)
 })

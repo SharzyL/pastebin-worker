@@ -19,7 +19,7 @@ test("r2 basic", async () => {
   // test get
   const resp = await workerFetch(ctx, url)
   expect(resp.status).toStrictEqual(200)
-  expect(areBlobsEqual(await resp.blob(), blob1)).toBeTruthy()
+  expect(await areBlobsEqual(await resp.blob(), blob1)).toStrictEqual(true)
 
   // test put
   const blob2 = genRandomBlob(parseSize(env.R2_THRESHOLD)! * 2)
@@ -29,7 +29,7 @@ test("r2 basic", async () => {
   // test revisit
   const revisitResp = await workerFetch(ctx, url)
   expect(revisitResp.status).toStrictEqual(200)
-  expect(areBlobsEqual(await revisitResp.blob(), blob2)).toBeTruthy()
+  expect(await areBlobsEqual(await revisitResp.blob(), blob2)).toStrictEqual(true)
 
   // test meta
   const metaResp = await workerFetch(ctx, addRole(url, "m"))

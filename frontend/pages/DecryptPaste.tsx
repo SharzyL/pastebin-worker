@@ -1,16 +1,19 @@
-import React, { useEffect, useRef, useState } from "react"
-import { ErrorModal, ErrorState } from "../components/ErrorModal.js"
-import { decodeKey, decrypt, EncryptionScheme } from "../utils/encryption.js"
+import React, { useEffect, useMemo, useState } from "react"
 
 import { Button, CircularProgress, Link, Tooltip } from "@heroui/react"
-import { CheckIcon, CopyIcon, DownloadIcon, HomeIcon } from "../components/icons.js"
+import binaryExtensions from "binary-extensions"
+
+import { useErrorModal } from "../components/ErrorModal.js"
+import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
+import { DownloadIcon, HomeIcon } from "../components/icons.js"
+import { CopyWidget } from "../components/CopyWidget.js"
+
+import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
+import { decodeKey, decrypt, EncryptionScheme } from "../utils/encryption.js"
+import { formatSize } from "../utils/utils.js"
+import { tst } from "../utils/overrides.js"
 
 import "../style.css"
-import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
-import { formatSize } from "../utils/utils.js"
-import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
-import binaryExtensions from "binary-extensions"
-import { tst } from "../utils/overrides.js"
 
 function isBinaryPath(path: string) {
   return binaryExtensions.includes(path.replace(/.*\./, ""))
@@ -22,20 +25,16 @@ export function DecryptPaste() {
 
   const [isFileBinary, setFileBinary] = useState(false)
   const [forceShowBinary, setForceShowBinary] = useState(false)
+  const showFileContent = pasteFile !== undefined && (!isFileBinary || forceShowBinary)
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  const [errorState, setErrorState] = useState<ErrorState>({ isOpen: false, content: "", title: "" })
+  const { ErrorModal, showModal, handleFailedResp } = useErrorModal()
+  const [isDark, modeSelection, setModeSelection] = useDarkModeSelection()
 
-  function showModal(content: string, title: string) {
-    setErrorState({ title, content, isOpen: true })
-  }
-
-  async function reportResponseError(resp: Response, title: string) {
-    const statusText = resp.statusText === "error" ? "Unknown error" : resp.statusText
-    const errText = (await resp.text()) || statusText
-    showModal(errText, title)
-  }
+  const pasteStringContent = useMemo<string | undefined>(() => {
+    return pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
+  }, [pasteContentBuffer])
 
   // uncomment the following lines for testing
   // const url = new URL("http://localhost:8787/d/dHYQ.jpg.txt#uqeULsBTb2I3iC7rD6AaYh4oJ5lMjJA2nYR+H0U8bEA=")
@@ -46,7 +45,7 @@ export function DecryptPaste() {
 
   useEffect(() => {
     if (keyString.length === 0) {
-      showModal("No encryption key is given. You should append the key after a “#” character in the URL", "Error")
+      showModal("Error", "No encryption key is given. You should append the key after a “#” character in the URL")
     }
     const pasteUrl = `${API_URL}/${name}`
 
@@ -55,7 +54,7 @@ export function DecryptPaste() {
         setIsLoading(true)
         const resp = await fetch(pasteUrl)
         if (!resp.ok) {
-          await reportResponseError(resp, `Error on fetching ${pasteUrl}`)
+          await handleFailedResp("Failed to Fetch Paste", resp)
           return
         }
 
@@ -64,17 +63,17 @@ export function DecryptPaste() {
         try {
           key = await decodeKey(scheme, keyString)
         } catch {
-          showModal(`Failed to parse “${keyString}” as ${scheme} key`, "Error")
+          showModal("Error", `Failed to parse “${keyString}” as ${scheme} key`)
           return
         }
         if (key === undefined) {
-          showModal(`Failed to parse “${keyString}” as ${scheme} key`, "Error")
+          showModal("Error", `Failed to parse “${keyString}” as ${scheme} key`)
           return
         }
 
         const decrypted = await decrypt(scheme, key, await resp.bytes())
         if (decrypted === null) {
-          showModal("Failed to decrypt content", "Error")
+          showModal("Error", "Failed to decrypt content")
         } else {
           const filenameFromDispTrimmed = resp.headers.has("Content-Disposition")
             ? parseFilenameFromContentDisposition(resp.headers.get("Content-Disposition")!)?.replace(
@@ -86,14 +85,15 @@ export function DecryptPaste() {
           const inferredFilename = filename || (ext && name + ext) || filenameFromDispTrimmed || name
           setPasteFile(new File([decrypted], inferredFilename))
           setPasteContentBuffer(decrypted)
-          setFileBinary(isBinaryPath(inferredFilename))
+          const isBinary = isBinaryPath(inferredFilename)
+          setFileBinary(isBinary)
         }
       } finally {
         setIsLoading(false)
       }
     }
     fetchPaste().catch((e) => {
-      showModal((e as Error).toString(), `Error on fetching ${pasteUrl}`)
+      showModal(`Error on fetching ${pasteUrl}`, (e as Error).toString())
       console.error(e)
     })
   }, [])
@@ -121,27 +121,6 @@ export function DecryptPaste() {
     </div>
   )
 
-  const [isDark, modeSelection, setModeSelection] = useDarkModeSelection()
-
-  const numOfIssuedCopies = useRef(0)
-  const [hasIssuedCopies, setHasIssuedCopies] = useState<boolean>(false)
-  const onCopy = () => {
-    navigator.clipboard
-      .writeText(new TextDecoder().decode(pasteContentBuffer))
-      .then(() => {
-        numOfIssuedCopies.current = numOfIssuedCopies.current + 1
-        setHasIssuedCopies(numOfIssuedCopies.current > 0)
-
-        setTimeout(() => {
-          numOfIssuedCopies.current = numOfIssuedCopies.current - 1
-          setHasIssuedCopies(numOfIssuedCopies.current > 0)
-        }, 1000)
-      })
-      .catch(console.error)
-  }
-
-  const showFileContent = pasteFile && (!isFileBinary || forceShowBinary)
-
   const buttonClasses = `rounded-full bg-background hover:bg-default-100 ${tst}`
   return (
     <main
@@ -165,9 +144,7 @@ export function DecryptPaste() {
           </h1>
           {showFileContent && (
             <Tooltip content={`Copy to clipboard`}>
-              <Button isIconOnly aria-label="Copy" className={buttonClasses} onPress={onCopy}>
-                {hasIssuedCopies ? <CheckIcon className="size-6" /> : <CopyIcon className="size-6" />}
-              </Button>
+              <CopyWidget className={buttonClasses} getCopyContent={() => pasteStringContent!} />
             </Tooltip>
           )}
           {pasteFile && (
@@ -192,7 +169,7 @@ export function DecryptPaste() {
                     <>
                       {fileIndicator}
                       <div className="font-mono whitespace-pre-wrap" role="article">
-                        {new TextDecoder().decode(pasteContentBuffer)}
+                        {pasteStringContent!}
                       </div>
                     </>
                   ) : (
@@ -204,12 +181,7 @@ export function DecryptPaste() {
           </div>
         </div>
       </div>
-      <ErrorModal
-        onDismiss={() => {
-          setErrorState({ isOpen: false, content: "", title: "" })
-        }}
-        state={errorState}
-      />
+      <ErrorModal />
     </main>
   )
 }
