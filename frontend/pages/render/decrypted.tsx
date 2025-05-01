@@ -1,7 +1,7 @@
 import ReactDOM from "react-dom/client"
 import React from "react"
 import { HeroUIProvider } from "@heroui/react"
-import { DecryptPaste } from "../components/DecryptPaste.js"
+import { DecryptPaste } from "../DecryptPaste.js"
 
 const root = ReactDOM.createRoot(document.getElementById("root")!)
 

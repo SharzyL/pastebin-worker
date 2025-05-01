@@ -5,9 +5,9 @@ import { Button, Link } from "@heroui/react"
 import { PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
 
-import { DarkModeToggle, useDarkModeSelection } from "./DarkModeToggle.js"
-import { ErrorModal, ErrorState } from "./ErrorModal.js"
-import { PanelSettingsPanel, PasteSetting } from "./PasteSettingPanel.js"
+import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
+import { ErrorModal, ErrorState } from "../components/ErrorModal.js"
+import { PanelSettingsPanel, PasteSetting } from "../components/PasteSettingPanel.js"
 
 import {
   verifyExpiration,
@@ -21,8 +21,8 @@ import {
 } from "../utils/utils.js"
 
 import "../style.css"
-import { UploadedPanel } from "./UploadedPanel.js"
-import { PasteEditor, PasteEditState } from "./PasteEditor.js"
+import { UploadedPanel } from "../components/UploadedPanel.js"
+import { PasteEditor, PasteEditState } from "../components/PasteEditor.js"
 import { uploadPaste } from "../utils/uploader.js"
 import { tst } from "../utils/overrides.js"
 

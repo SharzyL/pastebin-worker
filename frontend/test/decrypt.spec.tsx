@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
-import { DecryptPaste } from "../components/DecryptPaste.js"
+import { DecryptPaste } from "../pages/DecryptPaste.js"
 
 import "@testing-library/jest-dom/vitest"
 import { userEvent } from "@testing-library/user-event"

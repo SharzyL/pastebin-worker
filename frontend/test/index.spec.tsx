@@ -1,6 +1,6 @@
 import { describe, it, vi, expect, beforeAll, afterEach, afterAll } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
-import { PasteBin } from "../components/PasteBin.js"
+import { PasteBin } from "../pages/PasteBin.js"
 
 export const mockedPasteUpload: PasteResponse = {
   url: "https://example.com/abcd",

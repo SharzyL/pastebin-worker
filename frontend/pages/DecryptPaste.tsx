@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from "react"
-import { ErrorModal, ErrorState } from "./ErrorModal.js"
+import { ErrorModal, ErrorState } from "../components/ErrorModal.js"
 import { decodeKey, decrypt, EncryptionScheme } from "../utils/encryption.js"
 
 import { Button, CircularProgress, Link, Tooltip } from "@heroui/react"
-import { CheckIcon, CopyIcon, DownloadIcon, HomeIcon } from "./icons.js"
+import { CheckIcon, CopyIcon, DownloadIcon, HomeIcon } from "../components/icons.js"
 
 import "../style.css"
 import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
 import { formatSize } from "../utils/utils.js"
-import { DarkModeToggle, useDarkModeSelection } from "./DarkModeToggle.js"
+import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import binaryExtensions from "binary-extensions"
 import { tst } from "../utils/overrides.js"
 
