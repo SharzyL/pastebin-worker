@@ -42,6 +42,7 @@ You are free to deploy the pastebin on your own domain if you host your domain o
 ```console
 $ yarn install
 $ yarn wrangler login
+$ yarn build:frontend
 $ yarn deploy
 ```
 

@@ -24,8 +24,8 @@ jobs:
 
       - name: "Test"
         run: |
-          yarn prettier -c .
-          yarn eslint .
+          yarn fmt
+          yarn lint
           yarn test
 
       - name: "Deploy"
