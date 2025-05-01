@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest"
+import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
 import { DecryptPaste } from "../components/DecryptPaste.js"
 
@@ -7,6 +7,7 @@ import { userEvent } from "@testing-library/user-event"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
+import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
 
 describe("decrypt page", async () => {
   const scheme = "AES-GCM"
@@ -21,6 +22,7 @@ describe("decrypt page", async () => {
   )
 
   beforeAll(() => {
+    stubBrowerFunctions()
     server.listen()
   })
 
@@ -30,15 +32,12 @@ describe("decrypt page", async () => {
   })
 
   afterAll(() => {
+    unStubBrowerFunctions()
     server.close()
   })
 
   it("decrypt correctly", async () => {
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      enumerable: true,
-      value: new URL(`https://example.com/e/abcd#${await encodeKey(key)}`),
-    })
+    vi.stubGlobal("location", new URL(`https://example.com/e/abcd#${await encodeKey(key)}`))
     global.URL.createObjectURL = () => ""
     render(<DecryptPaste />)
 

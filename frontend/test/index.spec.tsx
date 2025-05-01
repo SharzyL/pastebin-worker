@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest"
+import { describe, it, vi, expect, beforeAll, afterEach, afterAll } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
 import { PasteBin } from "../components/PasteBin.js"
 
@@ -21,6 +21,7 @@ export const server = setupServer(
 )
 
 beforeAll(() => {
+  stubBrowerFunctions()
   server.listen()
 })
 
@@ -30,6 +31,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
+  unStubBrowerFunctions()
   server.close()
 })
 
@@ -38,6 +40,7 @@ import { userEvent } from "@testing-library/user-event"
 import { PasteResponse } from "../../shared/interfaces.js"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
+import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
 
 describe("Pastebin", () => {
   it("can upload", async () => {
@@ -74,11 +77,7 @@ describe("Pastebin", () => {
 
 describe("Pastebin admin page", () => {
   it("renders admin page", async () => {
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      enumerable: true,
-      value: new URL("https://example.com/abcd:xxxxxxxxx"),
-    })
+    vi.stubGlobal("location", new URL("https://example.com/abcd:xxxxxxxxx"))
     render(<PasteBin />)
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
