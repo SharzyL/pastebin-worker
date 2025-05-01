@@ -1,56 +1,82 @@
-import React, { JSX, useEffect } from "react"
+import React, { JSX, useEffect, useState, useSyncExternalStore } from "react"
 import { ComputerIcon, MoonIcon, SunIcon } from "./icons.js"
 import { Button, ButtonProps, Tooltip } from "@heroui/react"
 import { tst } from "../utils/overrides.js"
 
-export type DarkMode = "dark" | "light" | "system"
+const modeSelections = ["system", "light", "dark"]
+type ModeSelection = (typeof modeSelections)[number]
+const icons: Record<ModeSelection, JSX.Element> = {
+  system: <ComputerIcon className="size-6 inline" />,
+  light: <SunIcon className="size-6 inline" />,
+  dark: <MoonIcon className="size-6 inline" />,
+}
+
+export function useDarkModeSelection(): [
+  boolean,
+  ModeSelection | undefined,
+  React.Dispatch<React.SetStateAction<ModeSelection | undefined>>,
+] {
+  const [modeSelection, setModeSelection] = useState<ModeSelection | undefined>(undefined)
+
+  const isSystemDark = useSyncExternalStore<boolean>(
+    (callBack) => {
+      const mql = window.matchMedia("(prefers-color-scheme: dark)")
+      mql.addEventListener("change", callBack)
+      return () => {
+        mql.removeEventListener("change", callBack)
+      }
+    },
+    () => {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+    },
+    () => false,
+  )
+
+  useEffect(() => {
+    if (modeSelection) {
+      localStorage.setItem("darkModeSelect", modeSelection)
+    }
+  }, [modeSelection])
+
+  useEffect(() => {
+    const item = localStorage.getItem("darkModeSelect")
+    let storedSelect: ModeSelection | undefined
+    if (item !== null) {
+      if (item && modeSelections.includes(item)) {
+        storedSelect = item
+      } else {
+        storedSelect = "system"
+      }
+    } else {
+      storedSelect = "system"
+    }
+    setModeSelection(storedSelect)
+  }, [])
+
+  const isDark = modeSelection === undefined || modeSelection === "system" ? isSystemDark : modeSelection === "dark"
+  return [isDark, modeSelection, setModeSelection]
+}
 
 interface MyComponentProps extends ButtonProps {
-  mode: DarkMode
-  onModeChange: (newMode: DarkMode) => void
+  modeSelection: ModeSelection | undefined
+  setModeSelection: React.Dispatch<React.SetStateAction<ModeSelection | undefined>>
 }
 
-const icons: { name: DarkMode; icon: JSX.Element }[] = [
-  { name: "system", icon: <ComputerIcon className="size-6 inline" /> },
-  { name: "light", icon: <SunIcon className="size-6 inline" /> },
-  { name: "dark", icon: <MoonIcon className="size-6 inline" /> },
-]
-
-export function defaultDarkMode(): DarkMode {
-  const storedDarkModeSelect = localStorage.getItem("darkModeSelect")
-
-  if (storedDarkModeSelect !== null && ["light", "dark", "system"].includes(storedDarkModeSelect)) {
-    return storedDarkModeSelect as DarkMode
-  } else {
-    return "system"
-  }
-}
-
-export function shouldBeDark(mode: DarkMode): boolean {
-  // when matchMedia not available (e.g. in tests), set to light mode
-  const systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)").matches : false
-  return mode === "system" ? systemDark : mode === "dark"
-}
-
-export function DarkModeToggle({ mode, onModeChange, className, ...rest }: MyComponentProps) {
-  useEffect(() => {
-    localStorage.setItem("darkModeSelect", mode)
-  }, [mode])
-
-  return (
-    <Tooltip content={`Toggle dark mode (currently ${mode})`}>
+export function DarkModeToggle({ modeSelection, setModeSelection, className, ...rest }: MyComponentProps) {
+  return modeSelection ? (
+    <Tooltip content={`Toggle dark mode (currently ${modeSelection} mode)`}>
       <Button
         isIconOnly
         className={`mr-2 rounded-full ${tst} bg-background hover:bg-default-100` + " " + className}
         aria-label="Toggle dark mode"
         onPress={() => {
-          const curModeIdx = icons.findIndex(({ name }) => name === mode)
-          onModeChange(icons[(curModeIdx + 1) % icons.length].name)
+          const newSelected = modeSelections[(modeSelections.indexOf(modeSelection) + 1) % modeSelections.length]
+          setModeSelection(newSelected)
         }}
         {...rest}
       >
-        {icons.find(({ name }) => name === mode)!.icon}
+        {icons[modeSelection]}
       </Button>
     </Tooltip>
-  )
+  ) : null
 }

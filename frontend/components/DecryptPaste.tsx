@@ -8,7 +8,7 @@ import { CheckIcon, CopyIcon, DownloadIcon, HomeIcon } from "./icons.js"
 import "../style.css"
 import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
 import { formatSize } from "../utils/utils.js"
-import { DarkMode, DarkModeToggle, defaultDarkMode, shouldBeDark } from "./DarkModeToggle.js"
+import { DarkModeToggle, useDarkModeSelection } from "./DarkModeToggle.js"
 import binaryExtensions from "binary-extensions"
 import { tst } from "../utils/overrides.js"
 
@@ -121,7 +121,7 @@ export function DecryptPaste() {
     </div>
   )
 
-  const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
+  const [isDark, modeSelection, setModeSelection] = useDarkModeSelection()
 
   const numOfIssuedCopies = useRef(0)
   const [hasIssuedCopies, setHasIssuedCopies] = useState<boolean>(false)
@@ -147,7 +147,7 @@ export function DecryptPaste() {
     <main
       className={
         `flex flex-col items-center min-h-screen transition-transform-background bg-background ${tst} text-foreground w-full p-2` +
-        (shouldBeDark(darkModeSelect) ? " dark" : " light")
+        (isDark ? " dark" : " light")
       }
     >
       <div className="w-full max-w-[64rem]">
@@ -179,7 +179,7 @@ export function DecryptPaste() {
               </Button>
             </Tooltip>
           )}
-          <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} className={buttonClasses} />
+          <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
         </div>
         <div className="my-4">
           <div className={`min-h-[30rem] w-full bg-secondary-50 rounded-lg p-3 relative ${tst}`}>

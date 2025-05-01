@@ -5,7 +5,7 @@ import { Button, Link } from "@heroui/react"
 import { PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
 
-import { DarkModeToggle, DarkMode, defaultDarkMode, shouldBeDark } from "./DarkModeToggle.js"
+import { DarkModeToggle, useDarkModeSelection } from "./DarkModeToggle.js"
 import { ErrorModal, ErrorState } from "./ErrorModal.js"
 import { PanelSettingsPanel, PasteSetting } from "./PasteSettingPanel.js"
 
@@ -50,7 +50,7 @@ export function PasteBin() {
 
   const [errorState, setErrorState] = useState<ErrorState>({ isOpen: false, content: "", title: "" })
 
-  const [darkModeSelect, setDarkModeSelect] = useState<DarkMode>(defaultDarkMode())
+  const [isDark, modeSelection, setModeSelection] = useDarkModeSelection()
 
   function showModal(title: string, content: string) {
     setErrorState({ title, content, isOpen: true })
@@ -175,7 +175,11 @@ export function PasteBin() {
     <div className="mx-4 lg:mx-0">
       <div className="mt-8 mb-4 relative">
         <h1 className="text-3xl inline">{INDEX_PAGE_TITLE}</h1>
-        <DarkModeToggle mode={darkModeSelect} onModeChange={setDarkModeSelect} className="absolute right-0" />
+        <DarkModeToggle
+          modeSelection={modeSelection}
+          setModeSelection={setModeSelection}
+          className="absolute right-0"
+        />
       </div>
       <p className="my-2">An open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
@@ -225,7 +229,7 @@ export function PasteBin() {
     <main
       className={
         `flex flex-col items-center min-h-screen font-sans ${tst} bg-background text-foreground` +
-        (shouldBeDark(darkModeSelect) ? " dark" : " light")
+        (isDark ? " dark" : " light")
       }
     >
       <div className="grow w-full max-w-[64rem]">
