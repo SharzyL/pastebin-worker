@@ -1,0 +1,125 @@
+/*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/
+
+.light .hljs {
+  color: #24292e;
+  background: #ffffff;
+}
+
+.light .hljs-doctag,
+.light .hljs-keyword,
+.light .hljs-meta .hljs-keyword,
+.light .hljs-template-tag,
+.light .hljs-template-variable,
+.light .hljs-type,
+.light .hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #d73a49;
+}
+
+.light .hljs-title,
+.light .hljs-title.class_,
+.light .hljs-title.class_.inherited__,
+.light .hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #6f42c1;
+}
+
+.light .hljs-attr,
+.light .hljs-attribute,
+.light .hljs-literal,
+.light .hljs-meta,
+.light .hljs-number,
+.light .hljs-operator,
+.light .hljs-variable,
+.light .hljs-selector-attr,
+.light .hljs-selector-class,
+.light .hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #005cc5;
+}
+
+.light .hljs-regexp,
+.light .hljs-string,
+.light .hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #032f62;
+}
+
+.light .hljs-built_in,
+.light .hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #e36209;
+}
+
+.light .hljs-comment,
+.light .hljs-code,
+.light .hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #6a737d;
+}
+
+.light .hljs-name,
+.light .hljs-quote,
+.light .hljs-selector-tag,
+.light .hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #22863a;
+}
+
+.light .hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #24292e;
+}
+
+.light .hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #005cc5;
+  font-weight: bold;
+}
+
+.light .hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #735c0f;
+}
+
+.light .hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #24292e;
+  font-style: italic;
+}
+
+.light .hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #24292e;
+  font-weight: bold;
+}
+
+.light .hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #22863a;
+  background-color: #f0fff4;
+}
+
+.light .hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #b31d28;
+  background-color: #ffeef0;
+}
+
+.light .hljs-char.escape_,
+.light .hljs-link,
+.light .hljs-params,
+.light .hljs-property,
+.light .hljs-punctuation,
+.light .hljs-tag {
+  /* purposely ignored */
+}

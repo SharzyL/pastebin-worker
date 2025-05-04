@@ -9,8 +9,17 @@ export function stubBrowerFunctions() {
       removeEventListener(_name: string, _listener: EventListenerOrEventListenerObject) {},
     } as MediaQueryList
   })
+
+  class ResizeObserver {
+    constructor() {}
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal("ResizeObserver", ResizeObserver)
 }
 
 export function unStubBrowerFunctions() {
   vi.resetAllMocks()
+  vi.unstubAllGlobals()
 }

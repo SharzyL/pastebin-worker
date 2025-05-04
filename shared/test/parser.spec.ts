@@ -72,6 +72,8 @@ test("parseExpiration", () => {
     ["10M", null, null],
     ["10Y", null, null],
     ["d", null, null],
+
+    ["1.1.1 d", null, null],
   ]
   for (const [input, parsed, readableParsed] of testPairs) {
     const expiration = parseExpiration(input)

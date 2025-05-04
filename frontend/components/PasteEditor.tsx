@@ -1,14 +1,17 @@
-import { Card, CardBody, CardProps, mergeClasses, Tab, Tabs, Textarea } from "@heroui/react"
+import { Card, CardBody, CardProps, Tab, Tabs } from "@heroui/react"
 import React, { useRef, useState, DragEvent } from "react"
 import { formatSize } from "../utils/utils.js"
 import { XIcon } from "./icons.js"
-import { cardOverrides, textAreaOverrides, tst } from "../utils/overrides.js"
+import { cardOverrides, tst } from "../utils/overrides.js"
+import { CodeInput } from "./CodeInput.js"
 
 export type EditKind = "edit" | "file"
 
 export type PasteEditState = {
   editKind: EditKind
   editContent: string
+  editFilename?: string
+  editHighlightLang?: string
   file: File | null
 }
 
@@ -43,7 +46,7 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
 
   return (
     <Card aria-label="Pastebin editor panel" classNames={cardOverrides} {...rest}>
-      <CardBody>
+      <CardBody className={"relative"}>
         <Tabs
           variant="underlined"
           classNames={{
@@ -57,23 +60,18 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
             onStateChange({ ...state, editKind: k as EditKind })
           }}
         >
-          <Tab key={"edit"} title="Edit">
-            <Textarea
-              isClearable
+          {/*Possibly a bug of chrome, but Tab sometimes has a transient unexpected scrollbar when resizing*/}
+          <Tab key={"edit"} title="Edit" className={"overflow-hidden"}>
+            <CodeInput
+              content={state.editContent}
+              setContent={(k) => onStateChange({ ...state, editContent: k })}
+              lang={state.editHighlightLang}
+              setLang={(lang) => onStateChange({ ...state, editHighlightLang: lang })}
+              filename={state.editFilename}
+              setFilename={(name) => onStateChange({ ...state, editFilename: name })}
+              disabled={isPasteLoading}
               placeholder={isPasteLoading ? "Loading..." : "Edit your paste here"}
-              isDisabled={isPasteLoading}
-              className="px-0 py-0"
-              classNames={mergeClasses(textAreaOverrides, { input: "resize-y min-h-[30rem] font-mono" })}
-              aria-label="Paste editor"
-              disableAutosize
-              disableAnimation
-              value={state.editContent}
-              onValueChange={(k) => {
-                onStateChange({ ...state, editContent: k })
-              }}
-              variant="faded"
-              isRequired
-            ></Textarea>
+            />
           </Tab>
           <Tab key="file" title="File">
             <div
