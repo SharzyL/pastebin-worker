@@ -97,9 +97,6 @@ describe("url redirect with role u", () => {
     const uploadResp = await upload(ctx, { c: contentUrl })
     const url = uploadResp.url
 
-    expect(uploadResp.suggestedUrl).toBeDefined()
-    expect(uploadResp.suggestedUrl!.includes(addRole(url, "u")))
-
     const resp = await workerFetch(ctx, addRole(url, "u"))
     expect(resp.status).toStrictEqual(302)
     expect(resp.headers.get("location")).toStrictEqual(contentUrl)
@@ -110,8 +107,6 @@ describe("url redirect with role u", () => {
     const uploadResp = await upload(ctx, { c: contentUrl })
     const url = uploadResp.url
 
-    expect(uploadResp.suggestedUrl).toBeUndefined()
-
     const resp = await workerFetch(ctx, addRole(url, "u"))
     expect(resp.status).toStrictEqual(400)
   })
@@ -121,24 +116,7 @@ describe("url redirect with role u", () => {
     const uploadResp = await upload(ctx, { c: contentUrl })
     const url = uploadResp.url
 
-    expect(uploadResp.suggestedUrl).toBeUndefined()
-
     const resp = await workerFetch(ctx, addRole(url, "u"))
     expect(resp.status).toStrictEqual(400)
   })
-})
-
-test("highlight with param lang", async () => {
-  const content = 'print("<hello world>")'
-  const ctx = createExecutionContext()
-  const url = (await upload(ctx, { c: content })).url
-  const resp = await workerFetch(ctx, `${url}?lang=html`)
-  expect(resp.status).toStrictEqual(200)
-  const body = await resp.text()
-  expect(body.includes("language-html")).toStrictEqual(true)
-  expect(body.includes("print(&quot&lt;hello world&gt;&quot)")).toStrictEqual(true)
-
-  const resp1 = await workerFetch(ctx, `${url}?lang=<html>`)
-  const body1 = await resp1.text()
-  expect(body1.includes("language-&lt;html&gt;")).toStrictEqual(true)
 })

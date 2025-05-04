@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           index: resolve(__dirname, "index.html"),
-          decrypt: resolve(__dirname, "decrypt.html"),
+          display: resolve(__dirname, "display.html"),
         },
       },
     },

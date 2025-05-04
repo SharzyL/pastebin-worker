@@ -22,13 +22,13 @@ function isBinaryPath(path: string) {
   return binaryExtensions.includes(path.replace(/.*\./, ""))
 }
 
-export function DecryptPaste() {
+export function DisplayPaste() {
   const [pasteFile, setPasteFile] = useState<File | undefined>(undefined)
   const [pasteContentBuffer, setPasteContentBuffer] = useState<ArrayBuffer | undefined>(undefined)
   const [pasteLang, setPasteLang] = useState<string | undefined>(undefined)
 
   const [isFileBinary, setFileBinary] = useState(false)
-  const [isDecrypted, setDecrypted] = useState(false)
+  const [isDecrypted, setDecrypted] = useState<"not encrypted" | "encrypted" | "decrypted">("not encrypted")
   const [forceShowBinary, setForceShowBinary] = useState(false)
   const showFileContent = pasteFile !== undefined && (!isFileBinary || forceShowBinary)
 
@@ -40,11 +40,12 @@ export function DecryptPaste() {
 
   const pasteStringContent = pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
 
-  const pasteLineCount = (pasteStringContent?.match(/\n/g)?.length || 0) + 1
+  const highlightedHTML = pasteStringContent ? highlightHTML(hljs, pasteLang, pasteStringContent) : ""
+  const pasteLineCount = (highlightedHTML?.match(/\n/g)?.length || 0) + 1
 
   // uncomment the following lines for testing
   // const url = new URL("http://localhost:8787/GQbf")
-  const url = location
+  const url = new URL(location.toString())
 
   const { name, ext, filename } = parsePath(url.pathname)
 
@@ -68,22 +69,24 @@ export function DecryptPaste() {
           filenameFromDisp = filenameFromDisp.replace(/.encrypted$/, "")
         }
 
-        const lang = resp.headers.get("X-PB-Highlight-Language")
+        const lang = url.searchParams.get("lang") || resp.headers.get("X-PB-Highlight-Language")
 
         const inferredFilename = filename || (ext && name + ext) || filenameFromDisp
         const respBytes = await resp.bytes()
         const isBinary = lang === null && inferredFilename !== undefined && isBinaryPath(inferredFilename)
         setPasteLang(lang || undefined)
-        setFileBinary(isBinary)
 
-        if (scheme === null) {
+        const keyString = url.hash.slice(1)
+        if (scheme === null || keyString.length === 0) {
           setPasteFile(new File([respBytes], inferredFilename || name))
           setPasteContentBuffer(respBytes)
-        } else {
-          const keyString = url.hash.slice(1)
-          if (keyString.length === 0) {
-            showModal("Error", "No encryption key is given. You should append the key after a “#” character in the URL")
+          if (scheme) {
+            setDecrypted("encrypted")
+            setFileBinary(true)
+          } else {
+            setFileBinary(isBinary)
           }
+        } else {
           let key: CryptoKey | undefined
           try {
             key = await decodeKey(scheme, keyString)
@@ -108,7 +111,7 @@ export function DecryptPaste() {
 
           const isBinary = lang === null && inferredFilename !== undefined && isBinaryPath(inferredFilename)
           setFileBinary(isBinary)
-          setDecrypted(true)
+          setDecrypted("decrypted")
         }
       } finally {
         setIsLoading(false)
@@ -119,17 +122,6 @@ export function DecryptPaste() {
       console.error(e)
     })
   }, [])
-
-  const fileIndicator = pasteFile && (
-    <div className="text-foreground-600 mb-2 text-small">
-      {`${pasteFile?.name} (${formatSize(pasteFile.size)})` + (pasteLang ? ` (${pasteLang})` : "")}
-      {forceShowBinary && (
-        <button className="ml-2 text-primary-500" onClick={() => setForceShowBinary(false)}>
-          (Click to hide)
-        </button>
-      )}
-    </div>
-  )
 
   const binaryFileIndicator = pasteFile && (
     <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full">
@@ -159,7 +151,9 @@ export function DecryptPaste() {
             </Link>
             <span className="mx-2">{" / "}</span>
             <code>{name}</code>
-            <span className="ml-1">{isLoading ? " (Loading…)" : isDecrypted ? " (Decrypted)" : ""}</span>
+            <span className="ml-1">
+              {isDecrypted === "decrypted" ? " (Decrypted)" : isDecrypted === "encrypted" ? " (Encrypted)" : ""}
+            </span>
           </h1>
           {showFileContent && (
             <Tooltip content={`Copy to clipboard`}>
@@ -178,19 +172,33 @@ export function DecryptPaste() {
           <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
         </div>
         <div className="my-4">
-          <div className={`min-h-[30rem] w-full bg-default-50 rounded-lg p-3 relative ${tst}`}>
+          <div className={`w-full bg-default-100 rounded-lg p-3 relative ${tst}`}>
             {isLoading ? (
-              <CircularProgress className="absolute top-[50%] left-[50%] translate-[-50%]" />
+              <div className={"h-[10em]"}>
+                <CircularProgress
+                  className="h-[10em] absolute top-[50%] left-[50%] translate-[-50%]"
+                  label={"Loading..."}
+                />
+              </div>
             ) : (
               pasteFile && (
-                <div>
+                <div className={showFileContent ? "" : "h-[10em]"}>
                   {showFileContent ? (
                     <>
-                      {fileIndicator}
-                      <div className="font-mono whitespace-pre-wrap relative" role="article">
+                      <div className="text-foreground-600 mb-2 text-small flex flex-row gap-2">
+                        <span>{pasteFile?.name}</span>
+                        <span>{`(${formatSize(pasteFile.size)})`}</span>
+                        {forceShowBinary && (
+                          <button className="ml-2 text-primary-500" onClick={() => setForceShowBinary(false)}>
+                            (Click to hide)
+                          </button>
+                        )}
+                        {pasteLang && <span className={"grow text-right"}>{pasteLang}</span>}
+                      </div>
+                      <div className="font-mono relative" role="article">
                         <pre
                           style={{ paddingLeft: `${Math.floor(Math.log10(pasteLineCount)) + 2}em` }}
-                          dangerouslySetInnerHTML={{ __html: highlightHTML(hljs, pasteLang, pasteStringContent!) }}
+                          dangerouslySetInnerHTML={{ __html: highlightedHTML }}
                         />
                         <span
                           className={

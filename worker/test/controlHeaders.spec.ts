@@ -101,8 +101,6 @@ test("content disposition with specifying filename", async () => {
   const uploadResp = await upload(ctx, { c: { content, filename } })
   const url = uploadResp.url
 
-  expect(uploadResp.suggestedUrl).toStrictEqual(`${url}/${filenameEncoded}`)
-
   expect((await workerFetch(ctx, url)).headers.get("Content-Disposition")).toStrictEqual(
     `inline; filename*=UTF-8''${filenameEncoded}`,
   )

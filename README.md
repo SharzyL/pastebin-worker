@@ -73,7 +73,6 @@ Error 401: incorrect passwd for basic auth
 $ curl -u admin1:this-is-passwd-1 -Fc=@/path/to/file example-pb.com
 {
   "url": "https://example-pb.com/YCDX",
-  "suggestUrl": null,
   "admin": "https://example-pb.com/YCDX:Sij23HwbMjeZwKznY3K5trG8",
   "isPrivate": false
 }

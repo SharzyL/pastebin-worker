@@ -45,6 +45,7 @@ export async function uploadPaste(
         onEncryptionKeyChange(key)
         return new File([ciphertext], editorState.editFilename || "")
       } else {
+        onEncryptionKeyChange(undefined)
         return new File([editorState.editContent], editorState.editFilename || "")
       }
     }

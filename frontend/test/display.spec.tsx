@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
-import { DecryptPaste } from "../pages/DecryptPaste.js"
+import { DisplayPaste } from "../pages/DisplayPaste.js"
 
 import "@testing-library/jest-dom/vitest"
 import { userEvent } from "@testing-library/user-event"
@@ -42,7 +42,7 @@ describe("decrypt page", async () => {
   it("decrypt correctly", async () => {
     vi.stubGlobal("location", new URL(`https://example.com/e/abcd#${await encodeKey(key)}`))
     global.URL.createObjectURL = () => ""
-    render(<DecryptPaste />)
+    render(<DisplayPaste />)
 
     const main = screen.getByRole("main")
     await userEvent.click(main) // meaningless click, just ensure useEffect is done

@@ -128,7 +128,7 @@ test("GET special static pages", async () => {
   const ctx = createExecutionContext()
   const resp = await upload(ctx, { c: blob1 })
 
-  // test decryption page
+  // test display page
   const decUrl = addRole(resp.url, "d")
   const { name } = parsePath(new URL(resp.url).pathname)
   const decResp = await workerFetch(ctx, decUrl)
@@ -138,6 +138,7 @@ test("GET special static pages", async () => {
   const testPairs = [
     [name, name],
     [name + ".jpg", name + ".jpg"],
+    [name + ".jpg?lang=cpp", name + ".jpg"],
     [name + "/a.jpg", name + "/a.jpg"],
   ]
   for (const [accessPath, expectedTitle] of testPairs) {

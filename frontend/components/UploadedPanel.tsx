@@ -80,16 +80,6 @@ export function UploadedPanel({
                   <CopyWidget className={copyWidgetClassNames} getCopyContent={() => pasteResponse.manageUrl} />
                 }
               />
-              {pasteResponse.suggestedUrl && (
-                <Input
-                  {...inputProps}
-                  label={"Suggest URL"}
-                  value={pasteResponse.suggestedUrl}
-                  endContent={
-                    <CopyWidget className={copyWidgetClassNames} getCopyContent={() => pasteResponse.suggestedUrl!} />
-                  }
-                />
-              )}
               <Input {...inputProps} label={"Expiration"} value={new Date(pasteResponse.expireAt).toLocaleString()} />
             </>
           )

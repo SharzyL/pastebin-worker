@@ -3,7 +3,6 @@ import { getDocPage } from "../pages/docs.js"
 import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
 import { makeMarkdown } from "../pages/markdown.js"
-import { makeHighlight } from "../pages/highlight.js"
 import { getPaste, getPasteMetadata, PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
 import { MetaResponse } from "../../shared/interfaces.js"
 import { parsePath } from "../../shared/parsers.js"
@@ -204,24 +203,13 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   // handle encrypted
   if (role === "d") {
     const pageUrl = url
-    pageUrl.pathname = "/decrypt.html"
+    pageUrl.search = ""
+    pageUrl.pathname = "/display.html"
     const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace(
       "{{PASTE_NAME}}",
       name + (filename ? "/" + filename : ext ? ext : ""),
     )
     return new Response(isHead ? null : page, {
-      headers: {
-        "Content-Type": `text/html;charset=UTF-8`,
-        ...pasteCacheHeader(env),
-        ...lastModifiedHeader(item.metadata),
-      },
-    })
-  }
-
-  // handle language highlight
-  const lang = url.searchParams.get("lang")
-  if (lang) {
-    return new Response(shouldGetPasteContent ? makeHighlight(await decodeMaybeStream(item.paste), lang) : null, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),

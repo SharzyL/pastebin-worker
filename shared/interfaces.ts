@@ -4,7 +4,6 @@ export type PasteLocation = "KV" | "R2"
 
 export type PasteResponse = {
   url: string
-  suggestedUrl?: string
   manageUrl: string
   expirationSeconds: number
   expireAt: string

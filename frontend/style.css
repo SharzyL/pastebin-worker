@@ -10,7 +10,6 @@
     "Noto Color Emoji";
   --font-mono:
     "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --default-transition-duration: 5s;
 }
 
 .color-tst {
@@ -44,4 +43,9 @@
 .light {
   color: hsl(var(--heroui-foreground));
   background-color: hsl(var(--heroui-background));
+}
+
+/* https://stackoverflow.com/questions/43492826/why-does-the-browser-not-render-a-line-break-caused-by-a-trailing-newline-charac */
+pre::after {
+  content: "\A";
 }

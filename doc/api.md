@@ -18,8 +18,6 @@ If the paste is uploaded with a `lang` parameter, an `X-PB-Highlight-Language` h
 
 - `?a=`: optional. Set `Content-Disposition` to `attachment` if present.
 
-- `?lang=<lang>`: optional. Returns a web page with syntax highlight powered by prism.js.
-
 - `?mime=<mime>`: optional. Specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`).
 
 Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`.
@@ -36,8 +34,6 @@ $ curl https://shz.al/i-p-
 https://web.archive.org/web/20210328091143/https://mp.weixin.qq.com/s/5phCQP7i-JpSvzPEMGk56Q
 
 $ curl https://shz.al/~panty.jpg | feh -
-
-$ firefox 'https://shz.al/kf7z?lang=nix'
 
 $ curl 'https://shz.al/~panty.jpg?mime=image/png' -w '%{content_type}' -o /dev/null -sS
 image/png
@@ -74,7 +70,7 @@ $ curl -L https://shz.al/u/i-p-
 
 ## GET `/d/<name>`
 
-Return the web page that will decrypt the paste of name `<name>` in browser.
+Return the web page that will display the content of the paste of name `<name>`. If the paste is encrypted, a key can be appended to the URL to decrypt the paste of name `<name>` in browser.
 
 If error occurs, the worker returns status code different from `302`:
 
@@ -84,7 +80,7 @@ If error occurs, the worker returns status code different from `302`:
 Usage example:
 
 ```shell
-$ firefox https://shz.al/e/i-p-
+$ firefox https://shz.al/d/i-p-
 ```
 
 ## GET `/m/<name>`
@@ -210,7 +206,6 @@ Upload your paste. It accept parameters in form-data:
 Explanation of the fields:
 
 - `url`: String. The URL to fetch the paste. When using a customized name, it looks like `https//shz.al/~myname`.
-- `suggestedUrl`: Optional string. The URL that may carry filename or URL redirection.
 - `manageUrl`: String. The URL to update and delete the paste, which is `url` suffixed by `~` and the password.
 - `expirationSeconds`: String. The expiration seconds.
 - `expireAt`: String. An ISO String representing when the paste will expire.
