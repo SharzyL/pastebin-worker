@@ -1,7 +1,9 @@
 import { heroui } from "@heroui/react"
 
 export default heroui({
+  defaultTheme: "light",
   themes: {
+    light: {},
     dark: {
       colors: {
         background: "#111111",

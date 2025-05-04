@@ -63,7 +63,7 @@ describe("Pastebin", () => {
     await userEvent.click(submitter)
 
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    const urlShow = screen.getByRole("textbox", { name: "Paste URL" })
+    const urlShow = screen.getByRole("textbox", { name: "Raw URL" })
     expect((urlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.url)
 
     const manageUrlShow = screen.getByRole("textbox", { name: "Manage URL" })
@@ -89,21 +89,5 @@ describe("Pastebin admin page", () => {
     await userEvent.click(editor) // meaningless click, just ensure useEffect is done
     expect(editor).toBeInTheDocument()
     expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent)
-  })
-})
-
-describe("Pastebin dark mode", () => {
-  it("renders light mode", async () => {
-    render(<PasteBin />)
-
-    const main = screen.getByRole("main")
-    const toggler = screen.getByRole("button", { name: "Toggle dark mode" })
-    expect(main).toHaveClass("light")
-    await userEvent.click(toggler)
-    expect(main).toHaveClass("light")
-    await userEvent.click(toggler)
-    expect(main).toHaveClass("dark")
-    await userEvent.click(toggler)
-    expect(main).toHaveClass("light")
   })
 })

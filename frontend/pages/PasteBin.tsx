@@ -48,7 +48,7 @@ export function PasteBin() {
   const [loadingProgress, setLoadingProgress] = useState<number | undefined>(undefined)
   const [isInitPasteLoading, startFetchingInitPaste] = useTransition()
 
-  const [isDark, modeSelection, setModeSelection] = useDarkModeSelection()
+  const [_, modeSelection, setModeSelection] = useDarkModeSelection()
 
   const { ErrorModal, showModal, handleError, handleFailedResp } = useErrorModal()
 
@@ -219,12 +219,7 @@ export function PasteBin() {
   )
 
   return (
-    <main
-      className={
-        `flex flex-col items-center min-h-screen font-sans ${tst} bg-background text-foreground` +
-        (isDark ? " dark" : " light")
-      }
-    >
+    <main className={`flex flex-col items-center min-h-screen font-sans ${tst} bg-background text-foreground`}>
       <div className="grow w-full max-w-[64rem]">
         {info}
         <PasteInputPanel

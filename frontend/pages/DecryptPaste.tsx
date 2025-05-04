@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useState } from "react"
 
 import { Button, CircularProgress, Link, Tooltip } from "@heroui/react"
 import binaryExtensions from "binary-extensions"
@@ -14,6 +14,9 @@ import { formatSize } from "../utils/utils.js"
 import { tst } from "../utils/overrides.js"
 
 import "../style.css"
+import "../styles/highlight-theme-light.css"
+import "../styles/highlight-theme-dark.css"
+import { highlightHTML, useHLJS } from "../utils/HighlightLoader.js"
 
 function isBinaryPath(path: string) {
   return binaryExtensions.includes(path.replace(/.*\./, ""))
@@ -22,31 +25,30 @@ function isBinaryPath(path: string) {
 export function DecryptPaste() {
   const [pasteFile, setPasteFile] = useState<File | undefined>(undefined)
   const [pasteContentBuffer, setPasteContentBuffer] = useState<ArrayBuffer | undefined>(undefined)
+  const [pasteLang, setPasteLang] = useState<string | undefined>(undefined)
 
   const [isFileBinary, setFileBinary] = useState(false)
+  const [isDecrypted, setDecrypted] = useState(false)
   const [forceShowBinary, setForceShowBinary] = useState(false)
   const showFileContent = pasteFile !== undefined && (!isFileBinary || forceShowBinary)
 
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
   const { ErrorModal, showModal, handleFailedResp } = useErrorModal()
-  const [isDark, modeSelection, setModeSelection] = useDarkModeSelection()
+  const [_, modeSelection, setModeSelection] = useDarkModeSelection()
+  const hljs = useHLJS()
 
-  const pasteStringContent = useMemo<string | undefined>(() => {
-    return pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
-  }, [pasteContentBuffer])
+  const pasteStringContent = pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
+
+  const pasteLineCount = (pasteStringContent?.match(/\n/g)?.length || 0) + 1
 
   // uncomment the following lines for testing
-  // const url = new URL("http://localhost:8787/d/dHYQ.jpg.txt#uqeULsBTb2I3iC7rD6AaYh4oJ5lMjJA2nYR+H0U8bEA=")
+  // const url = new URL("http://localhost:8787/GQbf")
   const url = location
 
   const { name, ext, filename } = parsePath(url.pathname)
-  const keyString = url.hash.slice(1)
 
   useEffect(() => {
-    if (keyString.length === 0) {
-      showModal("Error", "No encryption key is given. You should append the key after a “#” character in the URL")
-    }
     const pasteUrl = `${API_URL}/${name}`
 
     const fetchPaste = async () => {
@@ -59,42 +61,54 @@ export function DecryptPaste() {
         }
 
         const scheme: EncryptionScheme | null = resp.headers.get("X-PB-Encryption-Scheme") as EncryptionScheme | null
+        let filenameFromDisp = resp.headers.has("Content-Disposition")
+          ? parseFilenameFromContentDisposition(resp.headers.get("Content-Disposition")!) || undefined
+          : undefined
+        if (filenameFromDisp && scheme !== null) {
+          filenameFromDisp = filenameFromDisp.replace(/.encrypted$/, "")
+        }
+
+        const lang = resp.headers.get("X-PB-Highlight-Language")
+
+        const inferredFilename = filename || (ext && name + ext) || filenameFromDisp
+        const respBytes = await resp.bytes()
+        const isBinary = lang === null && inferredFilename !== undefined && isBinaryPath(inferredFilename)
+        setPasteLang(lang || undefined)
+        setFileBinary(isBinary)
+
         if (scheme === null) {
-          showModal("Error", "No encryption scheme is given by the server")
-          return
-        }
-        let key: CryptoKey | undefined
-        try {
-          key = await decodeKey(scheme, keyString)
-        } catch {
-          showModal("Error", `Failed to parse “${keyString}” as ${scheme} key`)
-          return
-        }
-        if (key === undefined) {
-          showModal("Error", `Failed to parse “${keyString}” as ${scheme} key`)
-          return
-        }
-
-        const decrypted = await decrypt(scheme, key, await resp.bytes())
-        if (decrypted === null) {
-          showModal("Error", "Failed to decrypt content")
+          setPasteFile(new File([respBytes], inferredFilename || name))
+          setPasteContentBuffer(respBytes)
         } else {
-          const filenameFromDispTrimmed = resp.headers.has("Content-Disposition")
-            ? parseFilenameFromContentDisposition(resp.headers.get("Content-Disposition")!)?.replace(
-                /.encrypted$/g,
-                "",
-              ) || undefined
-            : undefined
+          const keyString = url.hash.slice(1)
+          if (keyString.length === 0) {
+            showModal("Error", "No encryption key is given. You should append the key after a “#” character in the URL")
+          }
+          let key: CryptoKey | undefined
+          try {
+            key = await decodeKey(scheme, keyString)
+          } catch {
+            showModal("Error", `Failed to parse “${keyString}” as ${scheme} key`)
+            return
+          }
+          if (key === undefined) {
+            showModal("Error", `Failed to parse “${keyString}” as ${scheme} key`)
+            return
+          }
 
-          // TODO: highlight with lang
-          const lang = resp.headers.get("X-PB-Highlight-Language")
+          const decrypted = await decrypt(scheme, key, respBytes)
+          if (decrypted === null) {
+            showModal("Error", "Failed to decrypt content")
+            return
+          }
 
-          const inferredFilename = filename || (ext && name + ext) || filenameFromDispTrimmed
           setPasteFile(new File([decrypted], inferredFilename || name))
           setPasteContentBuffer(decrypted)
+          setPasteLang(lang || undefined)
 
           const isBinary = lang === null && inferredFilename !== undefined && isBinaryPath(inferredFilename)
           setFileBinary(isBinary)
+          setDecrypted(true)
         }
       } finally {
         setIsLoading(false)
@@ -108,7 +122,7 @@ export function DecryptPaste() {
 
   const fileIndicator = pasteFile && (
     <div className="text-foreground-600 mb-2 text-small">
-      {`${pasteFile?.name} (${formatSize(pasteFile.size)})`}
+      {`${pasteFile?.name} (${formatSize(pasteFile.size)})` + (pasteLang ? ` (${pasteLang})` : "")}
       {forceShowBinary && (
         <button className="ml-2 text-primary-500" onClick={() => setForceShowBinary(false)}>
           (Click to hide)
@@ -132,10 +146,7 @@ export function DecryptPaste() {
   const buttonClasses = `rounded-full bg-background hover:bg-default-100 ${tst}`
   return (
     <main
-      className={
-        `flex flex-col items-center min-h-screen transition-transform-background bg-background ${tst} text-foreground w-full p-2` +
-        (isDark ? " dark" : " light")
-      }
+      className={`flex flex-col items-center min-h-screen transition-transform-background bg-background ${tst} text-foreground w-full p-2`}
     >
       <div className="w-full max-w-[64rem]">
         <div className="flex flex-row my-4 items-center justify-between">
@@ -148,7 +159,7 @@ export function DecryptPaste() {
             </Link>
             <span className="mx-2">{" / "}</span>
             <code>{name}</code>
-            <span className="ml-1">{isLoading ? " (Loading…)" : pasteFile ? " (Decrypted)" : ""}</span>
+            <span className="ml-1">{isLoading ? " (Loading…)" : isDecrypted ? " (Decrypted)" : ""}</span>
           </h1>
           {showFileContent && (
             <Tooltip content={`Copy to clipboard`}>
@@ -167,7 +178,7 @@ export function DecryptPaste() {
           <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
         </div>
         <div className="my-4">
-          <div className={`min-h-[30rem] w-full bg-secondary-50 rounded-lg p-3 relative ${tst}`}>
+          <div className={`min-h-[30rem] w-full bg-default-50 rounded-lg p-3 relative ${tst}`}>
             {isLoading ? (
               <CircularProgress className="absolute top-[50%] left-[50%] translate-[-50%]" />
             ) : (
@@ -176,8 +187,21 @@ export function DecryptPaste() {
                   {showFileContent ? (
                     <>
                       {fileIndicator}
-                      <div className="font-mono whitespace-pre-wrap" role="article">
-                        {pasteStringContent!}
+                      <div className="font-mono whitespace-pre-wrap relative" role="article">
+                        <pre
+                          style={{ paddingLeft: `${Math.floor(Math.log10(pasteLineCount)) + 2}em` }}
+                          dangerouslySetInnerHTML={{ __html: highlightHTML(hljs, pasteLang, pasteStringContent!) }}
+                        />
+                        <span
+                          className={
+                            "line-number-rows absolute pointer-events-none text-default-500 top-0 left-0 " +
+                            "border-solid border-default-300 border-r-1"
+                          }
+                        >
+                          {Array.from({ length: pasteLineCount }, (_, idx) => {
+                            return <span key={idx} />
+                          })}
+                        </span>
                       </div>
                     </>
                   ) : (

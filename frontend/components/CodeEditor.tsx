@@ -1,11 +1,10 @@
-// based on vanilla https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
+// inspired by https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
 
 import React, { useEffect, useRef, useState } from "react"
 
 import "../styles/highlight-theme-light.css"
-import { tst } from "../utils/overrides.js"
-import { escapeHtml } from "../../worker/common.js"
-import { usePrism } from "../utils/HighlightLoader.js"
+import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
+import { useHLJS, highlightHTML } from "../utils/HighlightLoader.js"
 import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "@heroui/react"
 
 import "../styles/highlight-theme-light.css"
@@ -79,12 +78,14 @@ export function CodeEditor({
   className,
   ...rest
 }: CodeInputProps) {
-  const refHighlighting = useRef<HTMLPreElement | null>(null)
+  const refHighlighting = useRef<HTMLDivElement | null>(null)
   const refTextarea = useRef<HTMLTextAreaElement | null>(null)
 
   const [heightPx, setHeightPx] = useState<number>(0)
-  const hljs = usePrism()
+  const hljs = useHLJS()
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
+
+  const lineCount = (content?.match(/\n/g)?.length || 0) + 1
 
   function syncScroll() {
     refHighlighting.current!.scrollLeft = refTextarea.current!.scrollLeft
@@ -131,21 +132,22 @@ export function CodeEditor({
     }
   }, [])
 
-  function highlightedHTML() {
-    if (hljs && lang && hljs.listLanguages().includes(lang) && lang !== "plaintext") {
-      const highlighted = hljs.highlight(handleNewLines(content), { language: lang })
-      return highlighted.value
-    } else {
-      return escapeHtml(content)
-    }
-  }
+  const lineNumOffset = `${Math.floor(Math.log10(lineCount)) + 2}em`
 
   return (
     <div className={className} {...rest}>
       <div className={"mb-2 gap-2 flex flex-row" + " "}>
-        <Input type={"text"} label={"File name"} size={"sm"} value={filename || ""} onValueChange={setFilename} />
+        <Input
+          classNames={inputOverrides}
+          type={"text"}
+          label={"File name"}
+          size={"sm"}
+          value={filename || ""}
+          onValueChange={setFilename}
+        />
         <Autocomplete
           className={"max-w-[10em]"}
+          classNames={autoCompleteOverrides}
           label={"Language"}
           size={"sm"}
           defaultItems={hljs ? hljs.listLanguages().map((lang) => ({ key: lang })) : []}
@@ -160,7 +162,8 @@ export function CodeEditor({
         <Select
           size={"sm"}
           label={"Indent With"}
-          className={"max-w-[10em]"}
+          className={"max-w-[10em] text-foreground"}
+          classNames={selectOverrides}
           selectedKeys={[formatTabSetting(tabSetting, false)]}
           onSelectionChange={(s) => {
             setTabSettings(parseTabSetting(s.currentKey as string)!)
@@ -171,19 +174,32 @@ export function CodeEditor({
           ))}
         </Select>
       </div>
-      <div className={`w-full bg-default-100 ${tst} rounded-xl p-2`}>
+      <div className={`w-full bg-default-100 ${tst} rounded-xl p-2 relative`}>
         <div
-          className={"relative w-full"}
+          className={`relative w-full`}
           style={{ tabSize: tabSetting.char === "tab" ? tabSetting.width : undefined }}
         >
-          <pre
-            className={"w-full font-mono overflow-auto text-foreground top-0 left-0 absolute"}
-            ref={refHighlighting}
-            dangerouslySetInnerHTML={{ __html: highlightedHTML() }}
-            style={{ height: `${heightPx}px` }}
-          ></pre>
+          <div className={"w-full font-mono overflow-auto top-0 left-0 absolute"} ref={refHighlighting}>
+            <pre
+              className={`text-foreground ${tst}`}
+              style={{ paddingLeft: lineNumOffset, height: `${heightPx}px` }}
+              dangerouslySetInnerHTML={{ __html: highlightHTML(hljs, lang, handleNewLines(content)) }}
+            ></pre>
+            <span
+              className={
+                "line-number-rows font-mono absolute pointer-events-none text-default-500 top-0 left-1 " +
+                `border-solid border-default-300 border-r-1 ${tst}`
+              }
+            >
+              {Array.from({ length: lineCount }, (_, idx) => {
+                return <span key={idx} />
+              })}
+            </span>
+          </div>
           <textarea
-            className={`w-full font-mono min-h-[20em] text-[transparent] placeholder-default-400 ${tst} caret-foreground bg-transparent outline-none relative`}
+            className={`w-full font-mono min-h-[20em] text-[transparent] placeholder-default-400 
+             caret-foreground bg-transparent outline-none relative`}
+            style={{ paddingLeft: lineNumOffset }}
             ref={refTextarea}
             readOnly={disabled}
             placeholder={placeholder}

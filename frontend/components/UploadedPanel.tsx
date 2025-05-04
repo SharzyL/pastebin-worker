@@ -13,10 +13,14 @@ interface UploadedPanelProps extends CardProps {
   encryptionKey?: string
 }
 
-const makeDecryptionUrl = (url: string, key: string) => {
+const makeDecryptionUrl = (url: string, key?: string) => {
   const urlParsed = new URL(url)
   urlParsed.pathname = "/d" + urlParsed.pathname
-  return urlParsed.toString() + "#" + key
+  if (key) {
+    return urlParsed.toString() + "#" + key
+  } else {
+    return urlParsed.toString()
+  }
 }
 
 export function UploadedPanel({
@@ -50,23 +54,21 @@ export function UploadedPanel({
         ) : (
           pasteResponse && (
             <>
-              {encryptionKey && (
-                <Input
-                  {...inputProps}
-                  label={"Decryption URL"}
-                  color={"success"}
-                  value={makeDecryptionUrl(pasteResponse.url, encryptionKey)}
-                  endContent={
-                    <CopyWidget
-                      className={copyWidgetClassNames}
-                      getCopyContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
-                    />
-                  }
-                />
-              )}
               <Input
                 {...inputProps}
-                label={"Paste URL"}
+                label={"Display URL"}
+                color={encryptionKey ? "success" : "default"}
+                value={makeDecryptionUrl(pasteResponse.url, encryptionKey)}
+                endContent={
+                  <CopyWidget
+                    className={copyWidgetClassNames}
+                    getCopyContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
+                  />
+                }
+              />
+              <Input
+                {...inputProps}
+                label={"Raw URL"}
                 value={pasteResponse.url}
                 endContent={<CopyWidget className={copyWidgetClassNames} getCopyContent={() => pasteResponse.url} />}
               />

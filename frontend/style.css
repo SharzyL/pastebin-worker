@@ -10,6 +10,7 @@
     "Noto Color Emoji";
   --font-mono:
     "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --default-transition-duration: 5s;
 }
 
 .color-tst {
@@ -18,8 +19,29 @@
 }
 
 @layer utilities {
-  .\!color-tst {
+  .\!color-tst,
+  .\!color-tst-grandchild > div > div {
     transition-property: background-color, color, border-color;
     transition-duration: var(--default-transition-duration) !important;
   }
+}
+
+.line-number-rows {
+  counter-reset: linenumber;
+}
+
+.line-number-rows > span::before {
+  content: counter(linenumber);
+  counter-increment: linenumber;
+  display: block;
+  text-align: right;
+  padding-right: 0.5em;
+}
+
+/* we need some hacks to handle elements outside render root, e.g. popovers */
+/* see https://github.com/heroui-inc/heroui/issues/4571 */
+.dark,
+.light {
+  color: hsl(var(--heroui-foreground));
+  background-color: hsl(var(--heroui-background));
 }
