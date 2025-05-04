@@ -10,6 +10,7 @@
     "build:frontend": "vite build frontend --outDir ../dist/frontend --emptyOutDir",
     "build:frontend:dev": "vite build frontend --mode development --outDir ../dist/frontend --emptyOutDir",
     "dev:frontend": "vite serve frontend --mode development",
+    "preview:frontend": "vite preview --outDir dist/frontend",
     "dev": "wrangler dev --var DEPLOY_URL:http://localhost:8787 --port 8787",
     "gentypes": "wrangler types --strict-vars false",
     "build": "wrangler deploy --dry-run --outdir=dist",

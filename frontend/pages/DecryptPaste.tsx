@@ -58,7 +58,11 @@ export function DecryptPaste() {
           return
         }
 
-        const scheme: EncryptionScheme = (resp.headers.get("X-Encryption-Scheme") as EncryptionScheme) || "AES-GCM"
+        const scheme: EncryptionScheme | null = resp.headers.get("X-PB-Encryption-Scheme") as EncryptionScheme | null
+        if (scheme === null) {
+          showModal("Error", "No encryption scheme is given by the server")
+          return
+        }
         let key: CryptoKey | undefined
         try {
           key = await decodeKey(scheme, keyString)
@@ -82,10 +86,14 @@ export function DecryptPaste() {
               ) || undefined
             : undefined
 
-          const inferredFilename = filename || (ext && name + ext) || filenameFromDispTrimmed || name
-          setPasteFile(new File([decrypted], inferredFilename))
+          // TODO: highlight with lang
+          const lang = resp.headers.get("X-PB-Highlight-Language")
+
+          const inferredFilename = filename || (ext && name + ext) || filenameFromDispTrimmed
+          setPasteFile(new File([decrypted], inferredFilename || name))
           setPasteContentBuffer(decrypted)
-          const isBinary = isBinaryPath(inferredFilename)
+
+          const isBinary = lang === null && inferredFilename !== undefined && isBinaryPath(inferredFilename)
           setFileBinary(isBinary)
         }
       } finally {

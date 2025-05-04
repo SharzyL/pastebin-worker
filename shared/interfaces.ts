@@ -17,6 +17,7 @@ export type MetaResponse = {
   sizeBytes: number
   location: PasteLocation
   filename?: string
+  highlightLanguage?: string
   encryptionScheme?: string
 }
 

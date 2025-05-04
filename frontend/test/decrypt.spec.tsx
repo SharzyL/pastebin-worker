@@ -18,7 +18,9 @@ describe("decrypt page", async () => {
   const encrypted = await encrypt(scheme, key, content)
   const server = setupServer(
     http.get(`${APIUrl}/abcd`, () => {
-      return HttpResponse.arrayBuffer(encrypted.buffer)
+      return HttpResponse.arrayBuffer(encrypted.buffer, {
+        headers: { "X-PB-Encryption-Scheme": "AES-GCM" },
+      })
     }),
   )
 

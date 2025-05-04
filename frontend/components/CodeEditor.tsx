@@ -27,11 +27,19 @@ interface CodeInputProps extends React.HTMLProps<HTMLDivElement> {
 
 interface TabSetting {
   char: "tab" | "space"
-  width: 2 | 4
+  width: 2 | 4 | 8
 }
 
-function formatTabSetting(s: TabSetting) {
-  return `${s.char} ${s.width}`
+function formatTabSetting(s: TabSetting, forHuman: boolean) {
+  if (forHuman) {
+    if (s.char === "tab") {
+      return `Tab: ${s.width}`
+    } else {
+      return `Spaces: ${s.width}`
+    }
+  } else {
+    return `${s.char} ${s.width}`
+  }
 }
 
 function parseTabSetting(s: string): TabSetting | undefined {
@@ -46,8 +54,10 @@ function parseTabSetting(s: string): TabSetting | undefined {
 const tabSettings: TabSetting[] = [
   { char: "tab", width: 2 },
   { char: "tab", width: 4 },
+  { char: "tab", width: 8 },
   { char: "space", width: 2 },
   { char: "space", width: 4 },
+  { char: "space", width: 8 },
 ]
 
 function handleNewLines(str: string): string {
@@ -57,7 +67,7 @@ function handleNewLines(str: string): string {
   return str
 }
 
-export function CodeInput({
+export function CodeEditor({
   content,
   setContent,
   lang,
@@ -73,7 +83,7 @@ export function CodeInput({
   const refTextarea = useRef<HTMLTextAreaElement | null>(null)
 
   const [heightPx, setHeightPx] = useState<number>(0)
-  const prism = usePrism()
+  const hljs = usePrism()
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
 
   function syncScroll() {
@@ -122,8 +132,8 @@ export function CodeInput({
   }, [])
 
   function highlightedHTML() {
-    if (prism && lang && prism.listLanguages().includes(lang) && lang !== "plaintext") {
-      const highlighted = prism.highlight(handleNewLines(content), { language: lang })
+    if (hljs && lang && hljs.listLanguages().includes(lang) && lang !== "plaintext") {
+      const highlighted = hljs.highlight(handleNewLines(content), { language: lang })
       return highlighted.value
     } else {
       return escapeHtml(content)
@@ -132,36 +142,40 @@ export function CodeInput({
 
   return (
     <div className={className} {...rest}>
-      <div className={"mb-2 gap-4 flex flex-row" + " "}>
-        <Input type={"text"} label={"File name"} size={"sm"} key={filename} onValueChange={setFilename} />
+      <div className={"mb-2 gap-2 flex flex-row" + " "}>
+        <Input type={"text"} label={"File name"} size={"sm"} value={filename || ""} onValueChange={setFilename} />
         <Autocomplete
           className={"max-w-[10em]"}
           label={"Language"}
           size={"sm"}
-          defaultItems={prism ? prism.listLanguages().map((lang) => ({ key: lang })) : []}
-          selectedKey={lang}
+          defaultItems={hljs ? hljs.listLanguages().map((lang) => ({ key: lang })) : []}
+          // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
+          selectedKey={hljs && lang && hljs.listLanguages().includes(lang) ? lang : ""}
           onSelectionChange={(key) => {
-            setLang((key as string | null) || undefined)
+            setLang((key as string) || undefined) // when key is empty string, convert back to undefined
           }}
         >
           {(language) => <AutocompleteItem key={language.key}>{language.key}</AutocompleteItem>}
         </Autocomplete>
         <Select
           size={"sm"}
-          label={"Tabs"}
+          label={"Indent With"}
           className={"max-w-[10em]"}
-          selectedKeys={[formatTabSetting(tabSetting)]}
+          selectedKeys={[formatTabSetting(tabSetting, false)]}
           onSelectionChange={(s) => {
             setTabSettings(parseTabSetting(s.currentKey as string)!)
           }}
         >
           {tabSettings.map((s) => (
-            <SelectItem key={formatTabSetting(s)}>{formatTabSetting(s)}</SelectItem>
+            <SelectItem key={formatTabSetting(s, false)}>{formatTabSetting(s, true)}</SelectItem>
           ))}
         </Select>
       </div>
       <div className={`w-full bg-default-100 ${tst} rounded-xl p-2`}>
-        <div className={"relative w-full"}>
+        <div
+          className={"relative w-full"}
+          style={{ tabSize: tabSetting.char === "tab" ? tabSetting.width : undefined }}
+        >
           <pre
             className={"w-full font-mono overflow-auto text-foreground top-0 left-0 absolute"}
             ref={refHighlighting}

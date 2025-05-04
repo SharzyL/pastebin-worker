@@ -9,7 +9,7 @@ import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeTogg
 import { useErrorModal } from "../components/ErrorModal.js"
 import { PanelSettingsPanel, PasteSetting } from "../components/PasteSettingPanel.js"
 import { UploadedPanel } from "../components/UploadedPanel.js"
-import { PasteEditor, PasteEditState } from "../components/PasteEditor.js"
+import { PasteInputPanel, PasteEditState } from "../components/PasteInputPanel.js"
 
 import {
   verifyExpiration,
@@ -29,6 +29,7 @@ export function PasteBin() {
     editKind: "edit",
     editContent: "",
     file: null,
+    editHighlightLang: "plaintext",
   })
 
   const [pasteSetting, setPasteSetting] = useState<PasteSetting>({
@@ -55,6 +56,7 @@ export function PasteBin() {
   useEffect(() => {
     // TODO: do not fetch paste for a large file paste
     const pathname = location.pathname
+    // const pathname = new URL("http://localhost:8787/ds2W:ShNkSKdf5rZypdcJEcAdFmw3").pathname
     const { name, password, filename, ext } = parsePath(pathname)
 
     if (password !== undefined && pasteSetting.manageUrl === "") {
@@ -77,18 +79,22 @@ export function PasteBin() {
           }
           const contentType = resp.headers.get("Content-Type")
           const contentDisp = resp.headers.get("Content-Disposition")
+          const contentLang = resp.headers.get("X-PB-Highlight-Language")
 
-          if (contentType && contentType.startsWith("text/")) {
+          let pasteFilename = filename
+          if (pasteFilename === undefined && contentDisp !== null) {
+            pasteFilename = parseFilenameFromContentDisposition(contentDisp)
+          }
+
+          if (contentLang || (contentType && contentType.startsWith("text/"))) {
             setEditorState({
               editKind: "edit",
               editContent: await resp.text(),
               file: null,
+              editHighlightLang: contentLang || undefined,
+              editFilename: pasteFilename,
             })
           } else {
-            let pasteFilename = filename
-            if (pasteFilename === undefined && contentDisp !== null) {
-              pasteFilename = parseFilenameFromContentDisposition(contentDisp)
-            }
             setEditorState({
               editKind: "file",
               editContent: "",
@@ -221,7 +227,7 @@ export function PasteBin() {
     >
       <div className="grow w-full max-w-[64rem]">
         {info}
-        <PasteEditor
+        <PasteInputPanel
           isPasteLoading={isInitPasteLoading}
           state={editorState}
           onStateChange={setEditorState}

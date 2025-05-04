@@ -14,7 +14,7 @@ export class UploadError extends Error {
 }
 
 export type UploadOptions = {
-  content: string | File
+  content: File
   isUpdate: boolean
 
   // we allow it to be undefined for convenience
@@ -23,6 +23,7 @@ export type UploadOptions = {
   password?: string
   name?: string
 
+  highlightLanguage?: string
   encryptionScheme?: EncryptionScheme
   expire?: string
   manageUrl?: string
@@ -31,16 +32,22 @@ export type UploadOptions = {
 // note that apiUrl should be manageUrl when isUpload
 export async function uploadNormal(
   apiUrl: string,
-  { content, isUpdate, isPrivate, password, name, encryptionScheme, expire, manageUrl }: UploadOptions,
+  {
+    content,
+    isUpdate,
+    isPrivate,
+    password,
+    name,
+    highlightLanguage,
+    encryptionScheme,
+    expire,
+    manageUrl,
+  }: UploadOptions,
 ): Promise<PasteResponse> {
   const fd = new FormData()
 
   // typescript cannot handle overload on union types
-  if (typeof content === "string") {
-    fd.set("c", content)
-  } else {
-    fd.set("c", content)
-  }
+  fd.set("c", content)
 
   if (isUpdate && manageUrl === undefined) {
     throw TypeError("uploadMPU: no manageUrl specified in update")
@@ -50,6 +57,7 @@ export async function uploadNormal(
   if (password !== undefined) fd.set("s", password)
   if (!isUpdate && name !== undefined) fd.set("n", name)
   if (encryptionScheme !== undefined) fd.set("encryption-scheme", encryptionScheme)
+  if (highlightLanguage !== undefined) fd.set("lang", highlightLanguage)
   if (isPrivate) fd.set("p", "1")
 
   const resp = isUpdate
@@ -72,13 +80,19 @@ export async function uploadNormal(
 export async function uploadMPU(
   apiUrl: string,
   chunkSize: number,
-  { content, isUpdate, isPrivate, password, name, encryptionScheme, expire, manageUrl }: UploadOptions,
+  {
+    content,
+    isUpdate,
+    isPrivate,
+    password,
+    name,
+    highlightLanguage,
+    encryptionScheme,
+    expire,
+    manageUrl,
+  }: UploadOptions,
   progressCallback?: (doneBytes: number, allBytes: number) => void,
 ) {
-  if (typeof content === "string") {
-    throw TypeError("Must use File when uploading as MPU")
-  }
-
   const createReqUrl = isUpdate ? new URL(`${apiUrl}/mpu/create-update`) : new URL(`${apiUrl}/mpu/create`)
   if (!isUpdate) {
     if (name !== undefined) {
@@ -139,6 +153,9 @@ export async function uploadMPU(
   }
   if (password !== undefined) {
     completeFormData.set("s", password)
+  }
+  if (highlightLanguage !== undefined) {
+    completeFormData.set("lang", highlightLanguage)
   }
   if (encryptionScheme !== undefined) {
     completeFormData.set("encryption-scheme", encryptionScheme)

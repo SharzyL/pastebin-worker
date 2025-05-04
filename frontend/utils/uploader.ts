@@ -1,5 +1,5 @@
 import type { PasteSetting } from "../components/PasteSettingPanel.js"
-import type { PasteEditState } from "../components/PasteEditor.js"
+import type { PasteEditState } from "../components/PasteInputPanel.js"
 import { APIUrl, ErrorWithTitle } from "./utils.js"
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { encodeKey, encrypt, EncryptionScheme, genKey } from "./encryption.js"
@@ -22,7 +22,7 @@ export async function uploadPaste(
   onEncryptionKeyChange: (k: string | undefined) => void, // we only generate key on upload, so need a callback of key generation
   onProgress?: (progress: number | undefined) => void,
 ): Promise<PasteResponse> {
-  async function constructContent(): Promise<string | File> {
+  async function constructContent(): Promise<File> {
     if (editorState.editKind === "file") {
       if (editorState.file === null) {
         throw new ErrorWithTitle("Error on Preparing Upload", "No file selected")
@@ -43,9 +43,9 @@ export async function uploadPaste(
       if (pasteSetting.doEncrypt) {
         const { key, ciphertext } = await genAndEncrypt(encryptionScheme, editorState.editContent)
         onEncryptionKeyChange(key)
-        return new File([ciphertext], "")
+        return new File([ciphertext], editorState.editFilename || "")
       } else {
-        return editorState.editContent
+        return new File([editorState.editContent], editorState.editFilename || "")
       }
     }
   }
@@ -57,14 +57,15 @@ export async function uploadPaste(
     password: pasteSetting.password.length ? pasteSetting.password : undefined,
     expire: pasteSetting.expiration,
     name: pasteSetting.uploadKind === "custom" ? pasteSetting.name : undefined,
+    highlightLanguage: editorState.editHighlightLang,
     encryptionScheme: pasteSetting.doEncrypt ? encryptionScheme : undefined,
     manageUrl: pasteSetting.manageUrl,
   }
 
-  const contentLength = typeof options.content === "string" ? options.content.length : options.content.size
+  const contentLength = options.content.size
 
   try {
-    if (contentLength < 5 * 1024 * 1024 || typeof options.content === "string") {
+    if (contentLength < 5 * 1024 * 1024) {
       return await uploadNormal(APIUrl, options)
     } else {
       if (onProgress) onProgress(0)

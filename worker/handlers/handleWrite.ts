@@ -118,6 +118,7 @@ export async function handlePostOrPut(
   const passwdFromForm = parts.get("s")?.contentAsString()
   const expireFromForm: string | undefined = parts.get("e")?.contentAsString()
   const encryptionScheme: string | undefined = parts.get("encryption-scheme")?.contentAsString()
+  const highlightLanguage = parts.get("lang")?.contentAsString()
   const expire = expireFromForm ? expireFromForm : env.DEFAULT_EXPIRATION
 
   const uploadedParts = isMPUComplete ? (JSON.parse(contentAsString()) as R2UploadedPart[]) : undefined
@@ -204,6 +205,7 @@ export async function handlePostOrPut(
       passwd: newPasswd,
       contentLength,
       filename,
+      highlightLanguage,
       encryptionScheme,
       isMPUComplete,
     })
@@ -242,6 +244,7 @@ export async function handlePostOrPut(
       now,
       passwd: password,
       filename,
+      highlightLanguage,
       contentLength,
       encryptionScheme,
       isMPUComplete,

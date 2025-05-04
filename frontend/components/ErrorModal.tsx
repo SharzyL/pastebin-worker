@@ -24,6 +24,7 @@ export function useErrorModal() {
   }
 
   function handleError(defaultTitle: string, error: Error) {
+    console.error(error)
     if (error instanceof ErrorWithTitle) {
       showModal(error.title, error.message)
     } else {

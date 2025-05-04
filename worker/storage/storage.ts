@@ -25,6 +25,7 @@ export type PasteMetadata = {
   accessCounter: number // a counter representing how frequent it is accessed, to administration usage
   sizeBytes: number
   filename?: string
+  highlightLanguage?: string
   encryptionScheme?: string
 }
 
@@ -40,6 +41,7 @@ type PasteMetadataInStorage = {
   accessCounter?: number
   sizeBytes?: number
   filename?: string
+  highlightLanguage?: string
   encryptionScheme?: string
 }
 
@@ -56,6 +58,7 @@ function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
     accessCounter: original.accessCounter || 0,
     sizeBytes: original.sizeBytes || 0,
     filename: original.filename,
+    highlightLanguage: original.highlightLanguage,
     encryptionScheme: original.encryptionScheme,
   }
 }
@@ -146,6 +149,7 @@ interface WriteOptions {
   expirationSeconds: number
   passwd: string
   filename?: string
+  highlightLanguage?: string
   encryptionScheme?: string
   isMPUComplete: boolean
 }
@@ -177,7 +181,8 @@ export async function updatePaste(
   const metadata: PasteMetadata = {
     schemaVersion: 1,
     location: newLocation,
-    filename: options.filename || originalMetadata.filename,
+    filename: options.filename,
+    highlightLanguage: options.highlightLanguage,
     passwd: options.passwd,
 
     lastModifiedAtUnix: dateToUnix(options.now),
@@ -218,6 +223,7 @@ export async function createPaste(
     schemaVersion: 1,
     location: location,
     filename: options.filename,
+    highlightLanguage: options.highlightLanguage,
     passwd: options.passwd,
 
     lastModifiedAtUnix: dateToUnix(options.now),

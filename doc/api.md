@@ -12,7 +12,9 @@ The `Content-Type` header is set to the mime type inferred from the filename of 
 
 The `Content-Disposition` header is set to `inline` by default. But can be overriden by `?a` query string. If the paste is uploaded with filename, or `<filename>` is set in given request URL, `Content-Disposition` is appended with `filename*` indicating the filename. If the paste is encrypted, the filename is appended with `.encrypted` suffix.
 
-If the paste is encrypted, an `X-Encryption-Scheme` header will be set to the encryption scheme.
+If the paste is encrypted, an `X-PB-Encryption-Scheme` header will be set to the encryption scheme.
+
+If the paste is uploaded with a `lang` parameter, an `X-PB-Highlight-Language` header will be set to the encryption scheme.
 
 - `?a=`: optional. Set `Content-Disposition` to `attachment` if present.
 
@@ -190,7 +192,9 @@ Upload your paste. It accept parameters in form-data:
 
 - `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used.
 -
-- `encryption-scheme`: optional. The encryption scheme used in the uploaded paste. It will be returned as `X-Encryption-Scheme` header on fetching paste. Note that this is not the encryption scheme that the backend will perform.
+- `encryption-scheme`: optional. The encryption scheme used in the uploaded paste. It will be returned as `X-PB-Encryption-Scheme` header on fetching paste. Note that this is not the encryption scheme that the backend will perform.
+
+- `lang`: optional. The language of the uploaded paste for syntax highlighting. Should be a lower-case name of language listed in [highlight.js documentation](https://github.com/highlightjs/highlight.js/blob/main/SUPPORTED_LANGUAGES.md). This will be returned as `X-PB-Highlight-Language` header on fetching paste.
 
 `POST` method returns a JSON string by default, if no error occurs, for example:
 

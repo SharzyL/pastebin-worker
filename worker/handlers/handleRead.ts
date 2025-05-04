@@ -189,6 +189,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
       sizeBytes: item.metadata.sizeBytes,
       location: item.metadata.location,
       filename: item.metadata.filename,
+      highlightLanguage: item.metadata.highlightLanguage,
       encryptionScheme: item.metadata.encryptionScheme,
     }
     return new Response(isHead ? null : JSON.stringify(returnedMetadata, null, 2), {
@@ -238,8 +239,13 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   const exposeHeaders = ["Content-Disposition"]
 
   if (item.metadata.encryptionScheme) {
-    headers["X-Encryption-Scheme"] = item.metadata.encryptionScheme
-    exposeHeaders.push("X-Encryption-Scheme")
+    headers["X-PB-Encryption-Scheme"] = item.metadata.encryptionScheme
+    exposeHeaders.push("X-PB-Encryption-Scheme")
+  }
+
+  if (item.metadata.highlightLanguage) {
+    headers["X-PB-Highlight-Language"] = item.metadata.highlightLanguage
+    exposeHeaders.push("X-PB-Highlight-Language")
   }
 
   if (returnFilename) {

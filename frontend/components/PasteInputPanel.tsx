@@ -3,7 +3,7 @@ import React, { useRef, useState, DragEvent } from "react"
 import { formatSize } from "../utils/utils.js"
 import { XIcon } from "./icons.js"
 import { cardOverrides, tst } from "../utils/overrides.js"
-import { CodeInput } from "./CodeInput.js"
+import { CodeEditor } from "./CodeEditor.js"
 
 export type EditKind = "edit" | "file"
 
@@ -21,7 +21,7 @@ interface PasteEditorProps extends CardProps {
   onStateChange: (state: PasteEditState) => void
 }
 
-export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: PasteEditorProps) {
+export function PasteInputPanel({ isPasteLoading, state, onStateChange, ...rest }: PasteEditorProps) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [isDragged, setDragged] = useState<boolean>(false)
 
@@ -62,7 +62,7 @@ export function PasteEditor({ isPasteLoading, state, onStateChange, ...rest }: P
         >
           {/*Possibly a bug of chrome, but Tab sometimes has a transient unexpected scrollbar when resizing*/}
           <Tab key={"edit"} title="Edit" className={"overflow-hidden"}>
-            <CodeInput
+            <CodeEditor
               content={state.editContent}
               setContent={(k) => onStateChange({ ...state, editContent: k })}
               lang={state.editHighlightLang}
