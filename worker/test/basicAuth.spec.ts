@@ -2,6 +2,7 @@ import { expect, test, it, describe, beforeEach, afterEach } from "vitest"
 import { areBlobsEqual, BASE_URL, genRandomBlob, upload, uploadExpectStatus, workerFetch } from "./testUtils"
 import { encodeBasicAuth, decodeBasicAuth } from "../pages/auth"
 import { createExecutionContext, env } from "cloudflare:test"
+import { hashSync } from "bcrypt-ts"
 
 test("basic auth encode and decode", () => {
   const userPasswdPairs = [
@@ -32,7 +33,7 @@ describe("basic auth", () => {
    ref: https://github.com/cloudflare/workers-sdk/issues/7339
   */
   beforeEach(() => {
-    env.BASIC_AUTH = users
+    env.BASIC_AUTH = Object.fromEntries(Object.entries(users).map(([user, passwd]) => [user, hashSync(passwd, 8)]))
   })
 
   afterEach(() => {

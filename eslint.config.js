@@ -15,7 +15,7 @@ export default tseslint.config(
       },
     },
   },
-  globalIgnores(["dist/**", ".wrangler/**", "coverage/**", "worker-configuration.d.ts"]),
+  globalIgnores(["dist/**", ".wrangler/**", "coverage/**", "scripts/**", "worker-configuration.d.ts"]),
   {
     rules: {
       "no-unused-vars": "off",

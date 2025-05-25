@@ -1,4 +1,5 @@
 import { atob_utf8, btoa_utf8, WorkerError } from "../common.js"
+import { compareSync } from "bcrypt-ts"
 
 // Encoding function
 export function encodeBasicAuth(username: string, password: string): string {
@@ -36,7 +37,7 @@ export function verifyAuth(request: Request, env: Env): Response | null {
 
   if (request.headers.has("Authorization")) {
     const { username, password } = decodeBasicAuth(request.headers.get("Authorization")!)
-    if (!passwdMap.has(username) || passwdMap.get(username) !== password) {
+    if (!passwdMap.has(username) || !compareSync(password, passwdMap.get(username)!)) {
       throw new WorkerError(401, "incorrect passwd for basic auth")
     } else {
       return null

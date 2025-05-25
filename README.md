@@ -54,9 +54,11 @@ If you want a private deployment (only you can upload paste, but everyone can re
 
 ```toml
 [vars.BASIC_AUTH]
-user1 = "passwd1"
-user2 = "passwd2"
+user1 = "$2b$08$i/yH1TSIGWUNQVsxPrcVUeR0hsGioFNf3.OeHdYzxwjzLH/hzoY.i"
+user2 = "$2b$08$KeVnmXoMuRjNHKQjDHppEeXAf5lTLv9HMJCTlKW5uvRcEG5LOdBpO"
 ```
+
+Passwords here are hashed by bcrypt2 algorithm. You can generate the hashed password by running `./scripts/bcrypt.js`.
 
 Now every access to POST request, and every access to static pages, requires an HTTP basic auth with the user-password pair listed above. For example:
 
