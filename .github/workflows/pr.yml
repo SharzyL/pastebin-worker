@@ -17,11 +17,10 @@ jobs:
           node-version: "22"
           cache: "yarn"
 
-      - name: "Coverage"
+      - name: "Run Test with Coverage"
         run: |
           yarn install
           yarn build:frontend
-          yarn test
           yarn coverage
 
       - name: "Upload Coverage"
@@ -50,13 +49,12 @@ jobs:
       - name: "Build Frontend"
         run: yarn build:frontend
 
-      - name: "Test"
+      - name: "Lint"
         run: |
           yarn prettier -c .
           yarn eslint .
-          yarn test
 
-      - name: "Run Coverage"
+      - name: "Run Test with Coverage"
         run: yarn coverage
 
       - name: "Upload Coverage"
