@@ -79,6 +79,7 @@ export function CodeEditor({
 }: CodeInputProps) {
   const refHighlighting = useRef<HTMLPreElement | null>(null)
   const refTextarea = useRef<HTMLTextAreaElement | null>(null)
+  const refLineNumbers = useRef<HTMLSpanElement | null>(null)
 
   const [heightPx, setHeightPx] = useState<number>(0)
   const hljs = useHLJS()
@@ -89,6 +90,9 @@ export function CodeEditor({
   function syncScroll() {
     refHighlighting.current!.scrollLeft = refTextarea.current!.scrollLeft
     refHighlighting.current!.scrollTop = refTextarea.current!.scrollTop
+    if (refLineNumbers.current) {
+      refLineNumbers.current.scrollTop = refTextarea.current!.scrollTop
+    }
   }
 
   function handleInput(_: React.FormEvent<HTMLTextAreaElement>) {
@@ -186,10 +190,12 @@ export function CodeEditor({
               dangerouslySetInnerHTML={{ __html: highlightHTML(hljs, lang, handleNewLines(content)) }}
             ></pre>
             <span
+              ref={refLineNumbers}
               className={
                 "line-number-rows font-mono absolute pointer-events-none text-default-500 top-0 left-1 " +
                 `border-solid border-default-300 border-r-1 ${tst}`
               }
+              style={{ height: `${heightPx}px`, overflow: "hidden" }}
             >
               {Array.from({ length: lineCount }, (_, idx) => {
                 return <span key={idx} />
