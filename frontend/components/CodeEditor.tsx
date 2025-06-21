@@ -192,10 +192,10 @@ export function CodeEditor({
             <span
               ref={refLineNumbers}
               className={
-                "line-number-rows font-mono absolute pointer-events-none text-default-500 top-0 left-1 " +
+                "line-number-rows font-mono absolute pointer-events-none text-default-500 top-0 left-1 overflow-hidden " +
                 `border-solid border-default-300 border-r-1 ${tst}`
               }
-              style={{ height: `${heightPx}px`, overflow: "hidden" }}
+              style={{ height: `${heightPx}px` }}
             >
               {Array.from({ length: lineCount }, (_, idx) => {
                 return <span key={idx} />
