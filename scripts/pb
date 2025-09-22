@@ -172,7 +172,7 @@ pb_post() {
 
     # record history
     manage_url=$(jq -r '.manageUrl' "$tmp_file")
-    manage_path=${admin_url##*/}
+    manage_path=${manage_url##*/}
     echo "$manage_path" >> "$hist_file"
 
     # copy URL to clipboard
@@ -243,8 +243,8 @@ pb_update() {
     jq . "$tmp_file" 2>/dev/null || _die "$(cat "$tmp_file")"
 
     # record history
-    manage_url=$(jq -r '.admin' "$tmp_file")
-    manage_path=${admin_url##*/}
+    manage_url=$(jq -r '.manageUrl' "$tmp_file")
+    manage_path=${manage_url##*/}
     echo "$manage_path" >> "$hist_file"
 
     # copy URL to clipboard
