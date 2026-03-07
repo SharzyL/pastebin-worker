@@ -54,7 +54,7 @@ export function verifyManageUrl(url: string, config: Env): [boolean, string] {
     const url_parsed = new URL(url)
     if (url_parsed.origin !== config.DEPLOY_URL) {
       return [false, `URL should starts with ${config.DEPLOY_URL}`]
-    } else if (url_parsed.pathname.indexOf(PASSWD_SEP) < 0) {
+    } else if (!url_parsed.pathname.includes(PASSWD_SEP)) {
       return [false, `URL should contain a colon`]
     } else {
       return [true, ""]

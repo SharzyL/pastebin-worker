@@ -4,7 +4,7 @@ import { createExecutionContext } from "cloudflare:test"
 import { addRole, areBlobsEqual, BASE_URL, genRandomBlob, workerFetch } from "./testUtils"
 import { PRIVATE_PASTE_NAME_LEN } from "../../shared/constants"
 import { parsePath } from "../../shared/parsers"
-import { MetaResponse } from "../../shared/interfaces"
+import type { MetaResponse } from "../../shared/interfaces"
 
 const ctx = createExecutionContext()
 beforeEach(() => {

@@ -1,6 +1,6 @@
 // we will move this file to a shared directory later
 
-import { MPUCreateResponse, PasteResponse } from "./interfaces.js"
+import type { MPUCreateResponse, PasteResponse } from "./interfaces.js"
 import type { EncryptionScheme } from "../frontend/utils/encryption.js"
 import { parsePath } from "./parsers.js"
 
@@ -13,7 +13,7 @@ export class UploadError extends Error {
   }
 }
 
-export type UploadOptions = {
+export interface UploadOptions {
   content: File
   isUpdate: boolean
 

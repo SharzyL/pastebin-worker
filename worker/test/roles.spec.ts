@@ -1,10 +1,10 @@
 import { expect, test, describe, it, beforeEach, vi, afterEach } from "vitest"
 import { addRole, upload, workerFetch } from "./testUtils"
 import { createExecutionContext } from "cloudflare:test"
-import { MetaResponse } from "../../shared/interfaces"
+import type { MetaResponse } from "../../shared/interfaces"
 import { genRandStr } from "../common"
 
-const testMd: string = `
+const testMd = `
 # Header 1
 
 This is the content of \`test.md\`

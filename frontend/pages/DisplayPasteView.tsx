@@ -8,7 +8,7 @@ import { highlightHTML, useHLJS } from "../utils/HighlightLoader.js"
 import { useErrorModal } from "../components/ErrorModal.js"
 import { formatSize } from "../utils/utils.js"
 
-type DisplayPasteViewProps = {
+interface DisplayPasteViewProps {
   pasteFile?: File
   pasteContentBuffer?: ArrayBuffer
   pasteLang?: string

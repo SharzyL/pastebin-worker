@@ -1,5 +1,7 @@
-import React, { JSX, useEffect, useState, useSyncExternalStore } from "react"
-import { Button, ButtonProps, Tooltip } from "@heroui/react"
+import type { JSX } from "react"
+import React, { useEffect, useState, useSyncExternalStore } from "react"
+import type { ButtonProps } from "@heroui/react"
+import { Button, Tooltip } from "@heroui/react"
 
 import { ComputerIcon, MoonIcon, SunIcon } from "./icons.js"
 import { tst } from "../utils/overrides.js"

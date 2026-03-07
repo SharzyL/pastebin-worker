@@ -1,4 +1,4 @@
-import { MPUCreateResponse } from "../../shared/interfaces.js"
+import type { MPUCreateResponse } from "../../shared/interfaces.js"
 import { NAME_REGEX, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
 import { genRandStr, WorkerError } from "../common.js"
 import { getPasteMetadata, pasteNameAvailable } from "../storage/storage.js"

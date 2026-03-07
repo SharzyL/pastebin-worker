@@ -1,8 +1,9 @@
-import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalProps } from "@heroui/react"
+import type { ModalProps } from "@heroui/react"
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react"
 import React, { useState } from "react"
 import { ErrorWithTitle } from "../utils/errors.js"
 
-export type ErrorState = {
+export interface ErrorState {
   title: string
   content: string
   isOpen: boolean

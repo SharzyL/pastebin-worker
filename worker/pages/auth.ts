@@ -27,10 +27,10 @@ export function decodeBasicAuth(encodedString: string): {
 // TODO: only allow hashed passwd
 export function verifyAuth(request: Request, env: Env): Response | null {
   // pass auth if 'BASIC_AUTH' is not present
-  const basic_auth = env.BASIC_AUTH as { [username: string]: string }
+  const basic_auth = env.BASIC_AUTH as Record<string, string>
   const auth_entries = Object.entries(basic_auth)
 
-  const passwdMap: Map<string, string> = new Map(auth_entries)
+  const passwdMap = new Map<string, string>(auth_entries)
 
   // pass auth if 'BASIC_AUTH' is empty
   if (passwdMap.size === 0) return null

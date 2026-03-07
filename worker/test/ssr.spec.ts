@@ -37,7 +37,7 @@ describe("SSR Display Page", () => {
       expect(html).toContain("window.__PASTE_DATA__")
 
       // Extract and verify serialized data
-      const match = html.match(/<script id="__PASTE_DATA__" type="application\/json">(.*?)<\/script>/)
+      const match = /<script id="__PASTE_DATA__" type="application\/json">(.*?)<\/script>/.exec(html)
       expect(match).toBeTruthy()
 
       const data = JSON.parse(match![1]) as { name: string; content: string; metadata: unknown }

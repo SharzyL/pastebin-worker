@@ -11,11 +11,11 @@ import {
   MAX_PASSWD_LEN,
 } from "../../shared/constants.js"
 import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
-import { PasteResponse } from "../../shared/interfaces.js"
+import type { PasteResponse } from "../../shared/interfaces.js"
 import { MaxFileSizeExceededError, MultipartParseError, parseMultipartRequest } from "@mjackson/multipart-parser"
 import { handleMPUComplete, handleMPUCreate, handleMPUCreateUpdate, handleMPUResume } from "./handleMPU.js"
 
-type ParsedMultipartPart = {
+interface ParsedMultipartPart {
   filename?: string
   content: ReadableStream | ArrayBuffer
   contentAsString: () => string

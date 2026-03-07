@@ -2,11 +2,12 @@
 
 import eslint from "@eslint/js"
 import tseslint from "typescript-eslint"
-import { globalIgnores } from "eslint/config"
+import { defineConfig, globalIgnores } from "eslint/config"
 
-export default tseslint.config(
+export default defineConfig(
   eslint.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
   {
     languageOptions: {
       parserOptions: {
@@ -26,6 +27,8 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
         },
       ],
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
     },
   },
   {

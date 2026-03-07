@@ -4,9 +4,11 @@ import { Button, Link } from "@heroui/react"
 
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { useErrorModal } from "../components/ErrorModal.js"
-import { PanelSettingsPanel, PasteSetting } from "../components/PasteSettingPanel.js"
+import type { PasteSetting } from "../components/PasteSettingPanel.js"
+import { PanelSettingsPanel } from "../components/PasteSettingPanel.js"
 import { UploadedPanel } from "../components/UploadedPanel.js"
-import { PasteInputPanel, PasteEditState } from "../components/PasteInputPanel.js"
+import type { PasteEditState } from "../components/PasteInputPanel.js"
+import { PasteInputPanel } from "../components/PasteInputPanel.js"
 
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
@@ -79,7 +81,7 @@ export function PasteBin({ config }: { config: Env }) {
             pasteFilename = parseFilenameFromContentDisposition(contentDisp)
           }
 
-          if (contentLang || (contentType && contentType.startsWith("text/"))) {
+          if (contentLang || contentType?.startsWith("text/")) {
             setEditorState({
               editKind: "edit",
               editContent: await resp.text(),

@@ -1,6 +1,7 @@
 import React from "react"
 
-import { Card, CardBody, CardHeader, CardProps, CircularProgress, Divider, Input, mergeClasses } from "@heroui/react"
+import type { CardProps } from "@heroui/react"
+import { Card, CardBody, CardHeader, CircularProgress, Divider, Input, mergeClasses } from "@heroui/react"
 
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { tst } from "../utils/overrides.js"

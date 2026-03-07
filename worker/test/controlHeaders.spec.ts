@@ -37,7 +37,7 @@ test("cache control", async () => {
 
   const ctx = createExecutionContext()
   const uploadResp = await upload(ctx, { c: genRandomBlob(1024) })
-  const url = uploadResp["url"]
+  const url = uploadResp.url
   const resp = await workerFetch(ctx, url)
   expect(resp.headers.has("Last-Modified")).toStrictEqual(true)
   expect(new Date(resp.headers.get("Last-Modified")!).getTime()).toStrictEqual(t1.getTime())
@@ -73,7 +73,7 @@ test("content disposition without specifying filename", async () => {
   const ctx = createExecutionContext()
 
   const uploadResp = await upload(ctx, { c: content })
-  const url = uploadResp["url"]
+  const url = uploadResp.url
 
   expect(
     (await workerFetch(ctx, url)).headers.get("Access-Control-Expose-Headers")?.includes("Content-Disposition"),

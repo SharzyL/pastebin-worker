@@ -37,7 +37,7 @@ afterAll(() => {
 
 import "@testing-library/jest-dom/vitest"
 import { userEvent } from "@testing-library/user-event"
-import { PasteResponse } from "../../shared/interfaces.js"
+import type { PasteResponse } from "../../shared/interfaces.js"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"

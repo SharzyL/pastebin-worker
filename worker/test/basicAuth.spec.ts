@@ -24,7 +24,7 @@ describe("basic auth", () => {
     user1: "passwd1",
     user2: "passwd2",
   }
-  const authHeader = { Authorization: encodeBasicAuth("user1", users["user1"]) }
+  const authHeader = { Authorization: encodeBasicAuth("user1", users.user1) }
   const wrongAuthHeader = { Authorization: encodeBasicAuth("user1", "wrong-password") }
   const blob1 = genRandomBlob(1024)
 

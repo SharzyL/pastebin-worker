@@ -16,8 +16,18 @@ export default defineConfig(({ mode }) => {
       ? { ...wranglerConfigParsed.vars, DEPLOY_URL: "http://localhost:8787", INDEX_PAGE_TITLE: "Pastebin Worker (dev)" }
       : wranglerConfigParsed.vars
 
+  const transformHtmlPlugin = () => ({
+    name: "transform-html",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html) {
+        return html.replace(/%INDEX_PAGE_TITLE%/g, vars.INDEX_PAGE_TITLE)
+      },
+    },
+  })
+
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), transformHtmlPlugin()],
     define: {
       __WRANGLER_CONFIG__: JSON.stringify(vars),
     },

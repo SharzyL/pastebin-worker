@@ -2,8 +2,8 @@ import { renderToReadableStream } from "react-dom/server.edge"
 import React from "react"
 import { HeroUIProvider } from "@heroui/react"
 import { DisplayPasteView } from "../../frontend/pages/DisplayPasteView.js"
-import { PasteMetadata } from "../storage/storage.js"
-import { SerializedPasteData, MetaResponse } from "../../shared/interfaces.js"
+import type { PasteMetadata } from "../storage/storage.js"
+import type { SerializedPasteData, MetaResponse } from "../../shared/interfaces.js"
 import { decode } from "../common.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
 import chardet from "chardet"
@@ -11,8 +11,8 @@ import chardet from "chardet"
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
   let binary = ""
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i])
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
   }
   return btoa(binary)
 }
@@ -103,7 +103,9 @@ export async function renderDisplayPage(
         guessedEncoding: encoding,
         isDecrypted: "not encrypted",
         forceShowBinary: false,
-        setForceShowBinary: () => {},
+        setForceShowBinary: () => {
+          // SSR: no-op
+        },
         isLoading: false,
         name,
         config,
@@ -120,7 +122,11 @@ export async function renderDisplayPage(
     html += decode(value)
   }
 
-  type ManifestEntry = { file: string; imports?: string[]; css?: string[] }
+  interface ManifestEntry {
+    file: string
+    imports?: string[]
+    css?: string[]
+  }
   type Manifest = Record<string, ManifestEntry>
   const typedManifest = manifest as Manifest
 

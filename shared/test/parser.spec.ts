@@ -1,11 +1,6 @@
 import { expect, test } from "vitest"
-import {
-  parsePath,
-  ParsedPath,
-  parseFilenameFromContentDisposition,
-  parseExpiration,
-  parseExpirationReadable,
-} from "../parsers.js"
+import type { ParsedPath } from "../parsers.js"
+import { parsePath, parseFilenameFromContentDisposition, parseExpiration, parseExpirationReadable } from "../parsers.js"
 
 test("parsePath", () => {
   const testPairs: [string, ParsedPath][] = [

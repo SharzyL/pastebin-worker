@@ -44,7 +44,7 @@ export function genRandStr(len: number) {
 }
 
 export function escapeHtml(str: string): string {
-  const tagsToReplace: Map<string, string> = new Map([
+  const tagsToReplace = new Map<string, string>([
     ["&", "&amp;"],
     ["<", "&lt;"],
     [">", "&gt;"],

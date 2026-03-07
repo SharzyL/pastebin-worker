@@ -41,7 +41,7 @@ function formatTabSetting(s: TabSetting, forHuman: boolean) {
 }
 
 function parseTabSetting(s: string): TabSetting | undefined {
-  const match = s.match(/^(tab|space) ([24])$/)
+  const match = /^(tab|space) ([24])$/.exec(s)
   if (match) {
     return { char: match[1] as TabSetting["char"], width: parseInt(match[2]) as TabSetting["width"] }
   } else {
@@ -169,7 +169,7 @@ export function CodeEditor({
           classNames={selectOverrides}
           selectedKeys={[formatTabSetting(tabSetting, false)]}
           onSelectionChange={(s) => {
-            setTabSettings(parseTabSetting(s.currentKey as string)!)
+            setTabSettings(parseTabSetting(s.currentKey!)!)
           }}
         >
           {tabSettings.map((s) => (

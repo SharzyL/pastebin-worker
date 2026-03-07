@@ -11,8 +11,8 @@ function base64VariantEncode(src: Uint8Array): string {
   // we use a variant of base64 that replaces "/" with "_" and removes trailing padding
   const uint8Array = new Uint8Array(src)
   let binaryString = ""
-  for (let i = 0; i < uint8Array.length; i++) {
-    binaryString += String.fromCharCode(uint8Array[i])
+  for (const byte of uint8Array) {
+    binaryString += String.fromCharCode(byte)
   }
   return btoa(binaryString).replaceAll("/", "_").replaceAll("=", "")
 }

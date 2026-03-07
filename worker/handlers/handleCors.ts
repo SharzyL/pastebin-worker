@@ -7,7 +7,7 @@ const corsHeaders = {
 export function handleOptions(request: Request) {
   const headers = request.headers
   if (headers.get("Origin") !== null && headers.get("Access-Control-Request-Method") !== null) {
-    const respHeaders: { [name: string]: string } = corsHeaders
+    const respHeaders: Record<string, string> = corsHeaders
     respHeaders["Access-Control-Allow-Headers"] = "*"
 
     return new Response(null, {

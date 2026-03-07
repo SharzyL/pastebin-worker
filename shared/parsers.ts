@@ -52,7 +52,7 @@ export function parseExpirationReadable(expirationStr: string): string | null {
   return `${num} second${num > 1 ? "s" : ""}`
 }
 
-export type ParsedPath = {
+export interface ParsedPath {
   name: string
   role?: string
   password?: string
@@ -111,17 +111,17 @@ export function parseFilenameFromContentDisposition(contentDisposition: string):
   let filename: string | undefined = undefined
 
   const filenameStarRegex = /filename\*=UTF-8''([^;]*)/i
-  const filenameStarMatch = contentDisposition.match(filenameStarRegex)
+  const filenameStarMatch = filenameStarRegex.exec(contentDisposition)
 
-  if (filenameStarMatch && filenameStarMatch[1]) {
+  if (filenameStarMatch?.[1]) {
     filename = decodeURIComponent(filenameStarMatch[1])
   }
 
   if (!filename) {
     const filenameRegex = /filename="([^"]*)"/i
-    const filenameMatch = contentDisposition.match(filenameRegex)
+    const filenameMatch = filenameRegex.exec(contentDisposition)
 
-    if (filenameMatch && filenameMatch[1]) {
+    if (filenameMatch?.[1]) {
       filename = filenameMatch[1]
     }
   }

@@ -10,7 +10,7 @@ import {
   workerFetch,
 } from "./testUtils"
 import { createExecutionContext, env } from "cloudflare:test"
-import { MetaResponse } from "../../shared/interfaces"
+import type { MetaResponse } from "../../shared/interfaces"
 import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants"
 import { parseExpiration } from "../../shared/parsers"
 
@@ -22,7 +22,7 @@ test("privacy url with option p", async () => {
   const responseJson = await upload(ctx, { c: blob1, p: "1" })
 
   // check url
-  const url = responseJson["url"]
+  const url = responseJson.url
   expect(url.startsWith(BASE_URL))
 
   // check name
@@ -42,7 +42,7 @@ test("expire with option e", async () => {
 
   async function testExpireParse(expire: string, expireSecs: number | null) {
     const responseJson = await upload(ctx, { c: blob1, e: expire })
-    expect(responseJson["expirationSeconds"]).toStrictEqual(expireSecs)
+    expect(responseJson.expirationSeconds).toStrictEqual(expireSecs)
   }
 
   const maxExpirationSeconds = parseExpiration(env.MAX_EXPIRATION)!
@@ -80,10 +80,10 @@ test("custom path with option n", async () => {
     c: blob1,
     n: goodName,
   })
-  expect(uploadResponseJson["url"]).toStrictEqual(`${BASE_URL}/~${goodName}`)
+  expect(uploadResponseJson.url).toStrictEqual(`${BASE_URL}/~${goodName}`)
 
   // check revisit
-  const revisitResponse = await workerFetch(ctx, uploadResponseJson["url"])
+  const revisitResponse = await workerFetch(ctx, uploadResponseJson.url)
   expect(revisitResponse.status).toStrictEqual(200)
   expect(await areBlobsEqual(await revisitResponse.blob(), blob1)).toStrictEqual(true)
 })

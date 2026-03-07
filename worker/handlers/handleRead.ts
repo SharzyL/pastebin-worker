@@ -3,8 +3,9 @@ import { getDocPage } from "../pages/docs.js"
 import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
 import { makeMarkdown } from "../pages/markdown.js"
-import { getPaste, getPasteMetadata, PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
-import { MetaResponse } from "../../shared/interfaces.js"
+import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
+import { getPaste, getPasteMetadata } from "../storage/storage.js"
+import type { MetaResponse } from "../../shared/interfaces.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 
@@ -257,7 +258,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   }
 
   if (item.httpEtag) {
-    headers["etag"] = item.httpEtag
+    headers.etag = item.httpEtag
   }
 
   if (returnFilename) {

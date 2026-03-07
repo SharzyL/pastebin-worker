@@ -1,6 +1,6 @@
 import { expect, test, vi, beforeEach, afterEach } from "vitest"
 import { addRole, areBlobsEqual, genRandomBlob, upload, workerFetch } from "./testUtils"
-import { MetaResponse } from "../../shared/interfaces"
+import type { MetaResponse } from "../../shared/interfaces"
 import { parseSize } from "../../shared/parsers"
 import { createExecutionContext, createScheduledController, env, waitOnExecutionContext } from "cloudflare:test"
 import worker from "../index"

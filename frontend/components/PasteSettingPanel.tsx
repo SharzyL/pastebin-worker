@@ -1,8 +1,8 @@
+import type { CardProps } from "@heroui/react"
 import {
   Card,
   CardBody,
   CardHeader,
-  CardProps,
   Divider,
   Input,
   mergeClasses,
@@ -18,7 +18,7 @@ import { cardOverrides, inputOverrides, radioOverrides, switchOverrides, tst } f
 
 export type UploadKind = "short" | "long" | "custom" | "manage"
 
-export type PasteSetting = {
+export interface PasteSetting {
   uploadKind: UploadKind
   expiration: string
   password: string

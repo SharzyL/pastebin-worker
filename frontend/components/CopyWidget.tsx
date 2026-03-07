@@ -1,4 +1,5 @@
-import { Button, ButtonProps } from "@heroui/react"
+import type { ButtonProps } from "@heroui/react"
+import { Button } from "@heroui/react"
 import { useRef, useState } from "react"
 import { CopyIcon, CheckIcon } from "./icons.js"
 

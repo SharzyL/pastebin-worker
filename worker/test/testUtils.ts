@@ -4,16 +4,14 @@ import { expect } from "vitest"
 import crypto from "crypto"
 
 import worker from "../index"
-import { PasteResponse } from "../../shared/interfaces"
+import type { PasteResponse } from "../../shared/interfaces"
 
 export const BASE_URL: string = env.DEPLOY_URL
 export const RAND_NAME_REGEX = /^[ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678]+$/
 
 export const staticPages = ["", "index.html", "index", "tos", "tos.html", "api", "api.html", "favicon.ico"]
 
-type FormDataBuild = {
-  [key: string]: string | Blob | { content: Blob; filename: string }
-}
+type FormDataBuild = Record<string, string | Blob | { content: Blob; filename: string }>
 
 export async function workerFetch(ctx: ExecutionContext, req: Request | string) {
   // we are not using SELF.fetch since it sometimes do not print worker log to console

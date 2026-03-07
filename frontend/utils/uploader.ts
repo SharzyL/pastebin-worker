@@ -2,8 +2,10 @@ import type { PasteSetting } from "../components/PasteSettingPanel.js"
 import type { PasteEditState } from "../components/PasteInputPanel.js"
 import { ErrorWithTitle } from "./utils.js"
 import type { PasteResponse } from "../../shared/interfaces.js"
-import { encodeKey, encrypt, EncryptionScheme, genKey } from "./encryption.js"
-import { UploadError, uploadMPU, uploadNormal, UploadOptions } from "../../shared/uploadPaste.js"
+import type { EncryptionScheme } from "./encryption.js"
+import { encodeKey, encrypt, genKey } from "./encryption.js"
+import type { UploadOptions } from "../../shared/uploadPaste.js"
+import { UploadError, uploadMPU, uploadNormal } from "../../shared/uploadPaste.js"
 
 async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Array) {
   const key = await genKey(scheme)
