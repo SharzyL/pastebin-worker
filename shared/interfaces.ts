@@ -25,3 +25,17 @@ export type MPUCreateResponse = {
   key: string
   uploadId: string
 }
+
+export type SerializedPasteData = {
+  content: string
+  metadata: MetaResponse
+  name: string
+  isBinary: boolean
+  guessedEncoding: string | null
+}
+
+declare global {
+  interface Window {
+    __PASTE_DATA__?: SerializedPasteData
+  }
+}

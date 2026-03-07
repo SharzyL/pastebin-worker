@@ -1,20 +1,15 @@
 import { NAME_REGEX, PASSWD_SEP } from "../../shared/constants.js"
 import { parseExpiration, parseExpirationReadable } from "../../shared/parsers.js"
 
-export const BaseUrl = DEPLOY_URL
-export const APIUrl = API_URL
-
-export const maxExpirationSeconds = parseExpiration(MAX_EXPIRATION)!
-export const maxExpirationReadable = parseExpirationReadable(MAX_EXPIRATION)!
-
-export class ErrorWithTitle extends Error {
-  public title: string
-
-  constructor(title: string, msg: string) {
-    super(msg)
-    this.title = title
-  }
+export function getMaxExpirationSeconds(config: Env): number {
+  return parseExpiration(config.MAX_EXPIRATION)!
 }
+
+export function getMaxExpirationReadable(config: Env): string {
+  return parseExpirationReadable(config.MAX_EXPIRATION)!
+}
+
+export { ErrorWithTitle } from "./errors.js"
 
 export function formatSize(size: number): string {
   if (!size) return "0"
@@ -29,13 +24,15 @@ export function formatSize(size: number): string {
   }
 }
 
-export function verifyExpiration(expiration: string): [boolean, string] {
+export function verifyExpiration(expiration: string, config: Env): [boolean, string] {
   const parsed = parseExpiration(expiration)
   if (parsed === null) {
     return [false, "Invalid expiration"]
   } else {
-    if (parsed > maxExpirationSeconds) {
-      return [false, `Exceed max expiration (${maxExpirationReadable})`]
+    const maxSeconds = getMaxExpirationSeconds(config)
+    const maxReadable = getMaxExpirationReadable(config)
+    if (parsed > maxSeconds) {
+      return [false, `Exceed max expiration (${maxReadable})`]
     } else {
       return [true, `Expires in ${parseExpirationReadable(expiration)!}`]
     }
@@ -52,11 +49,11 @@ export function verifyName(name: string): [boolean, string] {
   }
 }
 
-export function verifyManageUrl(url: string): [boolean, string] {
+export function verifyManageUrl(url: string, config: Env): [boolean, string] {
   try {
     const url_parsed = new URL(url)
-    if (url_parsed.origin !== BaseUrl) {
-      return [false, `URL should starts with ${BaseUrl}`]
+    if (url_parsed.origin !== config.DEPLOY_URL) {
+      return [false, `URL should starts with ${config.DEPLOY_URL}`]
     } else if (url_parsed.pathname.indexOf(PASSWD_SEP) < 0) {
       return [false, `URL should contain a colon`]
     } else {

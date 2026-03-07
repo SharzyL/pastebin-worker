@@ -14,23 +14,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "yarn"
+
+      - name: "Install pnpm"
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: "Setup"
-        run: yarn install
+        run: pnpm install
 
       - name: "Build Frontend"
-        run: yarn build:frontend
+        run: pnpm build:frontend
 
       - name: "Test"
         run: |
-          yarn fmt
-          yarn lint
-          yarn test
+          pnpm fmt
+          pnpm lint
+          pnpm test
 
       - name: "Deploy"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          yarn deploy
+          pnpm deploy

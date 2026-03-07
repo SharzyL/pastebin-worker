@@ -1,6 +1,6 @@
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalProps } from "@heroui/react"
 import React, { useState } from "react"
-import { ErrorWithTitle } from "../utils/utils.js"
+import { ErrorWithTitle } from "../utils/errors.js"
 
 export type ErrorState = {
   title: string

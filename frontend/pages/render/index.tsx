@@ -4,11 +4,12 @@ import { HeroUIProvider } from "@heroui/react"
 import { PasteBin } from "../PasteBin.js"
 
 const root = ReactDOM.createRoot(document.getElementById("root")!)
+const config = __WRANGLER_CONFIG__
 
 root.render(
   <React.StrictMode>
     <HeroUIProvider>
-      <PasteBin />
+      <PasteBin config={config} />
     </HeroUIProvider>
   </React.StrictMode>,
 )

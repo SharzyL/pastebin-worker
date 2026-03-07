@@ -11,20 +11,13 @@ import { PasteInputPanel, PasteEditState } from "../components/PasteInputPanel.j
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
 
-import {
-  verifyExpiration,
-  verifyManageUrl,
-  verifyName,
-  maxExpirationReadable,
-  BaseUrl,
-  APIUrl,
-} from "../utils/utils.js"
+import { verifyExpiration, verifyManageUrl, verifyName, getMaxExpirationReadable } from "../utils/utils.js"
 import { uploadPaste } from "../utils/uploader.js"
 import { tst } from "../utils/overrides.js"
 
 import "../style.css"
 
-export function PasteBin() {
+export function PasteBin({ config }: { config: Env }) {
   const [editorState, setEditorState] = useState<PasteEditState>({
     editKind: "edit",
     editContent: "",
@@ -33,7 +26,7 @@ export function PasteBin() {
   })
 
   const [pasteSetting, setPasteSetting] = useState<PasteSetting>({
-    expiration: DEFAULT_EXPIRATION,
+    expiration: config.DEFAULT_EXPIRATION,
     manageUrl: "",
     name: "",
     password: "",
@@ -63,10 +56,10 @@ export function PasteBin() {
       setPasteSetting({
         ...pasteSetting,
         uploadKind: "manage",
-        manageUrl: `${APIUrl}/${name}:${password}`,
+        manageUrl: `${config.DEPLOY_URL}/${name}:${password}`,
       })
 
-      let pasteUrl = `${APIUrl}/${name}`
+      let pasteUrl = `${config.DEPLOY_URL}/${name}`
       if (filename) pasteUrl = `${pasteUrl}/${filename}`
       if (ext) pasteUrl = `${pasteUrl}${ext}`
 
@@ -111,7 +104,13 @@ export function PasteBin() {
   function onStartUpload() {
     startUpload(async () => {
       try {
-        const uploaded = await uploadPaste(pasteSetting, editorState, setUploadedEncryptionKey, setLoadingProgress)
+        const uploaded = await uploadPaste(
+          pasteSetting,
+          editorState,
+          setUploadedEncryptionKey,
+          config,
+          setLoadingProgress,
+        )
         setPasteResponse(uploaded)
       } catch (e) {
         handleError("Error on Uploading Paste", e as Error)
@@ -142,13 +141,13 @@ export function PasteBin() {
       return false
     }
 
-    if (verifyExpiration(pasteSetting.expiration)[0]) {
+    if (verifyExpiration(pasteSetting.expiration, config)[0]) {
       if (pasteSetting.uploadKind === "short" || pasteSetting.uploadKind === "long") {
         return true
       } else if (pasteSetting.uploadKind === "custom") {
         return verifyName(pasteSetting.name)[0]
       } else if (pasteSetting.uploadKind === "manage") {
-        return verifyManageUrl(pasteSetting.manageUrl)[0]
+        return verifyManageUrl(pasteSetting.manageUrl, config)[0]
       } else {
         return false
       }
@@ -158,13 +157,13 @@ export function PasteBin() {
   }
 
   function canDelete(): boolean {
-    return verifyManageUrl(pasteSetting.manageUrl)[0]
+    return verifyManageUrl(pasteSetting.manageUrl, config)[0]
   }
 
   const info = (
     <div className="mx-4 lg:mx-0">
       <div className="mt-8 mb-4 relative">
-        <h1 className="text-3xl inline">{INDEX_PAGE_TITLE}</h1>
+        <h1 className="text-3xl inline">{config.INDEX_PAGE_TITLE}</h1>
         <DarkModeToggle
           modeSelection={modeSelection}
           setModeSelection={setModeSelection}
@@ -174,14 +173,14 @@ export function PasteBin() {
       <p className="my-2">An open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
         <b>Usage</b>: Paste text or file here. Upload. Share it with a URL. Or access with our{" "}
-        <Link className={tst} href={`${BaseUrl}/api`}>
+        <Link className={tst} href={`${config.DEPLOY_URL}/api`}>
           APIs
         </Link>
         .
       </p>
       <p className="my-2">
-        <b>Warning</b>: Only for temporary share <b>(max {maxExpirationReadable})</b>. Files could be deleted without
-        notice!
+        <b>Warning</b>: Only for temporary share <b>(max {getMaxExpirationReadable(config)})</b>. Files could be deleted
+        without notice!
       </p>
     </div>
   )
@@ -207,11 +206,11 @@ export function PasteBin() {
   const footer = (
     <footer className="px-3 my-4 text-center">
       <p>
-        <Link href={`${BaseUrl}/tos`} className={`d-inline-block ${tst}`}>
+        <Link href={`${config.DEPLOY_URL}/tos`} className={`d-inline-block ${tst}`}>
           Terms & Conditions
         </Link>
         {" / "}
-        <Link href={REPO} className={`d-inline-block ${tst}`}>
+        <Link href={config.REPO} className={`d-inline-block ${tst}`}>
           Repository
         </Link>
       </p>
@@ -230,6 +229,7 @@ export function PasteBin() {
         />
         <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
           <PanelSettingsPanel
+            config={config}
             className={"transition-width lg:w-1/2 w-full"}
             setting={pasteSetting}
             onSettingChange={setPasteSetting}

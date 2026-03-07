@@ -8,7 +8,6 @@ import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
-import { APIUrl } from "../utils/utils.js"
 
 describe("decrypt page", async () => {
   const scheme = "AES-GCM"
@@ -17,7 +16,12 @@ describe("decrypt page", async () => {
   const content = new Uint8Array(new TextEncoder().encode(contentString))
   const encrypted = await encrypt(scheme, key, content)
   const server = setupServer(
-    http.get(`${APIUrl}/abcd`, () => {
+    http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
+      return HttpResponse.arrayBuffer(encrypted.buffer, {
+        headers: { "X-PB-Encryption-Scheme": "AES-GCM" },
+      })
+    }),
+    http.get("/abcd", () => {
       return HttpResponse.arrayBuffer(encrypted.buffer, {
         headers: { "X-PB-Encryption-Scheme": "AES-GCM" },
       })
@@ -42,7 +46,7 @@ describe("decrypt page", async () => {
   it("decrypt correctly", async () => {
     vi.stubGlobal("location", new URL(`https://example.com/e/abcd#${await encodeKey(key)}`))
     global.URL.createObjectURL = () => ""
-    render(<DisplayPaste />)
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
 
     const main = screen.getByRole("main")
     await userEvent.click(main) // meaningless click, just ensure useEffect is done

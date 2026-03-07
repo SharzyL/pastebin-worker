@@ -6,5 +6,5 @@
     "target": "es2021",
     "jsx": "react-jsx"
   },
-  "include": ["**/*.tsx", "**/*.ts"]
+  "include": ["**/*.tsx", "**/*.ts", "../worker-configuration.d.ts"]
 }

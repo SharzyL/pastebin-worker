@@ -1,6 +1,6 @@
 import type { PasteSetting } from "../components/PasteSettingPanel.js"
 import type { PasteEditState } from "../components/PasteInputPanel.js"
-import { APIUrl, ErrorWithTitle } from "./utils.js"
+import { ErrorWithTitle } from "./utils.js"
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { encodeKey, encrypt, EncryptionScheme, genKey } from "./encryption.js"
 import { UploadError, uploadMPU, uploadNormal, UploadOptions } from "../../shared/uploadPaste.js"
@@ -20,6 +20,7 @@ export async function uploadPaste(
   pasteSetting: PasteSetting,
   editorState: PasteEditState,
   onEncryptionKeyChange: (k: string | undefined) => void, // we only generate key on upload, so need a callback of key generation
+  config: Env,
   onProgress?: (progress: number | undefined) => void,
 ): Promise<PasteResponse> {
   async function constructContent(): Promise<File> {
@@ -67,10 +68,10 @@ export async function uploadPaste(
 
   try {
     if (contentLength < 5 * 1024 * 1024) {
-      return await uploadNormal(APIUrl, options)
+      return await uploadNormal(config.DEPLOY_URL, options)
     } else {
       if (onProgress) onProgress(0)
-      return await uploadMPU(APIUrl, minChunkSize, options, (doneBytes, allBytes) => {
+      return await uploadMPU(config.DEPLOY_URL, minChunkSize, options, (doneBytes, allBytes) => {
         if (onProgress) onProgress((100 * doneBytes) / allBytes)
       })
     }

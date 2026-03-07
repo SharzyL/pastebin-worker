@@ -114,7 +114,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // when not isHead, always need to get paste unless "m"
   // when isHead, no need to get paste unless "u"
-  const shouldGetPasteContent = (!isHead && role !== "m" && role !== "d") || (isHead && role === "u")
+  const shouldGetPasteContent = (!isHead && role !== "m") || (isHead && role === "u")
 
   const item: PasteWithMetadata | null = shouldGetPasteContent
     ? await getPaste(env, name, ctx)
@@ -200,8 +200,28 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     })
   }
 
-  // handle encrypted
+  // handle display page with SSR
   if (role === "d") {
+    try {
+      // HACK: Dynamic import to avoid loading @heroui/react at test initialization
+      // @heroui/input-otp's chunked build causes module resolution issues in Workers test environment
+      // See: UPSTREAM_ISSUE.md for details
+      const { renderDisplayPage } = await import("../pages/display.js")
+      const page = await renderDisplayPage(env, name, item.paste, item.metadata)
+      if (page) {
+        return new Response(isHead ? null : page, {
+          headers: {
+            "Content-Type": `text/html;charset=UTF-8`,
+            ...pasteCacheHeader(env),
+            ...lastModifiedHeader(item.metadata),
+          },
+        })
+      }
+      // SSR skipped (encrypted file), fall through to CSR
+    } catch (e) {
+      console.error("SSR failed, falling back to CSR:", e)
+    }
+    // CSR fallback
     const pageUrl = url
     pageUrl.search = ""
     pageUrl.pathname = "/display.html"

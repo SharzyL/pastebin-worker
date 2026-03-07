@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["vite/client", "../vite-env.d.ts", "@testing-library/jest-dom"]
   },
-  "include": ["**/*.tsx", "**/*.ts"]
+  "include": ["**/*.tsx", "**/*.ts", "../../worker-configuration.d.ts"]
 }

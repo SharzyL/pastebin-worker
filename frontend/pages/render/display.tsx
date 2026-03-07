@@ -1,14 +1,27 @@
-import ReactDOM from "react-dom/client"
+import { hydrateRoot } from "react-dom/client"
 import React from "react"
 import { HeroUIProvider } from "@heroui/react"
 import { DisplayPaste } from "../DisplayPaste.js"
 
-const root = ReactDOM.createRoot(document.getElementById("root")!)
+const rootElement = document.getElementById("root")!
+const config = __WRANGLER_CONFIG__
 
-root.render(
-  <React.StrictMode>
-    <HeroUIProvider>
-      <DisplayPaste />
-    </HeroUIProvider>
-  </React.StrictMode>,
-)
+if (window.__PASTE_DATA__) {
+  hydrateRoot(
+    rootElement,
+    <React.StrictMode>
+      <HeroUIProvider>
+        <DisplayPaste config={config} />
+      </HeroUIProvider>
+    </React.StrictMode>,
+  )
+} else {
+  const { createRoot } = await import("react-dom/client")
+  createRoot(rootElement).render(
+    <React.StrictMode>
+      <HeroUIProvider>
+        <DisplayPaste config={config} />
+      </HeroUIProvider>
+    </React.StrictMode>,
+  )
+}

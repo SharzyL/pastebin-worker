@@ -11,7 +11,7 @@ import {
   Switch,
   Tooltip,
 } from "@heroui/react"
-import { BaseUrl, verifyExpiration, verifyManageUrl, verifyName } from "../utils/utils.js"
+import { verifyExpiration, verifyManageUrl, verifyName } from "../utils/utils.js"
 import React from "react"
 import { InfoIcon } from "./icons.js"
 import { cardOverrides, inputOverrides, radioOverrides, switchOverrides, tst } from "../utils/overrides.js"
@@ -31,9 +31,10 @@ export type PasteSetting = {
 interface PasteSettingPanelProps extends CardProps {
   setting: PasteSetting
   onSettingChange: (setting: PasteSetting) => void
+  config: Env
 }
 
-export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteSettingPanelProps) {
+export function PanelSettingsPanel({ setting, onSettingChange, config, ...rest }: PasteSettingPanelProps) {
   const radioClassNames = mergeClasses(radioOverrides, { labelWrapper: "ml-2.5" })
   return (
     <Card aria-label="Pastebin setting panel" classNames={cardOverrides} {...rest}>
@@ -54,9 +55,9 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
             value={setting.expiration}
             isRequired
             onValueChange={(e) => onSettingChange({ ...setting, expiration: e })}
-            isInvalid={!verifyExpiration(setting.expiration)[0]}
-            errorMessage={verifyExpiration(setting.expiration)[1]}
-            description={verifyExpiration(setting.expiration)[1]}
+            isInvalid={!verifyExpiration(setting.expiration, config)[0]}
+            errorMessage={verifyExpiration(setting.expiration, config)[1]}
+            description={verifyExpiration(setting.expiration, config)[1]}
           />
           <Input
             type="password"
@@ -74,12 +75,12 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
           value={setting.uploadKind}
           onValueChange={(v) => onSettingChange({ ...setting, uploadKind: v as UploadKind })}
         >
-          <Radio value="short" description={`Example: ${BaseUrl}/BxWH`} classNames={radioClassNames}>
+          <Radio value="short" description={`Example: ${config.DEPLOY_URL}/BxWH`} classNames={radioClassNames}>
             Generate a short random URL
           </Radio>
           <Radio
             value="long"
-            description={`Example: ${BaseUrl}/5HQWYNmjA4h44SmybeThXXAm`}
+            description={`Example: ${config.DEPLOY_URL}/5HQWYNmjA4h44SmybeThXXAm`}
             classNames={{
               description: "text-ellipsis max-w-[calc(100vw-5rem)] whitespace-nowrap overflow-hidden",
               ...radioClassNames,
@@ -87,7 +88,7 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
           >
             Generate a long random URL
           </Radio>
-          <Radio value="custom" classNames={radioClassNames} description={`Example: ${BaseUrl}/~stocking`}>
+          <Radio value="custom" classNames={radioClassNames} description={`Example: ${config.DEPLOY_URL}/~stocking`}>
             Set by your own
           </Radio>
           {setting.uploadKind === "custom" ? (
@@ -100,7 +101,7 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
               errorMessage={verifyName(setting.name)[1]}
               startContent={
                 <div className="pointer-events-none flex items-center">
-                  <span className="text-default-500 text-small w-max">{`${BaseUrl}/~`}</span>
+                  <span className="text-default-500 text-small w-max">{`${config.DEPLOY_URL}/~`}</span>
                 </div>
               }
             />
@@ -114,8 +115,8 @@ export function PanelSettingsPanel({ setting, onSettingChange, ...rest }: PasteS
               onValueChange={(m) => onSettingChange({ ...setting, manageUrl: m })}
               type="text"
               className="shrink"
-              isInvalid={!verifyManageUrl(setting.manageUrl)[0]}
-              errorMessage={verifyManageUrl(setting.manageUrl)[1]}
+              isInvalid={!verifyManageUrl(setting.manageUrl, config)[0]}
+              errorMessage={verifyManageUrl(setting.manageUrl, config)[1]}
               placeholder={`Manage URL`}
             />
           ) : null}
