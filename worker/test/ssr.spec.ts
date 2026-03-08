@@ -23,12 +23,12 @@ describe("SSR Display Page", () => {
     expect(html).toContain('<div id="root">')
     expect(html).toContain(name) // Title should contain paste name
 
-    // LIMITATION: SSR fails in Workers test environment due to @heroui/input-otp module resolution issue
-    // See: UPSTREAM_ISSUE.md and INPUT_OTP_ISSUE.md
-    // In test environment, SSR falls back to CSR (returns static display.html)
-    // In production, SSR works correctly and embeds serialized data
+    // LIMITATION: SSR fails in Workers test environment due to module resolution
+    // The input-otp package cannot be resolved in Workers runtime during dynamic import
+    // In production, SSR works correctly. In tests, it falls back to CSR.
+    // This is a known limitation of the Cloudflare Workers test environment.
 
-    // Check if SSR succeeded (has serialized data) or fell back to CSR (static HTML)
+    // Verify the page is functional (either SSR or CSR fallback)
     const hasSerializedData = html.includes("__PASTE_DATA__")
 
     if (hasSerializedData) {
@@ -36,18 +36,16 @@ describe("SSR Display Page", () => {
       expect(html).toContain("application/json")
       expect(html).toContain("window.__PASTE_DATA__")
 
-      // Extract and verify serialized data
       const match = /<script id="__PASTE_DATA__" type="application\/json">(.*?)<\/script>/.exec(html)
       expect(match).toBeTruthy()
 
       const data = JSON.parse(match![1]) as { name: string; content: string; metadata: unknown }
       expect(data.name).toBe(name)
-      expect(data.content).toBeTruthy() // Base64 encoded content
+      expect(data.content).toBeTruthy()
       expect(data.metadata).toBeTruthy()
     } else {
-      // SSR failed, fell back to CSR - this is expected in test environment
-      // Verify CSR fallback works correctly
-      expect(html).toContain("display") // Should have display.js
+      // CSR fallback - verify it loads correctly
+      expect(html).toContain("display")
       expect(html).toContain(".js")
     }
   })
