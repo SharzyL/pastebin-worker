@@ -75,3 +75,6 @@ R2_MAX_ALLOWED = "100M"
 
 # The following mimetypes will be converted to text/plain
 DISALLOWED_MIME_FOR_PASTE = ["text/html", "audio/x-mpegurl"]
+
+# Default client-side encryption setting (true/false)
+DEFAULT_CLIENT_ENCRYPTION = true

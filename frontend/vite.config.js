@@ -13,9 +13,11 @@ export default defineConfig(({ mode }) => {
   const wranglerConfigText = readFileSync(wranglerConfigPath, "utf8")
   const wranglerConfigParsed = toml.parse(wranglerConfigText)
 
-  function getVar(name) {
+  function getVar(name, defaultValue = undefined) {
     if (wranglerConfigParsed.vars !== undefined && wranglerConfigParsed.vars[name] !== undefined) {
       return wranglerConfigParsed.vars[name]
+    } else if (defaultValue !== undefined) {
+      return defaultValue
     } else {
       throw new Error(`Cannot find vars.${name} in ${wranglerConfigPath}`)
     }
@@ -42,6 +44,7 @@ export default defineConfig(({ mode }) => {
       MAX_EXPIRATION: JSON.stringify(getVar("MAX_EXPIRATION")),
       DEFAULT_EXPIRATION: JSON.stringify(getVar("DEFAULT_EXPIRATION")),
       INDEX_PAGE_TITLE: JSON.stringify(indexTitle),
+      DEFAULT_CLIENT_ENCRYPTION: getVar("DEFAULT_CLIENT_ENCRYPTION", false),
     },
     server: {
       port: 5173,

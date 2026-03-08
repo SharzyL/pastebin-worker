@@ -4,3 +4,4 @@ declare const REPO: string
 declare const MAX_EXPIRATION: string
 declare const DEFAULT_EXPIRATION: string
 declare const INDEX_PAGE_TITLE: string
+declare const DEFAULT_CLIENT_ENCRYPTION: boolean

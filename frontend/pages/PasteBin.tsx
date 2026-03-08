@@ -38,7 +38,7 @@ export function PasteBin() {
     name: "",
     password: "",
     uploadKind: "short",
-    doEncrypt: false,
+    doEncrypt: DEFAULT_CLIENT_ENCRYPTION,
   })
 
   const [pasteResponse, setPasteResponse] = useState<PasteResponse | undefined>(undefined)
