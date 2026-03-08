@@ -4,9 +4,10 @@ import { HeroUIProvider } from "@heroui/react"
 import { DisplayPasteView } from "../../frontend/pages/DisplayPasteView.js"
 import type { PasteMetadata } from "../storage/storage.js"
 import type { SerializedPasteData, MetaResponse } from "../../shared/interfaces.js"
-import { decode } from "../common.js"
+import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
 import chardet from "chardet"
+import { getAssetPaths, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE, type Manifest } from "../ssrUtils.js"
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -47,7 +48,7 @@ export async function renderDisplayPage(
   }
 
   // Skip SSR for large files (>1MB) to avoid memory/CPU overhead
-  if (metadata.sizeBytes > 1024 * 1024) {
+  if (metadata.sizeBytes > MAX_SSR_FILE_SIZE) {
     return null
   }
 
@@ -122,18 +123,7 @@ export async function renderDisplayPage(
     html += decode(value)
   }
 
-  interface ManifestEntry {
-    file: string
-    imports?: string[]
-    css?: string[]
-  }
-  type Manifest = Record<string, ManifestEntry>
-  const typedManifest = manifest as Manifest
-
-  const displayEntry = typedManifest["display.html"]
-  const jsFile = displayEntry?.file || "assets/display.js"
-  const cssImport = displayEntry?.imports?.find((i) => typedManifest[i]?.css)
-  const cssPath = (cssImport && typedManifest[cssImport]?.css?.[0]) || "assets/style.css"
+  const { jsFile, cssPath } = getAssetPaths(manifest as Manifest, "display.html")
 
   return `<!doctype html>
 <html lang="en">
@@ -141,23 +131,19 @@ export async function renderDisplayPage(
 <meta charset="UTF-8" />
 <link rel="icon" href="/favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>${env.INDEX_PAGE_TITLE} / ${name}</title>
-<script>
-(function() {
-  const stored = localStorage.getItem('darkModeSelect') || 'system';
-  const isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  const root = document.documentElement;
-  root.classList.add(isDark ? 'dark' : 'light');
-  root.style.colorScheme = isDark ? 'dark' : 'light';
-  root.style.setProperty('background-color', isDark ? '#000' : '#fff');
-  root.style.setProperty('color', isDark ? '#fff' : '#000');
-})();
-</script>
+<title>${escapeHtml(env.INDEX_PAGE_TITLE)} / ${escapeHtml(name)}</title>
 <link rel="stylesheet" href="/${cssPath}">
+<script>
+${DARK_MODE_SCRIPT}
+</script>
 </head>
 <body>
 <div id="root">${html}</div>
-<script id="__PASTE_DATA__" type="application/json">${JSON.stringify(serializedData).replace(/</g, "\\u003c")}</script>
+<script id="__PASTE_DATA__" type="application/json">${JSON.stringify(serializedData)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")}</script>
 <script>window.__PASTE_DATA__=JSON.parse(document.getElementById('__PASTE_DATA__').textContent)</script>
 <script type="module" src="/${jsFile}"></script>
 </body>

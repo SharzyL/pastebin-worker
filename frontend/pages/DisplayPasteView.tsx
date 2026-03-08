@@ -5,7 +5,6 @@ import { DownloadIcon, HomeIcon } from "../components/icons.js"
 import { CopyWidget } from "../components/CopyWidget.js"
 import { tst } from "../utils/overrides.js"
 import { highlightHTML, useHLJS } from "../utils/HighlightLoader.js"
-import { useErrorModal } from "../components/ErrorModal.js"
 import { formatSize } from "../utils/utils.js"
 
 interface DisplayPasteViewProps {
@@ -39,7 +38,6 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
 
   const indexPageTitle = config.INDEX_PAGE_TITLE || "Pastebin"
 
-  const { ErrorModal } = useErrorModal()
   const [, modeSelection, setModeSelection] = useDarkModeSelection()
   const hljs = useHLJS()
   const [downloadUrl, setDownloadUrl] = useState<string>("#")
@@ -163,7 +161,6 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
           </div>
         </div>
       </div>
-      <ErrorModal />
     </main>
   )
 }

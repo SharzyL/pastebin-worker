@@ -81,11 +81,10 @@ export function CodeEditor({
   const refTextarea = useRef<HTMLTextAreaElement | null>(null)
   const refLineNumbers = useRef<HTMLSpanElement | null>(null)
 
-  const [heightPx, setHeightPx] = useState<number>(0)
+  const lineCount = (content?.match(/\n/g)?.length || 0) + 1
+  const [heightPx, setHeightPx] = useState<number>(Math.max(lineCount * 24, 100)) // Estimate initial height for SSR
   const hljs = useHLJS()
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
-
-  const lineCount = (content?.match(/\n/g)?.length || 0) + 1
 
   function syncScroll() {
     refHighlighting.current!.scrollLeft = refTextarea.current!.scrollLeft

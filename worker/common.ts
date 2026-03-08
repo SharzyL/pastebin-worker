@@ -15,6 +15,10 @@ export function atob_utf8(value: string): string {
   )
 }
 
+export function escapeHtml(str: string): string {
+  return str.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m]!)
+}
+
 export class WorkerError extends Error {
   public statusCode: number
   constructor(statusCode: number, msg: string) {
@@ -41,19 +45,6 @@ export function genRandStr(len: number) {
     str += CHAR_GEN.charAt(Math.floor(Math.random() * numOfRand))
   }
   return str
-}
-
-export function escapeHtml(str: string): string {
-  const tagsToReplace = new Map<string, string>([
-    ["&", "&amp;"],
-    ["<", "&lt;"],
-    [">", "&gt;"],
-    ['"', "&quot"],
-    ["'", "&#x27"],
-  ])
-  return str.replace(/[&<>"']/g, function (tag): string {
-    return tagsToReplace.get(tag) || tag
-  })
 }
 
 export function isLegalUrl(url: string): boolean {

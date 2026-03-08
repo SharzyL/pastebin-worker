@@ -22,7 +22,7 @@ export function DisplayPaste({ config }: { config: Env }) {
   const [forceShowBinary, setForceShowBinary] = useState(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
-  const { showModal, handleFailedResp } = useErrorModal()
+  const { ErrorModal, showModal, handleFailedResp } = useErrorModal()
   const url = new URL(location.toString())
   const { name, ext, filename } = parsePath(url.pathname)
 
@@ -104,18 +104,21 @@ export function DisplayPaste({ config }: { config: Env }) {
   }, [])
 
   return (
-    <DisplayPasteView
-      pasteFile={pasteFile}
-      pasteContentBuffer={pasteContentBuffer}
-      pasteLang={pasteLang}
-      isFileBinary={isFileBinary}
-      guessedEncoding={guessedEncoding}
-      isDecrypted={isDecrypted}
-      forceShowBinary={forceShowBinary}
-      setForceShowBinary={setForceShowBinary}
-      isLoading={isLoading}
-      name={name}
-      config={config}
-    />
+    <>
+      <DisplayPasteView
+        pasteFile={pasteFile}
+        pasteContentBuffer={pasteContentBuffer}
+        pasteLang={pasteLang}
+        isFileBinary={isFileBinary}
+        guessedEncoding={guessedEncoding}
+        isDecrypted={isDecrypted}
+        forceShowBinary={forceShowBinary}
+        setForceShowBinary={setForceShowBinary}
+        isLoading={isLoading}
+        name={name}
+        config={config}
+      />
+      <ErrorModal />
+    </>
   )
 }

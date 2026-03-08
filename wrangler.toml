@@ -9,6 +9,11 @@ type = "Text"
 globs = [ "**/*.html", "**/*.md" ]
 fallthrough = true
 
+[[rules]]
+type = "Text"
+globs = [ "**/*.css" ]
+fallthrough = true
+
 [assets]
 directory = "dist/frontend"
 run_worker_first = true

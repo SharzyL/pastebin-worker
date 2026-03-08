@@ -1,4 +1,4 @@
-import { decode, isLegalUrl, WorkerError } from "../common.js"
+import { decode, isLegalUrl, WorkerError, escapeHtml } from "../common.js"
 import { getDocPage } from "../pages/docs.js"
 import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
@@ -8,6 +8,8 @@ import { getPaste, getPasteMetadata } from "../storage/storage.js"
 import type { MetaResponse } from "../../shared/interfaces.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
+import manifest from "../../dist/frontend/.vite/manifest.json"
+import { getAssetPaths, DARK_MODE_SCRIPT, type Manifest } from "../ssrUtils.js"
 
 type Headers = Record<string, string>
 
@@ -54,13 +56,65 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
   } else if (path.lastIndexOf("/") === 0 && path.indexOf(":") > 0) {
     path = "/index.html" // handle admin URL
   }
-  if (path.startsWith("/assets/") || path === "/favicon.ico" || path === "/index.html") {
-    if (path === "/index.html") {
-      const authResponse = verifyAuth(request, env)
-      if (authResponse !== null) {
-        return authResponse
-      }
+
+  // Handle index.html with SSR
+  if (path === "/index.html") {
+    // Auth check
+    const authResponse = verifyAuth(request, env)
+    if (authResponse !== null) {
+      return authResponse
     }
+
+    // Try SSR
+    try {
+      const { renderIndexPage } = await import("../pages/index.js")
+      const page = await renderIndexPage(env, url.pathname)
+      if (page) {
+        return new Response(page, {
+          headers: {
+            "Content-Type": "text/html;charset=UTF-8",
+            ...staticPageCacheHeader(env),
+          },
+        })
+      }
+      // SSR skipped (admin URL), continue to CSR fallback
+    } catch (e) {
+      console.error("SSR failed for index page, falling back to CSR:", e)
+    }
+
+    // CSR fallback: dynamically generate empty HTML shell
+    const { jsFile, cssPath } = getAssetPaths(manifest as Manifest, "index.html")
+
+    return new Response(
+      `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" href="/favicon.ico" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${escapeHtml(env.INDEX_PAGE_TITLE)}</title>
+<link rel="stylesheet" href="/${cssPath}">
+<script>
+${DARK_MODE_SCRIPT}
+</script>
+<script>window.__WRANGLER_CONFIG__=${JSON.stringify(env)}</script>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/${jsFile}"></script>
+</body>
+</html>`,
+      {
+        headers: {
+          "Content-Type": "text/html;charset=UTF-8",
+          ...staticPageCacheHeader(env),
+        },
+      },
+    )
+  }
+
+  // Handle other static assets
+  if (path.startsWith("/assets/") || path === "/favicon.ico") {
     const assetsUrl = url
     assetsUrl.pathname = path
     const resp = await env.ASSETS.fetch(assetsUrl)

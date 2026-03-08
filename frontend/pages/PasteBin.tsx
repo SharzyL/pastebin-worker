@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 
 import { Button, Link } from "@heroui/react"
 
@@ -49,6 +49,9 @@ export function PasteBin({ config }: { config: Env }) {
 
   // handle admin URL
   useEffect(() => {
+    // SSR environment check
+    if (typeof window === "undefined") return
+
     // TODO: do not fetch paste for a large file paste
     const pathname = location.pathname
     // const pathname = new URL("http://localhost:8787/ds2W:ShNkSKdf5rZypdcJEcAdFmw3").pathname
