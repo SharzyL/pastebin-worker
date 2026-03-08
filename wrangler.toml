@@ -6,12 +6,7 @@ main = "worker/index.ts"
 
 [[rules]]
 type = "Text"
-globs = [ "**/*.html", "**/*.md" ]
-fallthrough = true
-
-[[rules]]
-type = "Text"
-globs = [ "**/*.css" ]
+globs = [ "**/*.html", "**/*.md", "**/*.css" ]
 fallthrough = true
 
 [assets]

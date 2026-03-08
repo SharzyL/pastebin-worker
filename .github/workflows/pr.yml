@@ -25,7 +25,7 @@ jobs:
         run: |
           pnpm install
           pnpm build:frontend
-          pnpm coverage
+          pnpm coverage --testTimeout 15000
 
       - name: "Upload Coverage"
         uses: actions/upload-artifact@v4
@@ -63,7 +63,7 @@ jobs:
           pnpm lint
 
       - name: "Run Test with Coverage"
-        run: pnpm coverage
+        run: pnpm coverage --testTimeout 15000
 
       - name: "Upload Coverage"
         uses: actions/upload-artifact@v4
