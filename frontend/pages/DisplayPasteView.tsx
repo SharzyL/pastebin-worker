@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Button, CircularProgress, Link, Tooltip } from "@heroui/react"
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { DownloadIcon, HomeIcon } from "../components/icons.js"
@@ -94,21 +94,23 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
               {isDecrypted === "decrypted" ? " (Decrypted)" : isDecrypted === "encrypted" ? " (Encrypted)" : ""}
             </span>
           </h1>
-          {showFileContent && (
-            <Tooltip content={`Copy to clipboard`}>
-              <CopyWidget className={buttonClasses} getCopyContent={() => pasteStringContent!} />
-            </Tooltip>
-          )}
-          {pasteFile && (
-            <Tooltip content={`Download as file`}>
-              <Button aria-label="Download" isIconOnly className={buttonClasses}>
-                <a href={downloadUrl} download={pasteFile.name}>
-                  <DownloadIcon className="size-6 inline" />
-                </a>
-              </Button>
-            </Tooltip>
-          )}
-          <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
+          <div className="flex flex-row gap-2 items-center">
+            <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
+            {showFileContent && (
+              <Tooltip content={`Copy to clipboard`}>
+                <CopyWidget className={buttonClasses} getCopyContent={() => pasteStringContent!} />
+              </Tooltip>
+            )}
+            {pasteFile && (
+              <Tooltip content={`Download as file`}>
+                <Button aria-label="Download" isIconOnly className={buttonClasses}>
+                  <a href={downloadUrl} download={pasteFile.name}>
+                    <DownloadIcon className="size-6 inline" />
+                  </a>
+                </Button>
+              </Tooltip>
+            )}
+          </div>
         </div>
         <div className="my-4">
           <div className={`w-full bg-default-100 rounded-lg p-3 relative ${tst}`}>

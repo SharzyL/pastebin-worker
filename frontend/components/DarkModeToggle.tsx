@@ -19,7 +19,12 @@ export function useDarkModeSelection(): [
   ModeSelection | undefined,
   React.Dispatch<React.SetStateAction<ModeSelection | undefined>>,
 ] {
-  const [modeSelection, setModeSelection] = useState<ModeSelection | undefined>(undefined)
+  const [modeSelection, setModeSelection] = useState<ModeSelection | undefined>(() => {
+    if (typeof window === "undefined") return "system"
+    const item = localStorage.getItem("darkModeSelect")
+    if (item && modeSelections.includes(item)) return item
+    return "system"
+  })
 
   const isSystemDark = useSyncExternalStore<boolean>(
     (callBack) => {
@@ -41,30 +46,15 @@ export function useDarkModeSelection(): [
     }
   }, [modeSelection])
 
-  useEffect(() => {
-    const item = localStorage.getItem("darkModeSelect")
-    let storedSelect: ModeSelection | undefined
-    if (item !== null) {
-      if (item && modeSelections.includes(item)) {
-        storedSelect = item
-      } else {
-        storedSelect = "system"
-      }
-    } else {
-      storedSelect = "system"
-    }
-    setModeSelection(storedSelect)
-  }, [])
-
   const isDark = modeSelection === undefined || modeSelection === "system" ? isSystemDark : modeSelection === "dark"
 
   useEffect(() => {
     if (isDark) {
-      document.body.classList.remove("light")
-      document.body.classList.add("dark")
+      document.documentElement.classList.remove("light")
+      document.documentElement.classList.add("dark")
     } else {
-      document.body.classList.remove("dark")
-      document.body.classList.add("light")
+      document.documentElement.classList.remove("dark")
+      document.documentElement.classList.add("light")
     }
   }, [isDark])
 
@@ -77,20 +67,42 @@ interface MyComponentProps extends ButtonProps {
 }
 
 export function DarkModeToggle({ modeSelection, setModeSelection, className, ...rest }: MyComponentProps) {
-  return modeSelection ? (
-    <Tooltip content={`Toggle dark mode (currently ${modeSelection} mode)`}>
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const currentMode = modeSelection || "system"
+
+  if (!mounted) {
+    return (
       <Button
         isIconOnly
-        className={`mr-2 rounded-full ${tst} bg-background hover:bg-default-100` + " " + className}
+        className={`rounded-full ${tst} bg-background hover:bg-default-100` + " " + className}
+        aria-label="Toggle dark mode"
+        style={{ visibility: "hidden" }}
+        {...rest}
+      >
+        {icons.system}
+      </Button>
+    )
+  }
+
+  return (
+    <Tooltip content={`Toggle dark mode (currently ${currentMode} mode)`}>
+      <Button
+        isIconOnly
+        className={`rounded-full ${tst} bg-background hover:bg-default-100` + " " + className}
         aria-label="Toggle dark mode"
         onPress={() => {
-          const newSelected = modeSelections[(modeSelections.indexOf(modeSelection) + 1) % modeSelections.length]
+          const newSelected = modeSelections[(modeSelections.indexOf(currentMode) + 1) % modeSelections.length]
           setModeSelection(newSelected)
         }}
         {...rest}
       >
-        {icons[modeSelection]}
+        {icons[currentMode]}
       </Button>
     </Tooltip>
-  ) : null
+  )
 }

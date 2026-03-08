@@ -142,6 +142,17 @@ export async function renderDisplayPage(
 <link rel="icon" href="/favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${env.INDEX_PAGE_TITLE} / ${name}</title>
+<script>
+(function() {
+  const stored = localStorage.getItem('darkModeSelect') || 'system';
+  const isDark = stored === 'dark' || (stored === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const root = document.documentElement;
+  root.classList.add(isDark ? 'dark' : 'light');
+  root.style.colorScheme = isDark ? 'dark' : 'light';
+  root.style.setProperty('background-color', isDark ? '#000' : '#fff');
+  root.style.setProperty('color', isDark ? '#fff' : '#000');
+})();
+</script>
 <link rel="stylesheet" href="/${cssPath}">
 </head>
 <body>
