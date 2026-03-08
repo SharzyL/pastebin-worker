@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import React, { useEffect, useState, useSyncExternalStore } from "react"
-import type { ButtonProps } from "@heroui/react"
-import { Button, Tooltip } from "@heroui/react"
+import type { ButtonProps } from "./ui/index.js"
+import { Button, Tooltip } from "./ui/index.js"
 
 import { ComputerIcon, MoonIcon, SunIcon } from "./icons.js"
 import { tst } from "../utils/overrides.js"
@@ -79,7 +79,9 @@ export function DarkModeToggle({ modeSelection, setModeSelection, className, ...
     return (
       <Button
         isIconOnly
-        className={`rounded-full ${tst} bg-background hover:bg-default-100` + " " + className}
+        size="sm"
+        variant="light"
+        className={`${tst}` + " " + className}
         aria-label="Toggle dark mode"
         style={{ visibility: "hidden" }}
         {...rest}
@@ -93,7 +95,9 @@ export function DarkModeToggle({ modeSelection, setModeSelection, className, ...
     <Tooltip content={`Toggle dark mode (currently ${currentMode} mode)`}>
       <Button
         isIconOnly
-        className={`rounded-full ${tst} bg-background hover:bg-default-100` + " " + className}
+        size="sm"
+        variant="light"
+        className={`${tst}` + " " + className}
         aria-label="Toggle dark mode"
         onPress={() => {
           const newSelected = modeSelections[(modeSelections.indexOf(currentMode) + 1) % modeSelections.length]

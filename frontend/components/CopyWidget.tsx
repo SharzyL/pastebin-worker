@@ -1,5 +1,5 @@
-import type { ButtonProps } from "@heroui/react"
-import { Button } from "@heroui/react"
+import type { ButtonProps } from "./ui/index.js"
+import { Button } from "./ui/index.js"
 import { useRef, useState } from "react"
 import { CopyIcon, CheckIcon } from "./icons.js"
 
@@ -27,7 +27,15 @@ export function CopyWidget({ className, getCopyContent, ...rest }: CopyIconProps
   }
 
   return (
-    <Button isIconOnly aria-label="Copy" className={className} onPress={onCopy} {...rest}>
+    <Button
+      isIconOnly
+      size="sm"
+      variant="light"
+      aria-label="Copy"
+      className={`focus:ring-0 hover:bg-default-200 ${className}`}
+      onPress={onCopy}
+      {...rest}
+    >
       {hasIssuedCopies ? <CheckIcon className="size-6" /> : <CopyIcon className="size-6" />}
     </Button>
   )

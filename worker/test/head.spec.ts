@@ -1,5 +1,5 @@
 import { expect, test, it, describe } from "vitest"
-import { addRole, genRandomBlob, upload, workerFetch } from "./testUtils"
+import { addRole, genRandomBlob, upload, workerFetch } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
 
 test("HEAD", async () => {

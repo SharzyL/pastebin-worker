@@ -1,5 +1,5 @@
 import { test, expect, describe } from "vitest"
-import { workerFetch, upload, BASE_URL } from "./testUtils"
+import { workerFetch, upload, BASE_URL } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
 
 describe("SSR Display Page", () => {

@@ -1,4 +1,4 @@
-import type { CardProps } from "@heroui/react"
+import type { CardProps } from "./ui/index.js"
 import {
   Card,
   CardBody,
@@ -10,7 +10,7 @@ import {
   RadioGroup,
   Switch,
   Tooltip,
-} from "@heroui/react"
+} from "./ui/index.js"
 import { verifyExpiration, verifyManageUrl, verifyName } from "../utils/utils.js"
 import React from "react"
 import { InfoIcon } from "./icons.js"
@@ -45,10 +45,8 @@ export function PanelSettingsPanel({ setting, onSettingChange, config, ...rest }
           <Input
             type="text"
             label="Expiration"
-            // to avoid duplicated name, see https://github.com/adobe/react-spectrum/discussions/8037
-            aria-labelledby=""
             classNames={{
-              base: "basis-80",
+              base: "basis-40",
               ...inputOverrides,
             }}
             defaultValue="7d"
@@ -62,16 +60,18 @@ export function PanelSettingsPanel({ setting, onSettingChange, config, ...rest }
           <Input
             type="password"
             label="Password"
-            aria-labelledby=""
             value={setting.password}
             onValueChange={(p) => onSettingChange({ ...setting, password: p })}
-            classNames={inputOverrides}
+            classNames={{
+              base: "flex-1",
+              ...inputOverrides,
+            }}
             placeholder={"Generated randomly"}
             description="Used to update/delete your paste"
           />
         </div>
         <RadioGroup
-          className="gap-4 mb-3 w-full"
+          className="mb-3 w-full"
           value={setting.uploadKind}
           onValueChange={(v) => onSettingChange({ ...setting, uploadKind: v as UploadKind })}
         >

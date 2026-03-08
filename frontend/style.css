@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@plugin "./hero-theme.ts";
-@source '../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -10,18 +8,74 @@
     "Noto Color Emoji";
   --font-mono:
     "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --color-background: #ffffff;
+  --color-foreground: #11181c;
+  --color-content1: #ffffff;
+  --color-default-100: #f4f4f5;
+  --color-default-200: #e4e4e7;
+  --color-default-300: #d4d4d8;
+  --color-default-400: #a1a1aa;
+  --color-default-500: #71717a;
+  --color-default-700: #3f3f46;
+  --color-divider: #e4e4e7;
+  --color-primary: #006fee;
+  --color-primary-50: #e6f1fe;
+  --color-primary-100: #cce3fd;
+  --color-primary-foreground: #ffffff;
+  --color-success: #17c964;
+  --color-success-50: #e8faf0;
+  --color-success-100: #d1f4e0;
+  --color-danger: #f31260;
+
+  --radius-medium: 0.75rem;
+}
+
+.dark {
+  --color-background: #000000;
+  --color-foreground: #ecedee;
+  --color-content1: #18181b;
+  --color-default-100: #27272a;
+  --color-default-200: #3f3f46;
+  --color-default-300: #52525b;
+  --color-default-400: #71717a;
+  --color-default-500: #a1a1aa;
+  --color-default-700: #d4d4d8;
+  --color-divider: #3f3f46;
+  --color-primary: #bef264;
+  --color-primary-50: #1a2e0a;
+  --color-primary-100: #2d4a14;
+  --color-primary-foreground: #000000;
+  --color-success: #17c964;
+  --color-success-50: #0a2818;
+  --color-success-100: #0f3d24;
+  --color-danger: #f31260;
+}
+
+.shadow-medium {
+  box-shadow:
+    rgba(0, 0, 0, 0.03) 0px 0px 15px 0px,
+    rgba(0, 0, 0, 0.08) 0px 2px 30px 0px,
+    rgba(0, 0, 0, 0.3) 0px 0px 1px 0px;
+}
+
+.dark .shadow-medium {
+  box-shadow:
+    rgba(0, 0, 0, 0.06) 0px 0px 15px 0px,
+    rgba(0, 0, 0, 0.22) 0px 2px 30px 0px,
+    rgba(255, 255, 255, 0.15) 0px 0px 1px 0px inset;
 }
 
 .color-tst {
   transition-property: background-color, color, border-color;
-  transition-duration: var(--default-transition-duration);
+  transition-duration: 150ms;
 }
 
 @layer utilities {
-  .\!color-tst,
-  .\!color-tst-grandchild > div > div {
+  .color-tst-important,
+  .color-tst-grandchild > div > div {
     transition-property: background-color, color, border-color;
-    transition-duration: var(--default-transition-duration) !important;
+    transition-duration: 150ms !important;
   }
 }
 
@@ -37,15 +91,6 @@
   padding-right: 0.5em;
 }
 
-/* we need some hacks to handle elements outside render root, e.g. popovers */
-/* see https://github.com/heroui-inc/heroui/issues/4571 */
-.dark,
-.light {
-  color: hsl(var(--heroui-foreground));
-  background-color: hsl(var(--heroui-background));
-}
-
-/* https://stackoverflow.com/questions/43492826/why-does-the-browser-not-render-a-line-break-caused-by-a-trailing-newline-charac */
 pre::after {
   content: "\A";
 }

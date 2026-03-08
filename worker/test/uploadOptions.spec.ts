@@ -8,11 +8,11 @@ import {
   upload,
   uploadExpectStatus,
   workerFetch,
-} from "./testUtils"
+} from "./testUtils.js"
 import { createExecutionContext, env } from "cloudflare:test"
-import type { MetaResponse } from "../../shared/interfaces"
-import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants"
-import { parseExpiration } from "../../shared/parsers"
+import type { MetaResponse } from "../../shared/interfaces.js"
+import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
+import { parseExpiration } from "../../shared/parsers.js"
 
 test("privacy url with option p", async () => {
   const blob1 = genRandomBlob(1024)

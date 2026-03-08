@@ -1,8 +1,8 @@
 import { expect, test, describe, it, beforeEach, vi, afterEach } from "vitest"
-import { addRole, upload, workerFetch } from "./testUtils"
+import { addRole, upload, workerFetch } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
-import type { MetaResponse } from "../../shared/interfaces"
-import { genRandStr } from "../common"
+import type { MetaResponse } from "../../shared/interfaces.js"
+import { genRandStr } from "../common.js"
 
 const testMd = `
 # Header 1

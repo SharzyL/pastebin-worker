@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Button, CircularProgress, Link, Tooltip } from "@heroui/react"
+import { Button, CircularProgress, Link, Tooltip } from "../components/ui/index.js"
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { DownloadIcon, HomeIcon } from "../components/icons.js"
 import { CopyWidget } from "../components/CopyWidget.js"
@@ -9,7 +9,7 @@ import { formatSize } from "../utils/utils.js"
 
 interface DisplayPasteViewProps {
   pasteFile?: File
-  pasteContentBuffer?: ArrayBuffer
+  pasteContentBuffer?: Uint8Array
   pasteLang?: string
   isFileBinary: boolean
   guessedEncoding: string | null
@@ -71,7 +71,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   )
 
   const lineNumOffset = `${Math.floor(Math.log10(pasteLineCount)) + 3}ch`
-  const buttonClasses = `rounded-full bg-background hover:bg-default-100 ${tst}`
+  const buttonClasses = `${tst}`
 
   return (
     <main
@@ -81,7 +81,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
         <div className="flex flex-row my-4 items-center justify-between">
           <h1 className="text-xl md:text-2xl grow inline-flex items-baseline">
             <Link href="/" className="text-foreground-500 text-[length:inherited]">
-              <Button isIconOnly aria-label={indexPageTitle} className={buttonClasses + " md:hidden"}>
+              <Button isIconOnly variant="light" aria-label={indexPageTitle} className={buttonClasses + " md:hidden"}>
                 <HomeIcon className="size-6" />
               </Button>
               <span className="hidden md:inline">{indexPageTitle}</span>
@@ -96,12 +96,12 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
             {showFileContent && (
               <Tooltip content={`Copy to clipboard`}>
-                <CopyWidget className={buttonClasses} getCopyContent={() => pasteStringContent!} />
+                <CopyWidget variant="light" className={buttonClasses} getCopyContent={() => pasteStringContent!} />
               </Tooltip>
             )}
             {pasteFile && (
               <Tooltip content={`Download as file`}>
-                <Button aria-label="Download" isIconOnly className={buttonClasses}>
+                <Button aria-label="Download" isIconOnly variant="light" className={buttonClasses}>
                   <a href={downloadUrl} download={pasteFile.name}>
                     <DownloadIcon className="size-6 inline" />
                   </a>

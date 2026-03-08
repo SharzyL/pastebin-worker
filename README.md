@@ -133,4 +133,5 @@ Remember to run eslint checks and prettier before commiting your code.
 ```console
 $ pnpm fmt
 $ pnpm lint
+$ pnpm typecheck
 ```

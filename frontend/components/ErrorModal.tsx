@@ -1,5 +1,5 @@
-import type { ModalProps } from "@heroui/react"
-import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "@heroui/react"
+import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "./ui/index.js"
+import type { ModalProps } from "./ui/index.js"
 import React, { useState } from "react"
 import { ErrorWithTitle } from "../utils/errors.js"
 
@@ -9,7 +9,7 @@ export interface ErrorState {
   isOpen: boolean
 }
 
-type ErrorModalProps = Omit<ModalProps, "children">
+type ErrorModalProps = Partial<Omit<ModalProps, "children" | "isOpen" | "onClose">>
 
 export function useErrorModal() {
   const [errorState, setErrorState] = useState<ErrorState>({ isOpen: false, content: "", title: "" })
@@ -38,7 +38,7 @@ export function useErrorModal() {
       setErrorState({ isOpen: false, content: "", title: "" })
     }
     return (
-      <Modal isOpen={errorState.isOpen} state={errorState} onClose={onClose} {...rest}>
+      <Modal isOpen={errorState.isOpen} onClose={onClose} {...rest}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">{errorState.title}</ModalHeader>
           <ModalBody>

@@ -1,6 +1,5 @@
 import { renderToReadableStream } from "react-dom/server.edge"
 import React from "react"
-import { HeroUIProvider } from "@heroui/react"
 import { DisplayPasteView } from "../../frontend/pages/DisplayPasteView.js"
 import type { PasteMetadata } from "../storage/storage.js"
 import type { SerializedPasteData, MetaResponse } from "../../shared/interfaces.js"
@@ -93,25 +92,21 @@ export async function renderDisplayPage(
   const reactElement = React.createElement(
     React.StrictMode,
     null,
-    React.createElement(
-      HeroUIProvider,
-      null,
-      React.createElement(DisplayPasteView, {
-        pasteFile,
-        pasteContentBuffer: content,
-        pasteLang: metadata.highlightLanguage,
-        isFileBinary: isBinary,
-        guessedEncoding: encoding,
-        isDecrypted: "not encrypted",
-        forceShowBinary: false,
-        setForceShowBinary: () => {
-          // SSR: no-op
-        },
-        isLoading: false,
-        name,
-        config,
-      }),
-    ),
+    React.createElement(DisplayPasteView, {
+      pasteFile,
+      pasteContentBuffer: new Uint8Array(content),
+      pasteLang: metadata.highlightLanguage,
+      isFileBinary: isBinary,
+      guessedEncoding: encoding,
+      isDecrypted: "not encrypted",
+      forceShowBinary: false,
+      setForceShowBinary: () => {
+        // SSR: no-op
+      },
+      isLoading: false,
+      name,
+      config,
+    }),
   )
 
   const stream = await renderToReadableStream(reactElement)
@@ -120,7 +115,7 @@ export async function renderDisplayPage(
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
-    html += decode(value)
+    html += decode(value.buffer as ArrayBuffer)
   }
 
   const { jsFile, cssPath } = getAssetPaths(manifest as Manifest, "display.html")

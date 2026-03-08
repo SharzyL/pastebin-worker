@@ -1,10 +1,10 @@
-import { uploadMPU } from "../../shared/uploadPaste"
+import { uploadMPU } from "../../shared/uploadPaste.js"
 import { vi, test, describe, it, expect, afterAll, beforeEach } from "vitest"
 import { createExecutionContext } from "cloudflare:test"
-import { addRole, areBlobsEqual, BASE_URL, genRandomBlob, workerFetch } from "./testUtils"
-import { PRIVATE_PASTE_NAME_LEN } from "../../shared/constants"
-import { parsePath } from "../../shared/parsers"
-import type { MetaResponse } from "../../shared/interfaces"
+import { addRole, areBlobsEqual, BASE_URL, genRandomBlob, workerFetch } from "./testUtils.js"
+import { PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
+import { parsePath } from "../../shared/parsers.js"
+import type { MetaResponse } from "../../shared/interfaces.js"
 
 const ctx = createExecutionContext()
 beforeEach(() => {

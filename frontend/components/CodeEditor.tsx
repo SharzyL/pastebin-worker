@@ -1,7 +1,5 @@
-// inspired by https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
-
-import React, { useEffect, useRef, useState } from "react"
-import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "@heroui/react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/index.js"
 
 import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
 import { useHLJS, highlightHTML } from "../utils/HighlightLoader.js"
@@ -41,7 +39,7 @@ function formatTabSetting(s: TabSetting, forHuman: boolean) {
 }
 
 function parseTabSetting(s: string): TabSetting | undefined {
-  const match = /^(tab|space) ([24])$/.exec(s)
+  const match = /^(tab|space) ([248])$/.exec(s)
   if (match) {
     return { char: match[1] as TabSetting["char"], width: parseInt(match[2]) as TabSetting["width"] }
   } else {
@@ -59,7 +57,7 @@ const tabSettings: TabSetting[] = [
 ]
 
 function handleNewLines(str: string): string {
-  if (str.charAt(-1) === "\n") {
+  if (str.endsWith("\n")) {
     str += " "
   }
   return str
@@ -140,6 +138,7 @@ export function CodeEditor({
     <div className={className} {...rest}>
       <div className={"mb-2 gap-2 flex flex-row" + " "}>
         <Input
+          className="flex-1"
           classNames={inputOverrides}
           type={"text"}
           label={"File name"}
@@ -148,7 +147,7 @@ export function CodeEditor({
           onValueChange={setFilename}
         />
         <Autocomplete
-          className={"max-w-[10em]"}
+          className={"max-w-[8em]"}
           classNames={autoCompleteOverrides}
           label={"Language"}
           size={"sm"}
@@ -156,19 +155,25 @@ export function CodeEditor({
           // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
           selectedKey={hljs && lang && hljs.listLanguages().includes(lang) ? lang : ""}
           onSelectionChange={(key) => {
-            setLang((key as string) || undefined) // when key is empty string, convert back to undefined
+            setLang(key || undefined) // when key is empty string, convert back to undefined
           }}
         >
-          {(language) => <AutocompleteItem key={language.key}>{language.key}</AutocompleteItem>}
+          {(language: { key: string }) => (
+            <AutocompleteItem key={language.key} value={language.key}>
+              {language.key}
+            </AutocompleteItem>
+          )}
         </Autocomplete>
         <Select
           size={"sm"}
           label={"Indent With"}
-          className={"max-w-[10em] text-foreground"}
+          className={"w-[6em] text-foreground"}
           classNames={selectOverrides}
           selectedKeys={[formatTabSetting(tabSetting, false)]}
           onSelectionChange={(s) => {
-            setTabSettings(parseTabSetting(s.currentKey!)!)
+            const key = Array.from(s)[0]
+            const parsed = parseTabSetting(key)
+            if (parsed) setTabSettings(parsed)
           }}
         >
           {tabSettings.map((s) => (
@@ -196,9 +201,13 @@ export function CodeEditor({
               }
               style={{ height: `${heightPx}px` }}
             >
-              {Array.from({ length: lineCount }, (_, idx) => {
-                return <span key={idx} />
-              })}
+              {useMemo(
+                () =>
+                  Array.from({ length: lineCount }, (_, idx) => {
+                    return <span key={idx} />
+                  }),
+                [lineCount],
+              )}
             </span>
           </div>
           <textarea

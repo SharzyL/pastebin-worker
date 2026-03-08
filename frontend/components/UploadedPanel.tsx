@@ -1,7 +1,7 @@
 import React from "react"
 
-import type { CardProps } from "@heroui/react"
-import { Card, CardBody, CardHeader, CircularProgress, Divider, Input, mergeClasses } from "@heroui/react"
+import type { CardProps } from "./ui/index.js"
+import { Card, CardBody, CardHeader, CircularProgress, Divider, Input, mergeClasses } from "./ui/index.js"
 
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { tst } from "../utils/overrides.js"
@@ -32,9 +32,8 @@ export function UploadedPanel({
   encryptionKey,
   ...rest
 }: UploadedPanelProps) {
-  const copyWidgetClassNames = `bg-transparent ${tst} translate-y-[10%]`
+  const copyWidgetClassNames = `${tst}`
   const inputProps = {
-    "aria-labelledby": "",
     readOnly: true,
     className: "mb-2",
   }
@@ -49,7 +48,7 @@ export function UploadedPanel({
             <CircularProgress
               aria-label={"Loading..."}
               value={loadingProgress}
-              className={"absolute top-[50%] left-[50%] translate-[-50%]"}
+              className={"absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"}
             />
           </div>
         ) : (
@@ -59,10 +58,11 @@ export function UploadedPanel({
                 {...inputProps}
                 label={"Display URL"}
                 color={encryptionKey ? "success" : "default"}
+                className={encryptionKey ? "mb-2 [&_input]:bg-success-50" : "mb-2"}
                 value={makeDecryptionUrl(pasteResponse.url, encryptionKey)}
                 endContent={
                   <CopyWidget
-                    className={copyWidgetClassNames}
+                    className={encryptionKey ? `${copyWidgetClassNames} hover:bg-success-100` : copyWidgetClassNames}
                     getCopyContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
                   />
                 }

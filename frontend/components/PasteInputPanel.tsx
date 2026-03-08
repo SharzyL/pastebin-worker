@@ -1,5 +1,5 @@
-import type { CardProps } from "@heroui/react"
-import { Card, CardBody, Tab, Tabs } from "@heroui/react"
+import type { CardProps } from "./ui/index.js"
+import { Card, CardBody, Tab, Tabs } from "./ui/index.js"
 import type { DragEvent } from "react"
 import { useRef, useState } from "react"
 import { formatSize } from "../utils/utils.js"
@@ -52,7 +52,7 @@ export function PasteInputPanel({ isPasteLoading, state, onStateChange, ...rest 
         <Tabs
           variant="underlined"
           classNames={{
-            tabList: `gap-2 w-full px-2 py-0 border-divider`,
+            tabList: `gap-2 w-full py-0 border-divider mb-2 -ml-1`,
             cursor: `w-[80%] ${tst}`,
             tab: `max-w-fit px-2 h-8 px-2`,
             panel: "pb-1",

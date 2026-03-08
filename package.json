@@ -18,6 +18,7 @@
     "test": "vitest",
     "fmt": "prettier --write .",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "coverage": "vitest run --coverage"
   },
   "author": "SharzyL <me@sharzy.in>",
@@ -53,8 +54,6 @@
     "printWidth": 120
   },
   "dependencies": {
-    "@heroui/react": "2.8.9",
-    "@heroui/theme": "^2.4.26",
     "@mjackson/multipart-parser": "^0.8.2",
     "@tailwindcss/vite": "^4.2.1",
     "@types/bcrypt": "^6.0.0",

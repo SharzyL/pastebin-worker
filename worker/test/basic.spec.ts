@@ -1,6 +1,6 @@
 import { test, it, expect, describe } from "vitest"
 
-import { genRandStr } from "../common"
+import { genRandStr } from "../common.js"
 
 import {
   genRandomBlob,
@@ -12,10 +12,10 @@ import {
   uploadExpectStatus,
   staticPages,
   addRole,
-} from "./testUtils"
+} from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
-import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN } from "../../shared/constants"
-import { parsePath } from "../../shared/parsers"
+import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN } from "../../shared/constants.js"
+import { parsePath } from "../../shared/parsers.js"
 
 describe("upload", () => {
   const blob1 = genRandomBlob(1024)

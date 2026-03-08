@@ -1,9 +1,9 @@
 import { expect, test, vi, beforeEach, afterEach } from "vitest"
-import { addRole, areBlobsEqual, genRandomBlob, upload, workerFetch } from "./testUtils"
-import type { MetaResponse } from "../../shared/interfaces"
-import { parseSize } from "../../shared/parsers"
+import { addRole, areBlobsEqual, genRandomBlob, upload, workerFetch } from "./testUtils.js"
+import type { MetaResponse } from "../../shared/interfaces.js"
+import { parseSize } from "../../shared/parsers.js"
 import { createExecutionContext, createScheduledController, env, waitOnExecutionContext } from "cloudflare:test"
-import worker from "../index"
+import worker from "../index.js"
 
 beforeEach(vi.useFakeTimers)
 afterEach(vi.useRealTimers)

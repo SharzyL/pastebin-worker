@@ -32,7 +32,7 @@ export async function uploadPaste(
       }
       if (pasteSetting.doEncrypt) {
         const { key, ciphertext } = await genAndEncrypt(encryptionScheme, await editorState.file.bytes())
-        const file = new File([ciphertext], editorState.file.name)
+        const file = new File([ciphertext as BlobPart], editorState.file.name)
         onEncryptionKeyChange(key)
         return file
       } else {
@@ -46,7 +46,7 @@ export async function uploadPaste(
       if (pasteSetting.doEncrypt) {
         const { key, ciphertext } = await genAndEncrypt(encryptionScheme, editorState.editContent)
         onEncryptionKeyChange(key)
-        return new File([ciphertext], editorState.editFilename || "")
+        return new File([ciphertext as BlobPart], editorState.editFilename || "")
       } else {
         onEncryptionKeyChange(undefined)
         return new File([editorState.editContent], editorState.editFilename || "")

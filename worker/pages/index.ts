@@ -1,6 +1,5 @@
 import { renderToReadableStream } from "react-dom/server.edge"
 import React from "react"
-import { HeroUIProvider } from "@heroui/react"
 import { PasteBin } from "../../frontend/pages/PasteBin.js"
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
@@ -25,11 +24,7 @@ export async function renderIndexPage(env: Env, pathname: string): Promise<strin
     INDEX_PAGE_TITLE: env.INDEX_PAGE_TITLE,
   } as Env
 
-  const reactElement = React.createElement(
-    React.StrictMode,
-    null,
-    React.createElement(HeroUIProvider, null, React.createElement(PasteBin, { config })),
-  )
+  const reactElement = React.createElement(React.StrictMode, null, React.createElement(PasteBin, { config }))
 
   // Render to HTML stream
   const stream = await renderToReadableStream(reactElement)
@@ -38,7 +33,7 @@ export async function renderIndexPage(env: Env, pathname: string): Promise<strin
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
-    html += decode(value)
+    html += decode(value.buffer as ArrayBuffer)
   }
 
   // Get resource paths from manifest

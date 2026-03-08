@@ -14,7 +14,7 @@ const utf8CompatibleEncodings = ["UTF-8", "ASCII", "ISO-8859-1"]
 
 export function DisplayPaste({ config }: { config: Env }) {
   const [pasteFile, setPasteFile] = useState<File | undefined>(undefined)
-  const [pasteContentBuffer, setPasteContentBuffer] = useState<ArrayBuffer | undefined>(undefined)
+  const [pasteContentBuffer, setPasteContentBuffer] = useState<Uint8Array | undefined>(undefined)
   const [pasteLang, setPasteLang] = useState<string | undefined>(undefined)
   const [isFileBinary, setFileBinary] = useState(false)
   const [guessedEncoding, setGuessedEncoding] = useState<string | null>(null)
@@ -64,7 +64,7 @@ export function DisplayPaste({ config }: { config: Env }) {
 
           const keyString = url.hash.slice(1)
           if (scheme === null || keyString.length === 0) {
-            setPasteFile(new File([respBytes], inferredFilename || name))
+            setPasteFile(new File([respBytes as BlobPart], inferredFilename || name))
             setPasteContentBuffer(respBytes)
             if (scheme) {
               setDecrypted("encrypted")
@@ -85,7 +85,7 @@ export function DisplayPaste({ config }: { config: Env }) {
               showModal("Error", "Failed to decrypt content")
               return
             }
-            setPasteFile(new File([decrypted], inferredFilename || name))
+            setPasteFile(new File([decrypted as BlobPart], inferredFilename || name))
             setPasteContentBuffer(decrypted)
             const encoding = chardet.detect(decrypted)
             setFileBinary(encoding === null || !utf8CompatibleEncodings.includes(encoding))

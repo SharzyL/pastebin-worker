@@ -62,6 +62,9 @@ jobs:
           pnpm prettier -c .
           pnpm lint
 
+      - name: "Type Check"
+        run: pnpm typecheck
+
       - name: "Run Test with Coverage"
         run: pnpm coverage --testTimeout 15000
 

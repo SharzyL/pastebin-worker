@@ -1,6 +1,6 @@
 import { useEffect, useState, useTransition } from "react"
 
-import { Button, Link } from "@heroui/react"
+import { Button, Link } from "../components/ui/index.js"
 
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { useErrorModal } from "../components/ErrorModal.js"
@@ -167,13 +167,9 @@ export function PasteBin({ config }: { config: Env }) {
 
   const info = (
     <div className="mx-4 lg:mx-0">
-      <div className="mt-8 mb-4 relative">
-        <h1 className="text-3xl inline">{config.INDEX_PAGE_TITLE}</h1>
-        <DarkModeToggle
-          modeSelection={modeSelection}
-          setModeSelection={setModeSelection}
-          className="absolute right-0"
-        />
+      <div className="mt-8 mb-4 flex items-center justify-between">
+        <h1 className="text-3xl">{config.INDEX_PAGE_TITLE}</h1>
+        <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
       </div>
       <p className="my-2">An open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
@@ -232,7 +228,7 @@ export function PasteBin({ config }: { config: Env }) {
           onStateChange={setEditorState}
           className="mt-6 mb-4 mx-2 lg:mx-0"
         />
-        <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
+        <div className="flex flex-col items-start lg:flex-row gap-6 mx-2 lg:mx-0">
           <PanelSettingsPanel
             config={config}
             className={"transition-width lg:w-1/2 w-full"}

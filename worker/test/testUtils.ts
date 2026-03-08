@@ -3,8 +3,8 @@ import { env } from "cloudflare:test"
 import { expect } from "vitest"
 import crypto from "crypto"
 
-import worker from "../index"
-import type { PasteResponse } from "../../shared/interfaces"
+import worker from "../index.js"
+import type { PasteResponse } from "../../shared/interfaces.js"
 
 export const BASE_URL: string = env.DEPLOY_URL
 export const RAND_NAME_REGEX = /^[ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678]+$/

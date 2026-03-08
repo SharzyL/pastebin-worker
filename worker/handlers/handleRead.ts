@@ -187,7 +187,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     (item.metadata.filename && mime.getType(item.metadata.filename)) ||
     "text/plain;charset=UTF-8"
 
-  if (env.DISALLOWED_MIME_FOR_PASTE.includes(inferred_mime)) {
+  if ((env.DISALLOWED_MIME_FOR_PASTE as readonly string[]).includes(inferred_mime)) {
     inferred_mime = "text/plain;charset=UTF-8"
   }
 
@@ -262,7 +262,8 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
       // @heroui/input-otp's chunked build causes module resolution issues in Workers test environment
       // See: UPSTREAM_ISSUE.md for details
       const { renderDisplayPage } = await import("../pages/display.js")
-      const page = await renderDisplayPage(env, name, item.paste, item.metadata)
+      const displayName = url.pathname.slice(3) // Remove "/d/" prefix
+      const page = await renderDisplayPage(env, displayName, item.paste, item.metadata)
       if (page) {
         return new Response(isHead ? null : page, {
           headers: {

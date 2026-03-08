@@ -1,6 +1,5 @@
 import { hydrateRoot, createRoot } from "react-dom/client"
 import React from "react"
-import { HeroUIProvider } from "@heroui/react"
 import { PasteBin } from "../PasteBin.js"
 
 const rootElement = document.getElementById("root")!
@@ -14,18 +13,14 @@ if (isSSR) {
   hydrateRoot(
     rootElement,
     <React.StrictMode>
-      <HeroUIProvider>
-        <PasteBin config={config} />
-      </HeroUIProvider>
+      <PasteBin config={config} />
     </React.StrictMode>,
   )
 } else {
   // CSR (admin URL or SSR failed)
   createRoot(rootElement).render(
     <React.StrictMode>
-      <HeroUIProvider>
-        <PasteBin config={config} />
-      </HeroUIProvider>
+      <PasteBin config={config} />
     </React.StrictMode>,
   )
 }

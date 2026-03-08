@@ -1,10 +1,16 @@
 {
   "compilerOptions": {
     "target": "es2021",
-    "lib": ["es2021"],
+    "lib": ["es2021", "dom", "dom.iterable"],
     "module": "node16",
     "moduleResolution": "node16",
     "isolatedModules": true,
-    "strict": true
-  }
+    "strict": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["@cloudflare/vitest-pool-workers"]
+  },
+  "include": ["frontend/**/*", "worker/**/*", "shared/**/*", "worker-configuration.d.ts"],
+  "exclude": ["node_modules", "dist"]
 }
