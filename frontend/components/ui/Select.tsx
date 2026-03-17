@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useImperativeHandle } from "react"
 
 export interface SelectItemProps {
   children: React.ReactNode
@@ -7,6 +7,10 @@ export interface SelectItemProps {
 
 export function SelectItem({ children }: SelectItemProps) {
   return <>{children}</>
+}
+
+export interface SelectHandle {
+  focus(): void
 }
 
 export interface SelectProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -22,39 +26,40 @@ export interface SelectProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
   children: React.ReactNode
 }
 
-export function Select({
-  label,
-  size: _size = "md",
-  selectedKeys = [],
-  onSelectionChange,
-  className,
-  classNames = {},
-  children,
-  ...rest
-}: SelectProps) {
+export const Select = React.forwardRef<SelectHandle, SelectProps>(function Select(
+  { label, size: _size = "md", selectedKeys = [], onSelectionChange, className, classNames = {}, children, ...rest },
+  forwardedRef,
+) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
-  const ref = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const focusFromMouseRef = useRef(false)
+
+  useImperativeHandle(forwardedRef, () => ({
+    focus() {
+      triggerRef.current?.focus()
+    },
+  }))
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setIsOpen(false)
-        setFocusedIndex(-1)
-      }
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [])
+    if (focusedIndex < 0 || !listRef.current) return
+    const el = listRef.current.querySelector<HTMLElement>(`[data-index="${focusedIndex}"]`)
+    el?.scrollIntoView({ block: "nearest" })
+  }, [focusedIndex])
 
   const items = React.Children.toArray(children).filter((child): child is React.ReactElement<SelectItemProps> =>
     React.isValidElement(child),
   )
 
-  const selected = items.find((item) => {
-    const itemValue = item.props.value ?? String(item.key).replace(/^\.\$/, "")
-    return selectedKeys.includes(itemValue)
-  })
+  const getItemValue = (item: React.ReactElement<SelectItemProps>) =>
+    item.props.value ?? String(item.key).replace(/^\.\$/, "")
+
+  const selectedIndex = items.findIndex((item) => selectedKeys.includes(getItemValue(item)))
+  const openFocusIndex = selectedIndex >= 0 ? selectedIndex : 0
+
+  const selected = items[selectedIndex]
   const displayText = selected?.props.children || label || "Select..."
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -62,7 +67,7 @@ export function Select({
       if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
         e.preventDefault()
         setIsOpen(true)
-        setFocusedIndex(0)
+        setFocusedIndex(openFocusIndex)
       }
       return
     }
@@ -75,9 +80,7 @@ export function Select({
       setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0))
     } else if (e.key === "Enter" && focusedIndex >= 0) {
       e.preventDefault()
-      const item = items[focusedIndex]
-      const itemValue = item.props.value ?? String(item.key).replace(/^\.\$/, "")
-      onSelectionChange?.(new Set([itemValue]))
+      onSelectionChange?.(new Set([getItemValue(items[focusedIndex])]))
       setIsOpen(false)
       setFocusedIndex(-1)
     } else if (e.key === "Escape") {
@@ -87,13 +90,30 @@ export function Select({
   }
 
   return (
-    <div ref={ref} className={`relative ${classNames.base || ""} ${className || ""}`} {...rest}>
+    <div ref={innerRef} className={`relative ${classNames.base || ""} ${className || ""}`} {...rest}>
       {label && <label className="pl-1 text-sm text-default-500 block mb-1.5">{label}</label>}
       <button
+        ref={triggerRef}
         type="button"
+        onMouseDown={() => {
+          focusFromMouseRef.current = true
+        }}
+        onFocus={() => {
+          if (!focusFromMouseRef.current) {
+            setIsOpen(true)
+            setFocusedIndex(openFocusIndex)
+          }
+          focusFromMouseRef.current = false
+        }}
+        onBlur={(e) => {
+          if (!innerRef.current?.contains(e.relatedTarget as Node)) {
+            setIsOpen(false)
+            setFocusedIndex(-1)
+          }
+        }}
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`w-full px-3 py-2 bg-default-100 border border-default-200 rounded-xl text-left text-sm hover:border-default-300 transition-colors ${classNames.trigger || ""}`}
+        className={`w-full px-3 py-2 bg-default-100 border rounded-xl text-left text-sm transition-colors focus:outline-none ${isOpen ? "border-default-400" : "border-default-200 hover:border-default-400"} ${classNames.trigger || ""}`}
       >
         {displayText}
       </button>
@@ -101,14 +121,16 @@ export function Select({
         <div
           className={`absolute z-10 left-0 right-0 mt-1 bg-content1 border border-default-200 rounded-lg max-h-60 overflow-hidden shadow-medium ${classNames.listbox || ""}`}
         >
-          <div className="overflow-auto max-h-60">
+          <div ref={listRef} tabIndex={-1} className="overflow-auto max-h-60">
             {items.map((item, index) => {
-              const itemValue = item.props.value ?? String(item.key).replace(/^\.\$/, "")
+              const itemValue = getItemValue(item)
               return (
                 <button
                   key={itemValue}
+                  data-index={index}
                   type="button"
                   tabIndex={-1}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     onSelectionChange?.(new Set([itemValue]))
                     setIsOpen(false)
@@ -125,4 +147,4 @@ export function Select({
       )}
     </div>
   )
-}
+})

@@ -62,6 +62,7 @@ export function PanelSettingsPanel({ setting, onSettingChange, config, ...rest }
             label="Password"
             value={setting.password}
             onValueChange={(p) => onSettingChange({ ...setting, password: p })}
+            isClearable
             classNames={{
               base: "flex-1",
               ...inputOverrides,

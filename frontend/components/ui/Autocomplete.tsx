@@ -43,35 +43,49 @@ export function Autocomplete({
   readOnly,
 }: AutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [internalValue, setInternalValue] = useState(selectedKey || inputValue)
-  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [internalValue, setInternalValue] = useState(selectedKey != null ? selectedKey : inputValue)
+  const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setInternalValue(selectedKey || inputValue)
+    if (focusedKey === null || !listRef.current) return
+    const el = listRef.current.querySelector<HTMLElement>(`[data-key="${CSS.escape(focusedKey)}"]`)
+    el?.scrollIntoView({ block: "nearest" })
+  }, [focusedKey])
+
+  useEffect(() => {
+    setInternalValue(selectedKey != null ? selectedKey : inputValue)
   }, [selectedKey, inputValue])
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [])
+  const filterItems = (items: { key: string }[], value: string) => {
+    const lower = value.toLowerCase()
+    return items.filter((item) =>
+      lower.length <= 2 ? item.key.toLowerCase().startsWith(lower) : item.key.toLowerCase().includes(lower),
+    )
+  }
 
-  const filtered = defaultItems.filter((item) => item.key.toLowerCase().includes(internalValue.toLowerCase()))
+  const filtered = filterItems(defaultItems, internalValue)
+
+  const defaultFocusKey = (list: { key: string }[]) => {
+    if (list.length === 0) return null
+    const inList = selectedKey && list.some((item) => item.key === selectedKey)
+    return inList ? selectedKey : list[0].key
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) return
 
+    const focusedIndex = focusedKey !== null ? filtered.findIndex((item) => item.key === focusedKey) : -1
+
     if (e.key === "ArrowDown") {
       e.preventDefault()
-      setFocusedIndex((prev) => (prev < filtered.length - 1 ? prev + 1 : prev))
+      const next = focusedIndex < filtered.length - 1 ? focusedIndex + 1 : focusedIndex
+      if (next >= 0) setFocusedKey(filtered[next].key)
     } else if (e.key === "ArrowUp") {
       e.preventDefault()
-      setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0))
+      const prev = focusedIndex > 0 ? focusedIndex - 1 : 0
+      if (prev >= 0) setFocusedKey(filtered[prev].key)
     } else if (e.key === "Enter" && focusedIndex >= 0) {
       e.preventDefault()
       const item = filtered[focusedIndex]
@@ -79,10 +93,10 @@ export function Autocomplete({
       setInternalValue(item.key)
       onInputChange?.(item.key)
       setIsOpen(false)
-      setFocusedIndex(-1)
+      setFocusedKey(null)
     } else if (e.key === "Escape") {
       setIsOpen(false)
-      setFocusedIndex(-1)
+      setFocusedKey(null)
     }
   }
 
@@ -99,32 +113,47 @@ export function Autocomplete({
           setInternalValue(val)
           onInputChange?.(val)
           setIsOpen(true)
-          setFocusedIndex(-1)
+          const newFiltered = filterItems(defaultItems, val)
+          setFocusedKey((prev) => {
+            if (prev !== null && newFiltered.some((item) => item.key === prev)) return prev
+            return defaultFocusKey(newFiltered)
+          })
         }}
         onKeyDown={handleKeyDown}
-        onFocus={() => setIsOpen(true)}
-        className={`w-full px-3 py-2 bg-default-100 border border-default-200 rounded-xl text-sm text-foreground hover:border-default-300 focus:border-default-400 focus:outline-none transition-colors ${classNames.input || ""}`}
+        onFocus={() => {
+          setIsOpen(true)
+          setFocusedKey(defaultFocusKey(filtered))
+        }}
+        onBlur={(e) => {
+          if (!ref.current?.contains(e.relatedTarget as Node)) {
+            setIsOpen(false)
+            setFocusedKey(null)
+          }
+        }}
+        className={`w-full px-3 py-2 bg-default-100 rounded-xl text-sm text-foreground border focus:outline-none transition-colors ${isOpen ? "border-default-400" : "border-default-200 hover:border-default-400"} ${classNames.input || ""}`}
       />
       {isOpen && filtered.length > 0 && (
         <div
           className={`absolute z-10 w-full mt-1 bg-content1 border border-default-200 rounded-lg overflow-hidden shadow-medium ${classNames.listbox || ""}`}
         >
-          <div className="overflow-auto max-h-60">
-            {filtered.map((item, index) => {
+          <div ref={listRef} tabIndex={-1} className="overflow-auto max-h-60">
+            {filtered.map((item) => {
               const element = children(item)
               return (
                 <button
                   key={item.key}
+                  data-key={item.key}
                   type="button"
                   tabIndex={-1}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     onSelectionChange?.(item.key)
                     setInternalValue(item.key)
                     onInputChange?.(item.key)
                     setIsOpen(false)
-                    setFocusedIndex(-1)
+                    setFocusedKey(null)
                   }}
-                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${index === focusedIndex ? "bg-default-100" : "hover:bg-default-100"}`}
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${item.key === focusedKey ? "bg-default-100" : "hover:bg-default-100"}`}
                 >
                   {element.props.children as React.ReactNode}
                 </button>

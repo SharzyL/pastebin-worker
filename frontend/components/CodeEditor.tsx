@@ -1,15 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import type { SelectHandle } from "./ui/index.js"
 import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/index.js"
 
 import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
 import { useHLJS, highlightHTML } from "../utils/HighlightLoader.js"
+import { XIcon } from "./icons.js"
 
 import "../styles/highlight-theme-light.css"
 import "../styles/highlight-theme-dark.css"
 
-// TODO:
-// - line number
-// - clear button
 interface CodeInputProps extends React.HTMLProps<HTMLDivElement> {
   content: string
   setContent: (code: string) => void
@@ -78,8 +77,10 @@ export function CodeEditor({
   const refHighlighting = useRef<HTMLPreElement | null>(null)
   const refTextarea = useRef<HTMLTextAreaElement | null>(null)
   const refLineNumbers = useRef<HTMLSpanElement | null>(null)
+  const refIndentWith = useRef<SelectHandle | null>(null)
 
   const lineCount = (content?.match(/\n/g)?.length || 0) + 1
+  const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, idx) => <span key={idx} />), [lineCount])
   const [heightPx, setHeightPx] = useState<number>(Math.max(lineCount * 24, 100)) // Estimate initial height for SSR
   const hljs = useHLJS()
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
@@ -100,7 +101,10 @@ export function CodeEditor({
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     const element = refTextarea.current!
-    if (event.key === "Tab") {
+    if (event.key === "Tab" && event.shiftKey) {
+      event.preventDefault()
+      refIndentWith.current?.focus()
+    } else if (event.key === "Tab") {
       event.preventDefault() // stop normal
       const beforeTab = content.slice(0, element.selectionStart)
       const afterTab = content.slice(element.selectionEnd, element.value.length)
@@ -142,9 +146,11 @@ export function CodeEditor({
           classNames={inputOverrides}
           type={"text"}
           label={"File name"}
+          placeholder={"No filename"}
           size={"sm"}
           value={filename || ""}
           onValueChange={setFilename}
+          isClearable
         />
         <Autocomplete
           className={"max-w-[8em]"}
@@ -165,6 +171,7 @@ export function CodeEditor({
           )}
         </Autocomplete>
         <Select
+          ref={refIndentWith}
           size={"sm"}
           label={"Indent With"}
           className={"w-[6em] text-foreground"}
@@ -181,7 +188,9 @@ export function CodeEditor({
           ))}
         </Select>
       </div>
-      <div className={`w-full bg-default-100 ${tst} rounded-xl p-2 relative`}>
+      <div
+        className={`text-sm w-full bg-default-100 ${tst} rounded-xl p-2 relative border border-default-200 hover:border-default-400 focus-within:border-default-400`}
+      >
         <div
           className={`relative w-full`}
           style={{ tabSize: tabSetting.char === "tab" ? tabSetting.width : undefined }}
@@ -201,13 +210,7 @@ export function CodeEditor({
               }
               style={{ height: `${heightPx}px` }}
             >
-              {useMemo(
-                () =>
-                  Array.from({ length: lineCount }, (_, idx) => {
-                    return <span key={idx} />
-                  }),
-                [lineCount],
-              )}
+              {lineNumbers}
             </span>
           </div>
           <textarea
@@ -226,6 +229,17 @@ export function CodeEditor({
             aria-label={"Paste editor"}
           ></textarea>
         </div>
+        {content && !disabled && (
+          <button
+            type="button"
+            onClick={() => setContent("")}
+            tabIndex={-1}
+            className="absolute top-3 right-3 text-default-400 hover:text-default-700 transition-colors"
+            aria-label="Clear editor"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </div>
   )
