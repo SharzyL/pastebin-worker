@@ -50,3 +50,12 @@ export function genRandStr(len: number) {
 export function isLegalUrl(url: string): boolean {
   return URL.canParse(url)
 }
+
+export function timingSafeEqual(a: string | undefined | null, b: string): boolean {
+  if (a === undefined || a === null) return false
+  const encoder = new TextEncoder()
+  const bufA = encoder.encode(a)
+  const bufB = encoder.encode(b)
+  if (bufA.byteLength !== bufB.byteLength) return false
+  return crypto.subtle.timingSafeEqual(bufA, bufB)
+}

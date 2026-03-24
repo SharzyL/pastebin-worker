@@ -1,4 +1,4 @@
-import { WorkerError } from "../common.js"
+import { WorkerError, timingSafeEqual } from "../common.js"
 import { deletePaste, getPasteMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 
@@ -9,7 +9,7 @@ export async function handleDelete(request: Request, env: Env, _: ExecutionConte
   if (metadata === null) {
     throw new WorkerError(404, `paste of name '${name}' not found`)
   } else {
-    if (password !== metadata.passwd) {
+    if (!timingSafeEqual(password, metadata.passwd)) {
       throw new WorkerError(403, `incorrect password for paste '${name}`)
     } else {
       await deletePaste(env, name, metadata)

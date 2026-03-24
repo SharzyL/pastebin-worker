@@ -1,5 +1,5 @@
 import { verifyAuth } from "../pages/auth.js"
-import { decode, genRandStr, WorkerError } from "../common.js"
+import { decode, genRandStr, WorkerError, timingSafeEqual } from "../common.js"
 import { createPaste, getPasteMetadata, pasteNameAvailable, updatePaste } from "../storage/storage.js"
 import {
   DEFAULT_PASSWD_LEN,
@@ -182,7 +182,7 @@ export async function handlePostOrPut(
     }
 
     // no need to check password for MPCComplete, it is already checked on creation
-    if (!isMPUComplete && password !== originalMetadata.passwd) {
+    if (!isMPUComplete && !timingSafeEqual(password, originalMetadata.passwd)) {
       throw new WorkerError(403, `incorrect password for paste ‘${pasteName}’`)
     }
 

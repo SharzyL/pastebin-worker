@@ -1,6 +1,6 @@
 import type { MPUCreateResponse } from "../../shared/interfaces.js"
 import { NAME_REGEX, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
-import { dateToUnix, genRandStr, WorkerError } from "../common.js"
+import { dateToUnix, genRandStr, WorkerError, timingSafeEqual } from "../common.js"
 import { getPasteMetadata, pasteNameAvailable } from "../storage/storage.js"
 import { parseExpiration, parseSize } from "../../shared/parsers.js"
 
@@ -58,7 +58,7 @@ export async function handleMPUCreateUpdate(request: Request, env: Env): Promise
   if (metadata === null) {
     throw new WorkerError(404, `paste of name ‘${name}’ is not found`)
   }
-  if (password !== metadata.passwd) {
+  if (!timingSafeEqual(password, metadata.passwd)) {
     throw new WorkerError(403, `incorrect password for paste ‘${name}’`)
   }
 
