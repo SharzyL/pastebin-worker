@@ -112,6 +112,9 @@ export async function uploadMPU(
     createReqUrl.searchParams.set("name", nameFromUrl)
     createReqUrl.searchParams.set("password", passwordFromUrl)
   }
+  if (expire !== undefined) {
+    createReqUrl.searchParams.set("e", expire)
+  }
 
   const createReqResp = await fetch(createReqUrl, { method: "POST" })
   if (!createReqResp.ok) {

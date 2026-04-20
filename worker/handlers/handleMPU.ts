@@ -1,10 +1,19 @@
 import type { MPUCreateResponse } from "../../shared/interfaces.js"
 import { NAME_REGEX, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
-import { genRandStr, WorkerError } from "../common.js"
+import { dateToUnix, genRandStr, WorkerError } from "../common.js"
 import { getPasteMetadata, pasteNameAvailable } from "../storage/storage.js"
-import { parseSize } from "../../shared/parsers.js"
+import { parseExpiration, parseSize } from "../../shared/parsers.js"
 
-// POST /mpu/create?n=<optional n>&p=<optional isPrivate>
+function mpuExpireMetadata(url: URL, env: Env): Record<string, string> {
+  const expireParam = url.searchParams.get("e")
+  const expirationSeconds = expireParam ? parseExpiration(expireParam) : null
+  const maxExpiration = parseExpiration(env.MAX_EXPIRATION)!
+  const effectiveExpiration = expirationSeconds ? Math.min(expirationSeconds, maxExpiration) : maxExpiration
+  const willExpireAtUnix = dateToUnix(new Date()) + effectiveExpiration
+  return { willExpireAtUnix: String(willExpireAtUnix) }
+}
+
+// POST /mpu/create?n=<optional n>&p=<optional isPrivate>&e=<optional expire>
 // returns JSON { name: string, key: string, uploadId: string }
 export async function handleMPUCreate(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
@@ -24,7 +33,9 @@ export async function handleMPUCreate(request: Request, env: Env): Promise<Respo
     name = genRandStr(isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
   }
 
-  const multipartUpload = await env.R2.createMultipartUpload(name)
+  const multipartUpload = await env.R2.createMultipartUpload(name, {
+    customMetadata: mpuExpireMetadata(url, env),
+  })
   const resp: MPUCreateResponse = {
     name,
     key: multipartUpload.key,
@@ -51,7 +62,9 @@ export async function handleMPUCreateUpdate(request: Request, env: Env): Promise
     throw new WorkerError(403, `incorrect password for paste ‘${name}’`)
   }
 
-  const multipartUpload = await env.R2.createMultipartUpload(name)
+  const multipartUpload = await env.R2.createMultipartUpload(name, {
+    customMetadata: mpuExpireMetadata(url, env),
+  })
   const resp: MPUCreateResponse = {
     name,
     key: multipartUpload.key,
