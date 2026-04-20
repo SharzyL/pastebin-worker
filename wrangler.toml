@@ -18,6 +18,10 @@ binding = "ASSETS"
 # clean r2 garbage every day
 crons = ["0 0 * * *"]
 
+[observability]
+# enable to collect logs
+enabled = true
+
 #----------------------------------------
 # lines below are what you should modify
 #----------------------------------------
