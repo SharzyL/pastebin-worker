@@ -51,6 +51,16 @@ export function isLegalUrl(url: string): boolean {
   return URL.canParse(url)
 }
 
+// Workers extension to SubtleCrypto, mirrored from worker-configuration.d.ts.
+// DOM lib's SubtleCrypto interface (from tsconfig "lib": ["dom"]) lacks this
+// method, and the class declaration in worker-configuration.d.ts doesn't merge
+// with it; a local interface augmentation makes the method visible.
+declare global {
+  interface SubtleCrypto {
+    timingSafeEqual(a: ArrayBuffer | ArrayBufferView, b: ArrayBuffer | ArrayBufferView): boolean
+  }
+}
+
 export function timingSafeEqual(a: string | undefined | null, b: string): boolean {
   if (a === undefined || a === null) return false
   const encoder = new TextEncoder()

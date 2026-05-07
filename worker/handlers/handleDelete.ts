@@ -10,7 +10,7 @@ export async function handleDelete(request: Request, env: Env, _: ExecutionConte
     throw new WorkerError(404, `paste of name '${name}' not found`)
   } else {
     if (!timingSafeEqual(password, metadata.passwd)) {
-      throw new WorkerError(403, `incorrect password for paste '${name}`)
+      throw new WorkerError(403, `incorrect password for paste '${name}'`)
     } else {
       await deletePaste(env, name, metadata)
       return new Response("the paste will be deleted in seconds")
