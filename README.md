@@ -21,6 +21,8 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 
 3. [pb](/scripts) is a bash script to make it easier to use on command line.
 
+4. [SKILL.md](SKILL.md) is a concise, AI-agent-oriented packaging of the API. Make it available to your coding agent so it can upload, fetch, and manage pastes via this service.
+
 ## Limitations
 
 1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 100,000 reads and 1000 writes, 1000 deletes per day.
