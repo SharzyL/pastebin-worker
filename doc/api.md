@@ -185,11 +185,7 @@ If error occurs, the worker returns status code different from `200`:
 
 ## **PUT** `/<name>:<passwd>`
 
-Update your paste of the name `<name>` and password `<passwd>`. It accepts the parameters in form-data:
-
-- `c`: mandatory. Same as `POST` method.
-- `e`: optional. Same as `POST` method. Note that the deletion time is now recalculated.
-- `s`: optional. Same as `POST` method.
+Update your paste of the name `<name>` and password `<passwd>`. It accepts all the same form-data fields as `POST` (`c`, `e`, `s`, `lang`, `encryption-scheme`) **except** `n` (the name cannot be changed; supplying it returns `400`) and `p` (silently ignored). When `e` is supplied, the expiration is recalculated from the update time.
 
 The returning of `PUT` method is the same as `POST` method.
 
