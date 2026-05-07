@@ -1,5 +1,5 @@
 import { decode, isLegalUrl, WorkerError, escapeHtml } from "../common.js"
-import { getDocPage } from "../pages/docs.js"
+import { getDocMarkdown, getCurlIndexMarkdown, renderDocAsHtml } from "../pages/docs.js"
 import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
 import { makeMarkdown } from "../pages/markdown.js"
@@ -45,8 +45,29 @@ function lastModifiedHeader(metadata: PasteMetadata): Headers {
   return lastModified ? { "Last-Modified": new Date(lastModified * 1000).toUTCString() } : {}
 }
 
+function isCurlAgent(request: Request): boolean {
+  const ua = request.headers.get("User-Agent") || ""
+  return ua.toLowerCase().startsWith("curl/")
+}
+
 async function handleStaticPages(request: Request, env: Env, _: ExecutionContext): Promise<Response | null> {
   const url = new URL(request.url)
+  const isCurl = isCurlAgent(request)
+
+  // Serve doc/index.md as plain markdown when curl visits "/"
+  if (url.pathname === "/" && isCurl) {
+    const authResponse = verifyAuth(request, env)
+    if (authResponse !== null) {
+      return authResponse
+    }
+    return new Response(getCurlIndexMarkdown(env), {
+      headers: {
+        "Content-Type": "text/plain;charset=UTF-8",
+        Vary: "User-Agent",
+        ...staticPageCacheHeader(env),
+      },
+    })
+  }
 
   let path = url.pathname
   if (path.endsWith("/")) {
@@ -131,14 +152,18 @@ ${DARK_MODE_SCRIPT}
     }
   }
 
-  const staticPageContent = getDocPage(url.pathname, env)
-  if (staticPageContent) {
-    return new Response(staticPageContent, {
-      headers: {
-        "Content-Type": "text/html;charset=UTF-8",
-        ...staticPageCacheHeader(env),
-      },
-    })
+  if (url.pathname === "/doc" || url.pathname.startsWith("/doc/")) {
+    const docMd = getDocMarkdown(url.pathname, env)
+    if (docMd !== null) {
+      return new Response(isCurl ? docMd : renderDocAsHtml(docMd), {
+        headers: {
+          "Content-Type": isCurl ? "text/plain;charset=UTF-8" : "text/html;charset=UTF-8",
+          Vary: "User-Agent",
+          ...staticPageCacheHeader(env),
+        },
+      })
+    }
+    throw new WorkerError(404, `doc page '${url.pathname}' not found`)
   }
 
   return null

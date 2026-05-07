@@ -175,9 +175,13 @@ export function PasteBin({ config }: { config: Env }) {
       </div>
       <p className="my-2">An open source pastebin deployed on Cloudflare Workers. </p>
       <p className="my-2">
-        <b>Usage</b>: Paste text or file here. Upload. Share it with a URL. Or access with our{" "}
-        <Link className={tst} href={`${config.DEPLOY_URL}/api`}>
-          APIs
+        <b>Usage</b>: paste text or drop a file, then share the returned URL. You can also use{" "}
+        <Link className={tst} href={`${config.DEPLOY_URL}/doc/curl`}>
+          curl
+        </Link>
+        {" or the "}
+        <Link className={tst} href={`${config.DEPLOY_URL}/doc/api`}>
+          HTTP API
         </Link>
         .
       </p>
@@ -209,7 +213,7 @@ export function PasteBin({ config }: { config: Env }) {
   const footer = (
     <footer className="px-3 my-4 text-center">
       <p>
-        <Link href={`${config.DEPLOY_URL}/tos`} className={`d-inline-block ${tst}`}>
+        <Link href={`${config.DEPLOY_URL}/doc/tos`} className={`d-inline-block ${tst}`}>
           Terms & Conditions
         </Link>
         {" / "}
