@@ -54,8 +54,8 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
   const url = new URL(request.url)
   const isCurl = isCurlAgent(request)
 
-  // Serve doc/index.md as plain markdown when curl visits "/"
-  if (url.pathname === "/" && isCurl) {
+  // Serve doc/index.md as plain markdown for curl on "/" or anyone on "/index.md"
+  if ((url.pathname === "/" && isCurl) || url.pathname === "/index.md") {
     const authResponse = verifyAuth(request, env)
     if (authResponse !== null) {
       return authResponse
@@ -153,11 +153,14 @@ ${DARK_MODE_SCRIPT}
   }
 
   if (url.pathname === "/doc" || url.pathname.startsWith("/doc/")) {
-    const docMd = getDocMarkdown(url.pathname, env)
+    const isExplicitMd = url.pathname.endsWith(".md")
+    const lookupPath = isExplicitMd ? url.pathname.slice(0, -3) : url.pathname
+    const docMd = getDocMarkdown(lookupPath, env)
     if (docMd !== null) {
-      return new Response(isCurl ? docMd : renderDocAsHtml(docMd), {
+      const wantsMarkdown = isExplicitMd || isCurl
+      return new Response(wantsMarkdown ? docMd : renderDocAsHtml(docMd), {
         headers: {
-          "Content-Type": isCurl ? "text/plain;charset=UTF-8" : "text/html;charset=UTF-8",
+          "Content-Type": wantsMarkdown ? "text/plain;charset=UTF-8" : "text/html;charset=UTF-8",
           Vary: "User-Agent",
           ...staticPageCacheHeader(env),
         },

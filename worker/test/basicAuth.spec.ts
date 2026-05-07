@@ -41,7 +41,7 @@ describe("basic auth", () => {
   })
 
   it("should forbid accessing index without auth", async () => {
-    for (const page of ["", "index", "index.html"]) {
+    for (const page of ["", "index", "index.html", "index.md"]) {
       expect((await workerFetch(ctx, `${BASE_URL}/${page}`)).status, `visiting ${page}`).toStrictEqual(401)
     }
   })

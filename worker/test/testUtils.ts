@@ -13,12 +13,16 @@ export const staticPages = [
   "",
   "index.html",
   "index",
+  "index.md",
   "doc/tos",
   "doc/tos.html",
+  "doc/tos.md",
   "doc/api",
   "doc/api.html",
+  "doc/api.md",
   "doc/curl",
   "doc/curl.html",
+  "doc/curl.md",
   "favicon.ico",
 ]
 

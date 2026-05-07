@@ -33,11 +33,30 @@ describe("doc pages", () => {
   })
 
   it("returns 404 for unknown doc paths", async () => {
-    for (const page of ["/doc", "/doc/", "/doc/missing", "/doc/cli"]) {
+    for (const page of ["/doc", "/doc/", "/doc/missing", "/doc/cli", "/doc/missing.md"]) {
       const resp = await workerFetch(ctx, `${BASE_URL}${page}`)
       expect(resp.status, `visiting ${page}`).toStrictEqual(404)
       expect(await resp.text(), `visiting ${page}`).toContain("doc page")
     }
+  })
+
+  it("serves markdown to any UA on /doc/<name>.md", async () => {
+    for (const page of ["/doc/api.md", "/doc/tos.md", "/doc/curl.md"]) {
+      const resp = await workerFetch(ctx, new Request(`${BASE_URL}${page}`, { headers: browserHeaders }))
+      expect(resp.status, `visiting ${page}`).toStrictEqual(200)
+      expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
+      const body = await resp.text()
+      expect(body.startsWith("<!DOCTYPE html>"), `body of ${page} should be markdown`).toStrictEqual(false)
+    }
+  })
+
+  it("serves /index.md as markdown to any UA", async () => {
+    const resp = await workerFetch(ctx, new Request(`${BASE_URL}/index.md`, { headers: browserHeaders }))
+    expect(resp.status).toStrictEqual(200)
+    expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
+    const body = await resp.text()
+    expect(body.includes("# Pastebin Worker")).toStrictEqual(true)
+    expect(body.includes("{{BASE_URL}}")).toStrictEqual(false)
   })
 
   it("expands {{BASE_URL}} in doc bodies", async () => {
