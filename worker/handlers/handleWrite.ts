@@ -25,10 +25,10 @@ interface ParsedMultipartPart {
 async function multipartToMap(req: Request, sizeLimit: number): Promise<Map<string, ParsedMultipartPart>> {
   const partsMap = new Map<string, ParsedMultipartPart>()
   try {
-    await parseMultipartRequest(req, { maxFileSize: sizeLimit }, async (part) => {
+    for await (const part of parseMultipartRequest(req, { maxFileSize: sizeLimit })) {
       if (part.name) {
         if (part.isFile) {
-          const arrayBuffer = await part.arrayBuffer()
+          const arrayBuffer = part.arrayBuffer
           partsMap.set(part.name, {
             filename: part.filename,
             content: arrayBuffer,
@@ -36,7 +36,7 @@ async function multipartToMap(req: Request, sizeLimit: number): Promise<Map<stri
             contentAsString: () => decode(arrayBuffer),
           })
         } else {
-          const arrayBuffer = await part.arrayBuffer()
+          const arrayBuffer = part.arrayBuffer
           partsMap.set(part.name, {
             filename: part.filename,
             content: arrayBuffer,
@@ -45,7 +45,7 @@ async function multipartToMap(req: Request, sizeLimit: number): Promise<Map<stri
           })
         }
       }
-    })
+    }
   } catch (err) {
     if (err instanceof MaxFileSizeExceededError) {
       throw new WorkerError(413, `payload too large (max ${sizeLimit} bytes allowed)`)
