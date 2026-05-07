@@ -45,7 +45,7 @@ describe("decrypt page", async () => {
 
   it("decrypt correctly", async () => {
     vi.stubGlobal("location", new URL(`https://example.com/e/abcd#${await encodeKey(key)}`))
-    global.URL.createObjectURL = () => ""
+    globalThis.URL.createObjectURL = () => ""
     render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
 
     const main = screen.getByRole("main")

@@ -6,7 +6,7 @@ import type { SerializedPasteData, MetaResponse } from "../../shared/interfaces.
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
 import chardet from "chardet"
-import { getAssetPaths, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE, type Manifest } from "../ssrUtils.js"
+import { getAssetPaths, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -118,7 +118,7 @@ export async function renderDisplayPage(
     html += decode(value.buffer as ArrayBuffer)
   }
 
-  const { jsFile, cssPath } = getAssetPaths(manifest as Manifest, "display.html")
+  const { jsFile, cssPath } = getAssetPaths(manifest, "display.html")
 
   return `<!doctype html>
 <html lang="en">

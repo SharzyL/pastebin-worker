@@ -102,7 +102,7 @@ export function createFormData(kv: FormDataBuild): FormData {
       fd.set(k, v, "") // fd.set automatically set filename to k, not what we desired
     } else {
       // hack for typing
-      const { content, filename } = v as { content: Blob; filename: string }
+      const { content, filename } = v
       fd.set(k, content, filename)
     }
   })

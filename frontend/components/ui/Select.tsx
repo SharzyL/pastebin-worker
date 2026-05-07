@@ -106,7 +106,7 @@ export const Select = React.forwardRef<SelectHandle, SelectProps>(function Selec
           focusFromMouseRef.current = false
         }}
         onBlur={(e) => {
-          if (!innerRef.current?.contains(e.relatedTarget as Node)) {
+          if (!innerRef.current?.contains(e.relatedTarget)) {
             setIsOpen(false)
             setFocusedIndex(-1)
           }

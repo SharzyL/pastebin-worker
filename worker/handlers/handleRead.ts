@@ -9,7 +9,7 @@ import type { MetaResponse } from "../../shared/interfaces.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
-import { getAssetPaths, DARK_MODE_SCRIPT, type Manifest } from "../ssrUtils.js"
+import { getAssetPaths, DARK_MODE_SCRIPT } from "../ssrUtils.js"
 
 type Headers = Record<string, string>
 
@@ -104,7 +104,7 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
     }
 
     // CSR fallback: dynamically generate empty HTML shell
-    const { jsFile, cssPath } = getAssetPaths(manifest as Manifest, "index.html")
+    const { jsFile, cssPath } = getAssetPaths(manifest, "index.html")
 
     return new Response(
       `<!doctype html>

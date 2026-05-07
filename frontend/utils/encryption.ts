@@ -52,7 +52,7 @@ export async function decrypt(
     const trueCiphertext = ciphertext.slice(12)
     try {
       return new Uint8Array(
-        await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, trueCiphertext as BufferSource),
+        await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, trueCiphertext),
       )
     } catch {
       return null

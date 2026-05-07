@@ -125,7 +125,7 @@ export function Autocomplete({
           setFocusedKey(defaultFocusKey(filtered))
         }}
         onBlur={(e) => {
-          if (!ref.current?.contains(e.relatedTarget as Node)) {
+          if (!ref.current?.contains(e.relatedTarget)) {
             setIsOpen(false)
             setFocusedKey(null)
           }
