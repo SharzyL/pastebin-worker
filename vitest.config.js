@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config"
-import { defineWorkersProject } from "@cloudflare/vitest-pool-workers/config"
+import { cloudflareTest } from "@cloudflare/vitest-pool-workers"
 
 export default defineConfig({
   test: {
@@ -8,20 +8,20 @@ export default defineConfig({
       reporter: ["text", "json-summary", "html", "json"],
     },
     projects: [
-      defineWorkersProject({
+      defineConfig({
+        plugins: [
+          cloudflareTest({
+            wrangler: {
+              configPath: "./wrangler.toml",
+            },
+          }),
+        ],
         test: {
           name: "Workers",
           include: ["worker/test/**/*.spec.ts"],
           coverage: {
             provider: "istanbul", // v8 is not supported due for cf workers
             reporter: ["text", "json-summary", "html", "json"],
-          },
-          poolOptions: {
-            workers: {
-              wrangler: {
-                configPath: "./wrangler.toml",
-              },
-            },
           },
         },
       }),

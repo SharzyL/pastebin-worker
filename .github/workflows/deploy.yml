@@ -36,6 +36,7 @@ jobs:
         run: |
           pnpm fmt
           pnpm lint
+          pnpm typecheck
           pnpm test --testTimeout 15000
 
       - name: "Deploy"

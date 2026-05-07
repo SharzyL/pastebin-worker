@@ -8,8 +8,7 @@
     "strict": true,
     "jsx": "react-jsx",
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "types": ["@cloudflare/vitest-pool-workers"]
+    "resolveJsonModule": true
   },
   "include": ["frontend/**/*", "worker/**/*", "shared/**/*", "worker-configuration.d.ts"],
   "exclude": ["node_modules", "dist"]

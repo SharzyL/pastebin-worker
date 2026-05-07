@@ -34,7 +34,7 @@
     "@types/mdast": "^4.0.4",
     "@types/node": "^25.6.1",
     "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/coverage-istanbul": "3.2.4",
+    "@vitest/coverage-istanbul": "4.1.5",
     "eslint": "^10.3.0",
     "jsdom": "^27.4.0",
     "msw": "^2.14.4",
@@ -43,7 +43,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.2",
     "vite": "^7.3.1",
-    "vitest": "3.2.4",
+    "vitest": "4.1.5",
     "wrangler": "^4.89.1"
   },
   "prettier": {
