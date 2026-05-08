@@ -77,11 +77,11 @@ export async function handlePostOrPut(
 
   let isMPUComplete = false
   if (url.pathname === "/mpu/create" && !isPut) {
-    return handleMPUCreate(request, env)
+    return await handleMPUCreate(request, env)
   } else if (url.pathname === "/mpu/create-update" && !isPut) {
-    return handleMPUCreateUpdate(request, env)
+    return await handleMPUCreateUpdate(request, env)
   } else if (url.pathname === "/mpu/resume" && isPut) {
-    return handleMPUResume(request, env)
+    return await handleMPUResume(request, env)
   } else if (url.pathname === "/mpu/complete") {
     isMPUComplete = true // we will handle mpu complete later since it is uploaded with formdata
   } else if (url.pathname.startsWith("/mpu/")) {
