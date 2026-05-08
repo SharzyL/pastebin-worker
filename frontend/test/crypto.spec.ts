@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { encrypt, decrypt, genKey, encodeKey, decodeKey } from "../utils/encryption.js"
+import type { EncryptionScheme } from "../utils/encryption.js"
 import { genRandStr } from "../../worker/common.js"
 
 function randArray(len: number): Uint8Array {
@@ -54,5 +55,30 @@ describe("encrypt with AES-GCM", () => {
         expect(plaintext[i], `${i}-th bit of decrypted`).toStrictEqual(decryptedBuffer![i])
       }
     }
+  })
+})
+
+describe("unsupported scheme throws", () => {
+  // simulate a future or corrupted scheme value reaching crypto helpers
+  const bad = "RC4" as unknown as EncryptionScheme
+
+  it("genKey rejects unknown scheme", async () => {
+    await expect(genKey(bad)).rejects.toThrow(/Unsupported encryption scheme: RC4/)
+  })
+
+  it("encrypt rejects unknown scheme", async () => {
+    const key = await genKey("AES-GCM")
+    await expect(encrypt(bad, key, new Uint8Array([1, 2, 3]))).rejects.toThrow(/Unsupported encryption scheme: RC4/)
+  })
+
+  it("decrypt rejects unknown scheme", async () => {
+    const key = await genKey("AES-GCM")
+    await expect(decrypt(bad, key, new Uint8Array([1, 2, 3]))).rejects.toThrow(/Unsupported encryption scheme: RC4/)
+  })
+
+  it("decodeKey rejects unknown scheme", async () => {
+    const key = await genKey("AES-GCM")
+    const encoded = await encodeKey(key)
+    await expect(decodeKey(bad, encoded)).rejects.toThrow(/Unsupported encryption scheme: RC4/)
   })
 })
