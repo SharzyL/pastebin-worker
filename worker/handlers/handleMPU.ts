@@ -26,7 +26,7 @@ export async function handleMPUCreate(request: Request, env: Env): Promise<Respo
       throw new WorkerError(400, `illegal paste name ‘${n}’ for MPU create`)
     }
     name = "~" + n
-    if (!(await pasteNameAvailable(env, n))) {
+    if (!(await pasteNameAvailable(env, name))) {
       throw new WorkerError(409, `name ‘${name}’ is already used`)
     }
   } else {
