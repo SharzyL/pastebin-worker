@@ -8,8 +8,8 @@ export class ParseError extends Error {
 
 export function parseSize(sizeStr: string): number | null {
   sizeStr = sizeStr.trim()
-  const EXPIRE_REGEX = /^[\d.]+\s*[KMG]?$/
-  if (!EXPIRE_REGEX.test(sizeStr)) {
+  const SIZE_REGEX = /^\d+(\.\d+)?\s*[KMG]?$/
+  if (!SIZE_REGEX.test(sizeStr)) {
     return null
   }
 
@@ -23,16 +23,12 @@ export function parseSize(sizeStr: string): number | null {
 
 export function parseExpiration(expirationStr: string): number | null {
   expirationStr = expirationStr.trim()
-  const EXPIRE_REGEX = /^[\d.]+\s*[smhd]?$/
+  const EXPIRE_REGEX = /^\d+(\.\d+)?\s*[smhd]?$/
   if (!EXPIRE_REGEX.test(expirationStr)) {
     return null
   }
 
   let expirationSeconds = parseFloat(expirationStr)
-  if (isNaN(expirationSeconds)) {
-    return null
-  }
-
   const lastChar = expirationStr[expirationStr.length - 1]
   if (lastChar === "m") expirationSeconds *= 60
   else if (lastChar === "h") expirationSeconds *= 3600
@@ -42,15 +38,12 @@ export function parseExpiration(expirationStr: string): number | null {
 
 export function parseExpirationReadable(expirationStr: string): string | null {
   expirationStr = expirationStr.trim()
-  const EXPIRE_REGEX = /^[\d.]+\s*[smhd]?$/
+  const EXPIRE_REGEX = /^\d+(\.\d+)?\s*[smhd]?$/
   if (!EXPIRE_REGEX.test(expirationStr)) {
     return null
   }
 
   const num = parseFloat(expirationStr)
-  if (isNaN(num)) {
-    return null
-  }
   const lastChar = expirationStr[expirationStr.length - 1]
   if (lastChar === "m") return `${num} minute${num > 1 ? "s" : ""}`
   else if (lastChar === "h") return `${num} hour${num > 1 ? "s" : ""}`
