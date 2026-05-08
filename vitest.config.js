@@ -6,6 +6,7 @@ export default defineConfig({
     coverage: {
       provider: "istanbul", // v8 is not supported due for cf workers
       reporter: ["text", "json-summary", "html", "json"],
+      exclude: ["**/test/**"],
     },
     projects: [
       defineConfig({
@@ -22,6 +23,7 @@ export default defineConfig({
           coverage: {
             provider: "istanbul", // v8 is not supported due for cf workers
             reporter: ["text", "json-summary", "html", "json"],
+            exclude: ["**/test/**"],
           },
         },
       }),
@@ -34,6 +36,19 @@ export default defineConfig({
           coverage: {
             provider: "istanbul",
             reporter: ["text", "json-summary", "html", "json"],
+            exclude: ["**/test/**"],
+          },
+        },
+      },
+      {
+        test: {
+          include: ["shared/test/**/*.spec.ts"],
+          name: "Shared",
+          environment: "node",
+          coverage: {
+            provider: "istanbul",
+            reporter: ["text", "json-summary", "html", "json"],
+            exclude: ["**/test/**"],
           },
         },
       },
