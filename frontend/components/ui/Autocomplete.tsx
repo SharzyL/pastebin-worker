@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react"
+import { XIcon } from "../icons.js"
 
 export interface AutocompleteItemProps {
   value: string
@@ -26,6 +27,7 @@ export interface AutocompleteProps {
   children: (item: { key: string }) => React.ReactElement<AutocompleteItemProps>
   placeholder?: string
   readOnly?: boolean
+  isClearable?: boolean
 }
 
 export function Autocomplete({
@@ -41,12 +43,14 @@ export function Autocomplete({
   children,
   placeholder,
   readOnly,
+  isClearable,
 }: AutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [internalValue, setInternalValue] = useState(selectedKey != null ? selectedKey : inputValue)
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (focusedKey === null || !listRef.current) return
@@ -103,35 +107,57 @@ export function Autocomplete({
   return (
     <div ref={ref} className={`relative ${classNames.base || ""} ${className || ""}`}>
       {label && <label className="pl-1 text-sm text-default-500 block mb-1.5">{label}</label>}
-      <input
-        type="text"
-        value={internalValue}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        onChange={(e) => {
-          const val = e.target.value
-          setInternalValue(val)
-          onInputChange?.(val)
-          setIsOpen(true)
-          const newFiltered = filterItems(defaultItems, val)
-          setFocusedKey((prev) => {
-            if (prev !== null && newFiltered.some((item) => item.key === prev)) return prev
-            return defaultFocusKey(newFiltered)
-          })
-        }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => {
-          setIsOpen(true)
-          setFocusedKey(defaultFocusKey(filtered))
-        }}
-        onBlur={(e) => {
-          if (!ref.current?.contains(e.relatedTarget)) {
-            setIsOpen(false)
-            setFocusedKey(null)
-          }
-        }}
-        className={`w-full px-3 py-2 bg-default-100 rounded-xl text-sm text-foreground border focus:outline-none transition-colors ${isOpen ? "border-default-400" : "border-default-200 hover:border-default-400"} ${classNames.input || ""}`}
-      />
+      <div
+        className={`flex items-center w-full bg-default-100 rounded-xl border transition-colors ${isOpen ? "border-default-400" : "border-default-200 hover:border-default-400"}`}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={internalValue}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          onChange={(e) => {
+            const val = e.target.value
+            setInternalValue(val)
+            onInputChange?.(val)
+            setIsOpen(true)
+            const newFiltered = filterItems(defaultItems, val)
+            setFocusedKey((prev) => {
+              if (prev !== null && newFiltered.some((item) => item.key === prev)) return prev
+              return defaultFocusKey(newFiltered)
+            })
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setIsOpen(true)
+            setFocusedKey(defaultFocusKey(filtered))
+          }}
+          onBlur={(e) => {
+            if (!ref.current?.contains(e.relatedTarget)) {
+              setIsOpen(false)
+              setFocusedKey(null)
+            }
+          }}
+          className={`flex-1 min-w-0 px-3 py-2 bg-transparent text-sm text-foreground focus:outline-none ${classNames.input || ""}`}
+        />
+        {isClearable && internalValue !== "" && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setInternalValue("")
+              onInputChange?.("")
+              onSelectionChange?.(null)
+              inputRef.current?.focus()
+            }}
+            className="flex-shrink-0 px-2 text-default-400 hover:text-default-700 color-tst focus:outline-none"
+            aria-label="Clear input"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        )}
+      </div>
       {isOpen && filtered.length > 0 && (
         <div
           className={`absolute z-10 w-full mt-1 bg-content1 border border-default-200 rounded-lg overflow-hidden shadow-medium ${classNames.listbox || ""}`}

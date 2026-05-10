@@ -157,6 +157,7 @@ export function CodeEditor({
           classNames={autoCompleteOverrides}
           label={"Language"}
           size={"sm"}
+          isClearable
           defaultItems={hljs ? hljs.listLanguages().map((lang) => ({ key: lang })) : []}
           // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
           selectedKey={hljs && lang && hljs.listLanguages().includes(lang) ? lang : ""}
@@ -232,7 +233,10 @@ export function CodeEditor({
         {content && !disabled && (
           <button
             type="button"
-            onClick={() => setContent("")}
+            onClick={() => {
+              setContent("")
+              refTextarea.current?.focus()
+            }}
             tabIndex={-1}
             className="absolute top-3 right-3 text-default-400 hover:text-default-700 transition-colors"
             aria-label="Clear editor"

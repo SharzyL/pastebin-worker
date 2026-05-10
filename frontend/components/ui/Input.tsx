@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useRef } from "react"
 import { XIcon } from "../icons.js"
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
@@ -50,6 +50,8 @@ export function Input({
   value,
   ...rest
 }: InputProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange?.(e)
     onValueChange?.(e.target.value)
@@ -58,6 +60,7 @@ export function Input({
   const handleClear = () => {
     onValueChange?.("")
     onClear?.()
+    inputRef.current?.focus()
   }
 
   const showClearButton = isClearable && value !== undefined && value !== ""
@@ -82,6 +85,7 @@ export function Input({
       >
         {startContent && <div className="flex-shrink-0">{startContent}</div>}
         <input
+          ref={inputRef}
           aria-label={label}
           aria-invalid={isInvalid}
           className={`flex-1 py-2 bg-transparent text-sm text-foreground focus:outline-none color-tst ${startContent || endContent || showClearButton ? "" : "px-3"} ${classNames.input || ""}`}
