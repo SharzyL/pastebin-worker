@@ -65,17 +65,17 @@ CACHE_PASTE_AGE = 600
 DEFAULT_EXPIRATION = "7d"
 
 # Max expiration
-MAX_EXPIRATION = "30d"
+MAX_EXPIRATION = "90d"
 
 # A collection of {username: password} pair
 # Leave empty to disable auth
 BASIC_AUTH = {}
 
 # Files larger than this threshold will be stored in R2
-R2_THRESHOLD = "100K"
+R2_THRESHOLD = "20K"
 
 # File larger than this will be denied
-R2_MAX_ALLOWED = "100M"
+R2_MAX_ALLOWED = "256M"
 
 # The following mimetypes will be converted to text/plain
 DISALLOWED_MIME_FOR_PASTE = ["text/html", "audio/x-mpegurl"]
