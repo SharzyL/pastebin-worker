@@ -187,15 +187,19 @@ export function PasteBin({ config }: { config: Env }) {
         <h1 className="text-3xl">{config.INDEX_PAGE_TITLE}</h1>
         <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
       </div>
-      <p className="my-2">An open source pastebin deployed on Cloudflare Workers. </p>
+      <p className="my-2">A pastebin running on Cloudflare Workers.</p>
       <p className="my-2">
         <b>Usage</b>: paste text or drop a file, then share the returned URL. You can also use{" "}
         <Link className={tst} href={`${config.DEPLOY_URL}/doc/curl`}>
           curl
         </Link>
-        {" or the "}
+        {", the "}
         <Link className={tst} href={`${config.DEPLOY_URL}/doc/api`}>
           HTTP API
+        </Link>
+        {", or as an "}
+        <Link className={tst} href={`${config.DEPLOY_URL}/doc/skill.md`}>
+          AI agent skill
         </Link>
         .
       </p>

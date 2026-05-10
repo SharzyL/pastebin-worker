@@ -23,6 +23,9 @@ export const staticPages = [
   "doc/curl",
   "doc/curl.html",
   "doc/curl.md",
+  "doc/skill",
+  "doc/skill.html",
+  "doc/skill.md",
   "favicon.ico",
 ]
 

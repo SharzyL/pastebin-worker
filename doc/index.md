@@ -1,7 +1,7 @@
 # Pastebin Worker
 
-A self-hosted pastebin running on Cloudflare Workers. Visit {{BASE_URL}} in a
-browser for the full UI, or use `curl` from the terminal.
+A pastebin running on Cloudflare Workers. Visit {{BASE_URL}} in a browser for the full UI, or use
+`curl` from the terminal.
 
 ## Quick start
 
@@ -17,9 +17,10 @@ deletion.
 ## More
 
 ```shell
-$ curl {{BASE_URL}}/doc/curl       # comprehensive curl usage
-$ curl {{BASE_URL}}/doc/api        # HTTP API reference
-$ curl {{BASE_URL}}/doc/tos        # terms of service
+$ curl {{BASE_URL}}/doc/curl.md    # comprehensive curl usage
+$ curl {{BASE_URL}}/doc/api.md     # HTTP API reference
+$ curl {{BASE_URL}}/doc/skill.md   # AI agent skill (concise, ready to feed into a coding agent)
+$ curl {{BASE_URL}}/doc/tos.md     # terms of service
 ```
 
 Source: {{REPO}}

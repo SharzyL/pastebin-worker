@@ -12,7 +12,7 @@ describe("doc pages", () => {
   const ctx = createExecutionContext()
 
   it("returns rendered HTML to browsers", async () => {
-    for (const page of ["/doc/api", "/doc/tos", "/doc/curl"]) {
+    for (const page of ["/doc/api", "/doc/tos", "/doc/curl", "/doc/skill"]) {
       const resp = await workerFetch(ctx, new Request(`${BASE_URL}${page}`, { headers: browserHeaders }))
       expect(resp.status, `visiting ${page}`).toStrictEqual(200)
       expect(resp.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
@@ -22,7 +22,7 @@ describe("doc pages", () => {
   })
 
   it("returns raw markdown to curl", async () => {
-    for (const page of ["/doc/api", "/doc/tos", "/doc/curl"]) {
+    for (const page of ["/doc/api", "/doc/tos", "/doc/curl", "/doc/skill"]) {
       const resp = await workerFetch(ctx, new Request(`${BASE_URL}${page}`, { headers: curlHeaders }))
       expect(resp.status, `visiting ${page}`).toStrictEqual(200)
       expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
@@ -41,7 +41,7 @@ describe("doc pages", () => {
   })
 
   it("serves markdown to any UA on /doc/<name>.md", async () => {
-    for (const page of ["/doc/api.md", "/doc/tos.md", "/doc/curl.md"]) {
+    for (const page of ["/doc/api.md", "/doc/tos.md", "/doc/curl.md", "/doc/skill.md"]) {
       const resp = await workerFetch(ctx, new Request(`${BASE_URL}${page}`, { headers: browserHeaders }))
       expect(resp.status, `visiting ${page}`).toStrictEqual(200)
       expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
