@@ -130,10 +130,10 @@ export function PanelSettingsPanel({ setting, onSettingChange, config, footer, .
                   <Tooltip
                     key={opt.value}
                     content={
-                      <div className="px-1 py-1 text-small">
+                      <div className="px-1 py-1 text-small max-w-[22rem]">
                         <div>{urlKindDescription(opt.value)}</div>
                         {urlKindExample(opt.value, config.DEPLOY_URL) && (
-                          <div className="mt-1 font-mono text-xs opacity-80">
+                          <div className="mt-1 font-mono text-xs opacity-80 break-all">
                             e.g. {urlKindExample(opt.value, config.DEPLOY_URL)}
                           </div>
                         )}

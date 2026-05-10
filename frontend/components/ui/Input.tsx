@@ -65,7 +65,7 @@ export function Input({
       : "border-default-200 focus-within:border-default-400 hover:border-default-400"
 
   return (
-    <div className={`flex flex-col gap-1.5 ${className} ${classNames.base || ""}`}>
+    <div className={`flex flex-col gap-1.5 min-w-0 ${className} ${classNames.base || ""}`}>
       {label && (
         <label className={`pl-1 text-sm text-default-500 ${classNames.label || ""}`}>
           {label}

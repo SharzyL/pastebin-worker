@@ -73,7 +73,7 @@ export function Tooltip({ content, children }: TooltipProps) {
           ref={tooltipRef}
           id={tooltipId}
           role="tooltip"
-          className={`absolute z-50 px-2 py-1 text-sm bg-gray-800 text-white rounded shadow-lg w-max max-w-xs pointer-events-none ${
+          className={`absolute z-50 px-2 py-1 text-sm bg-gray-800 text-white rounded shadow-lg w-max pointer-events-none ${
             position === "top" ? "bottom-full mb-2" : "top-full mt-2"
           } ${align === "center" ? "left-1/2 -translate-x-1/2" : align === "left" ? "left-0" : "right-0"}`}
         >

@@ -173,7 +173,7 @@ export function PasteBin({ config }: { config: Env }) {
   }
 
   const info = (
-    <div className="mx-4 lg:mx-0">
+    <div className="mx-4 lg:px-4 lg:mx-0">
       <div className="mt-8 mb-4 flex items-center justify-between">
         <h1 className="text-3xl">{config.INDEX_PAGE_TITLE}</h1>
         <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
@@ -246,7 +246,7 @@ export function PasteBin({ config }: { config: Env }) {
           onStateChange={setEditorState}
           className="mt-6 mb-4 mx-2 lg:mx-0"
         />
-        <div className="flex flex-col items-start lg:flex-row gap-6 mx-2 lg:mx-0">
+        <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
           <PanelSettingsPanel
             config={config}
             className={"transition-width lg:w-1/2 w-full"}
