@@ -2,8 +2,9 @@ import type { CardProps } from "./ui/index.js"
 import { Card, CardBody, CardHeader, Divider, Input, Switch, Tooltip } from "./ui/index.js"
 import { verifyExpiration, verifyManageUrl } from "../utils/utils.js"
 import { verifyName, verifyPassword } from "../../shared/verify.js"
+import type { NameAvailability } from "../utils/useNameAvailability.js"
 import React from "react"
-import { InfoIcon } from "./icons.js"
+import { CheckIcon, InfoIcon, QuestionMarkCircleIcon, SpinnerIcon, XIcon } from "./icons.js"
 import { cardOverrides, inputOverrides, switchOverrides, tst } from "../utils/overrides.js"
 import { PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
 
@@ -23,6 +24,7 @@ interface PasteSettingPanelProps extends CardProps {
   setting: PasteSetting
   onSettingChange: (setting: PasteSetting) => void
   config: Env
+  nameAvailability: NameAvailability
   footer?: React.ReactNode
 }
 
@@ -59,7 +61,56 @@ function urlKindExample(kind: UploadKind, deployUrl: string): string | null {
   }
 }
 
-export function PanelSettingsPanel({ setting, onSettingChange, config, footer, ...rest }: PasteSettingPanelProps) {
+interface CustomNameUI {
+  isInvalid: boolean
+  errorMessage?: string
+  warningMessage?: string
+  successMessage?: string
+  description?: string
+  endContent: React.ReactNode
+}
+
+function customNameUI(name: string, availability: NameAvailability): CustomNameUI {
+  const [ok, msg] = verifyName(name)
+  if (!ok) return { isInvalid: true, errorMessage: msg, endContent: null }
+
+  switch (availability.status) {
+    case "idle": // debouncing — treat as checking for the user
+    case "checking":
+      return {
+        isInvalid: false,
+        description: "Checking availability…",
+        endContent: <SpinnerIcon className="size-4 text-default-400" aria-label="Checking availability" />,
+      }
+    case "available":
+      return {
+        isInvalid: false,
+        successMessage: "Name available",
+        endContent: <CheckIcon className="size-4 text-success" aria-label="Name available" />,
+      }
+    case "taken":
+      return {
+        isInvalid: true,
+        errorMessage: "Name already taken",
+        endContent: <XIcon className="size-4 text-danger" aria-label="Name taken" />,
+      }
+    case "error":
+      return {
+        isInvalid: false,
+        warningMessage: `Could not check availability: ${availability.message}`,
+        endContent: <QuestionMarkCircleIcon className="size-4 text-yellow-600" aria-label="Availability unknown" />,
+      }
+  }
+}
+
+export function PanelSettingsPanel({
+  setting,
+  onSettingChange,
+  config,
+  nameAvailability,
+  footer,
+  ...rest
+}: PasteSettingPanelProps) {
   return (
     <Card aria-label="Pastebin setting panel" classNames={cardOverrides} {...rest}>
       <CardHeader className="text-2xl pl-4 pb-2">Settings</CardHeader>
@@ -161,21 +212,29 @@ export function PanelSettingsPanel({ setting, onSettingChange, config, footer, .
             <span className="text-default-700">URL</span>
           </div>
 
-          {setting.uploadKind === "custom" && (
-            <Input
-              value={setting.name}
-              onValueChange={(n) => onSettingChange({ ...setting, name: n })}
-              type="text"
-              className="mt-2"
-              isInvalid={!verifyName(setting.name)[0]}
-              errorMessage={verifyName(setting.name)[1]}
-              startContent={
-                <div className="pointer-events-none flex items-center">
-                  <span className="text-default-500 text-sm w-max">{`${config.DEPLOY_URL}/~`}</span>
-                </div>
-              }
-            />
-          )}
+          {setting.uploadKind === "custom" &&
+            (() => {
+              const ui = customNameUI(setting.name, nameAvailability)
+              return (
+                <Input
+                  value={setting.name}
+                  onValueChange={(n) => onSettingChange({ ...setting, name: n })}
+                  type="text"
+                  className="mt-2"
+                  isInvalid={ui.isInvalid}
+                  errorMessage={ui.errorMessage}
+                  warningMessage={ui.warningMessage}
+                  successMessage={ui.successMessage}
+                  description={ui.description}
+                  startContent={
+                    <div className="pointer-events-none flex items-center">
+                      <span className="text-default-500 text-sm w-max">{`${config.DEPLOY_URL}/~`}</span>
+                    </div>
+                  }
+                  endContent={ui.endContent}
+                />
+              )
+            })()}
           {setting.uploadKind === "manage" && (
             <Input
               value={setting.manageUrl}

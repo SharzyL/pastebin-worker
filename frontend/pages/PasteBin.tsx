@@ -16,6 +16,7 @@ import { PASSWD_SEP } from "../../shared/constants.js"
 
 import { verifyExpiration, verifyManageUrl, getMaxExpirationReadable } from "../utils/utils.js"
 import { verifyName, verifyPassword } from "../../shared/verify.js"
+import { useNameAvailability } from "../utils/useNameAvailability.js"
 import { uploadPaste } from "../utils/uploader.js"
 import { tst } from "../utils/overrides.js"
 
@@ -48,6 +49,12 @@ export function PasteBin({ config }: { config: Env }) {
   const [_, modeSelection, setModeSelection] = useDarkModeSelection()
 
   const { ErrorModal, showModal, handleError, handleFailedResp } = useErrorModal()
+
+  const nameAvailability = useNameAvailability(
+    pasteSetting.name,
+    config.DEPLOY_URL,
+    pasteSetting.uploadKind === "custom",
+  )
 
   // handle admin URL
   useEffect(() => {
@@ -157,7 +164,9 @@ export function PasteBin({ config }: { config: Env }) {
       if (pasteSetting.uploadKind === "short" || pasteSetting.uploadKind === "long") {
         return true
       } else if (pasteSetting.uploadKind === "custom") {
-        return verifyName(pasteSetting.name)[0]
+        if (!verifyName(pasteSetting.name)[0]) return false
+        // Allow upload if available, or if availability check failed (server still validates).
+        return nameAvailability.status === "available" || nameAvailability.status === "error"
       } else if (pasteSetting.uploadKind === "manage") {
         return verifyManageUrl(pasteSetting.manageUrl, config)[0]
       } else {
@@ -252,6 +261,7 @@ export function PasteBin({ config }: { config: Env }) {
             className={"transition-width lg:w-1/2 w-full"}
             setting={pasteSetting}
             onSettingChange={setPasteSetting}
+            nameAvailability={nameAvailability}
             footer={submitter}
           />
           {(pasteResponse || isUploadPending) && (

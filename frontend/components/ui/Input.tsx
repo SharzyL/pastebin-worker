@@ -7,6 +7,8 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
   size?: "sm" | "md" | "lg"
   description?: string
   errorMessage?: string
+  warningMessage?: string
+  successMessage?: string
   isInvalid?: boolean
   isRequired?: boolean
   isClearable?: boolean
@@ -31,6 +33,8 @@ export function Input({
   size: _size,
   description,
   errorMessage,
+  warningMessage,
+  successMessage,
   isInvalid,
   isRequired,
   isClearable,
@@ -99,11 +103,13 @@ export function Input({
         )}
         {endContent && <div className="flex-shrink-0">{endContent}</div>}
       </div>
-      {(description || errorMessage) && (
+      {(description || errorMessage || warningMessage || successMessage) && (
         <div
-          className={`pl-1 text-xs ${isInvalid ? "text-danger" : "text-default-500"} ${classNames.description || classNames.errorMessage || ""}`}
+          className={`pl-1 text-xs ${
+            isInvalid ? "text-danger" : warningMessage ? "text-yellow-600" : "text-default-500"
+          } ${classNames.description || classNames.errorMessage || ""}`}
         >
-          {isInvalid ? errorMessage : description}
+          {isInvalid ? errorMessage : warningMessage || successMessage || description}
         </div>
       )}
     </div>
