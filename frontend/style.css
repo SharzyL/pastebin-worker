@@ -27,6 +27,8 @@
   --color-success-50: #e8faf0;
   --color-success-100: #d1f4e0;
   --color-danger: #f31260;
+  --color-danger-50: #fee7ef;
+  --color-danger-100: #fdd0df;
 
   --radius-medium: 0.75rem;
 }
@@ -50,6 +52,8 @@
   --color-success-50: #0a2818;
   --color-success-100: #0f3d24;
   --color-danger: #f31260;
+  --color-danger-50: #310413;
+  --color-danger-100: #4d0820;
 }
 
 .shadow-medium {

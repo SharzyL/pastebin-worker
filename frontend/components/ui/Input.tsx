@@ -3,6 +3,7 @@ import { XIcon } from "../icons.js"
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   label?: string
+  labelExtra?: React.ReactNode
   size?: "sm" | "md" | "lg"
   description?: string
   errorMessage?: string
@@ -18,6 +19,7 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
     base?: string
     label?: string
     input?: string
+    box?: string
     description?: string
     errorMessage?: string
   }
@@ -25,6 +27,7 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
 
 export function Input({
   label,
+  labelExtra,
   size: _size,
   description,
   errorMessage,
@@ -59,7 +62,7 @@ export function Input({
     ? "border-danger focus-within:border-danger"
     : color === "success"
       ? "border-success focus-within:border-success"
-      : "border-default-200 focus-within:border-default-400 hover:border-default-300"
+      : "border-default-200 focus-within:border-default-400 hover:border-default-400"
 
   return (
     <div className={`flex flex-col gap-1.5 ${className} ${classNames.base || ""}`}>
@@ -67,10 +70,11 @@ export function Input({
         <label className={`pl-1 text-sm text-default-500 ${classNames.label || ""}`}>
           {label}
           {isRequired && <span className="text-red-500 ml-1">*</span>}
+          {labelExtra}
         </label>
       )}
       <div
-        className={`flex items-center bg-default-100 border rounded-xl color-tst ${borderColor} ${startContent || endContent || showClearButton ? "px-3" : ""}`}
+        className={`flex items-center bg-default-100 border rounded-xl color-tst ${borderColor} ${startContent || endContent || showClearButton ? "px-3" : ""} ${classNames.box || ""}`}
       >
         {startContent && <div className="flex-shrink-0">{startContent}</div>}
         <input

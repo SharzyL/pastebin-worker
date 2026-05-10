@@ -37,7 +37,7 @@ export function Tabs({ selectedKey, onSelectionChange, children, classNames = {}
               <button
                 key={tabKey}
                 onClick={() => onSelectionChange(tabKey)}
-                className={`pb-1 text-sm transition-colors relative ${isSelected ? "text-default-700" : "text-default-500 hover:text-default-700"} ${classNames.tab || ""}`}
+                className={`pb-1 text-sm transition-colors relative cursor-pointer ${isSelected ? "text-default-700" : "text-default-500 hover:text-default-700"} ${classNames.tab || ""}`}
               >
                 {(tab.props as { title: string }).title}
                 {isSelected && (

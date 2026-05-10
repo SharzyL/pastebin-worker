@@ -1,5 +1,6 @@
-import { NAME_REGEX, PASSWD_SEP } from "../../shared/constants.js"
+import { PASSWD_SEP } from "../../shared/constants.js"
 import { parseExpiration, parseExpirationReadable } from "../../shared/parsers.js"
+import { verifyExpiration as verifyExpirationShared } from "../../shared/verify.js"
 
 export function getMaxExpirationSeconds(config: Env): number {
   return parseExpiration(config.MAX_EXPIRATION)!
@@ -25,28 +26,7 @@ export function formatSize(size: number): string {
 }
 
 export function verifyExpiration(expiration: string, config: Env): [boolean, string] {
-  const parsed = parseExpiration(expiration)
-  if (parsed === null) {
-    return [false, "Invalid expiration"]
-  } else {
-    const maxSeconds = getMaxExpirationSeconds(config)
-    const maxReadable = getMaxExpirationReadable(config)
-    if (parsed > maxSeconds) {
-      return [false, `Exceed max expiration (${maxReadable})`]
-    } else {
-      return [true, `Expires in ${parseExpirationReadable(expiration)!}`]
-    }
-  }
-}
-
-export function verifyName(name: string): [boolean, string] {
-  if (name.length < 3) {
-    return [false, "Should have at least 3 characters"]
-  } else if (!NAME_REGEX.test(name)) {
-    return [false, "Should only contain alphanumeric and +_-[]*$@,;"]
-  } else {
-    return [true, ""]
-  }
+  return verifyExpirationShared(expiration, getMaxExpirationSeconds(config))
 }
 
 export function verifyManageUrl(url: string, config: Env): [boolean, string] {

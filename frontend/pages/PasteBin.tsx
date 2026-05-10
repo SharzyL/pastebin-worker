@@ -1,6 +1,6 @@
 import { useEffect, useState, useTransition } from "react"
 
-import { Button, Link } from "../components/ui/index.js"
+import { Link } from "../components/ui/index.js"
 
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { useErrorModal } from "../components/ErrorModal.js"
@@ -14,7 +14,8 @@ import type { PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
 import { PASSWD_SEP } from "../../shared/constants.js"
 
-import { verifyExpiration, verifyManageUrl, verifyName, getMaxExpirationReadable } from "../utils/utils.js"
+import { verifyExpiration, verifyManageUrl, getMaxExpirationReadable } from "../utils/utils.js"
+import { verifyName, verifyPassword } from "../../shared/verify.js"
 import { uploadPaste } from "../utils/uploader.js"
 import { tst } from "../utils/overrides.js"
 
@@ -148,6 +149,10 @@ export function PasteBin({ config }: { config: Env }) {
       return false
     }
 
+    if (!verifyPassword(pasteSetting.password)[0]) {
+      return false
+    }
+
     if (verifyExpiration(pasteSetting.expiration, config)[0]) {
       if (pasteSetting.uploadKind === "short" || pasteSetting.uploadKind === "long") {
         return true
@@ -192,21 +197,28 @@ export function PasteBin({ config }: { config: Env }) {
     </div>
   )
 
+  const isManageMode = pasteSetting.uploadKind === "manage"
+  const uploadDisabled = !canUpload() || isUploadPending
+  const deleteDisabled = !canDelete()
+
+  const baseActionClass = `flex-1 py-3 text-center font-bold ${tst}`
+  const uploadClass =
+    `${baseActionClass} ${isManageMode ? "rounded-bl-2xl" : "rounded-b-2xl"} bg-primary-50 text-primary ` +
+    (uploadDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-primary-100")
+  const deleteClass =
+    `${baseActionClass} rounded-br-2xl bg-danger-50 text-danger ` +
+    (deleteDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-danger-100")
+
   const submitter = (
-    <div className="my-4 mx-2 lg:mx-0">
-      <Button
-        color="primary"
-        onPress={onStartUpload}
-        className={`mr-4 ${tst}`}
-        isDisabled={!canUpload() || isUploadPending}
-      >
-        {pasteSetting.uploadKind === "manage" ? "Update" : "Upload"}
-      </Button>
-      {pasteSetting.uploadKind === "manage" ? (
-        <Button color="danger" onPress={onStartDelete} className={tst} isDisabled={!canDelete()}>
+    <div className="flex flex-row items-stretch">
+      <button type="button" onClick={onStartUpload} disabled={uploadDisabled} className={uploadClass}>
+        {isManageMode ? "Update" : "Upload"}
+      </button>
+      {isManageMode && (
+        <button type="button" onClick={onStartDelete} disabled={deleteDisabled} className={deleteClass}>
           Delete
-        </Button>
-      ) : null}
+        </button>
+      )}
     </div>
   )
 
@@ -240,6 +252,7 @@ export function PasteBin({ config }: { config: Env }) {
             className={"transition-width lg:w-1/2 w-full"}
             setting={pasteSetting}
             onSettingChange={setPasteSetting}
+            footer={submitter}
           />
           {(pasteResponse || isUploadPending) && (
             <UploadedPanel
@@ -251,7 +264,6 @@ export function PasteBin({ config }: { config: Env }) {
             />
           )}
         </div>
-        {submitter}
       </div>
       {footer}
       <ErrorModal />
