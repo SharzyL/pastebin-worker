@@ -1,6 +1,6 @@
 # Pastebin-worker
 
-This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al](https://shz.al).
+This is a pastebin running on Cloudflare workers. Try it on [shz.al](https://shz.al).
 
 **Philosophy**: effortless deployment, friendly CLI usage, rich functionality.
 
@@ -8,10 +8,10 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 
 1. Share your paste with as short as 4 characters, or even customized URL.
 1. **Syntax highlighting** powered by highlight.js.
-1. Client-side encryption
-1. Render **markdown** file as HTML
-1. URL shortener
-1. Customize returned `Content-Type`
+1. Client-side encryption.
+1. Render **markdown** file as HTML.
+1. URL shortener.
+1. Smart and tweakable handling for `Content-Type` and `Content-Disposition`.
 
 ## Usage
 
@@ -23,9 +23,21 @@ This is a pastebin that can be deployed on Cloudflare workers. Try it on [shz.al
 
 4. [doc/skill.md](doc/skill.md) is a concise, AI-agent-oriented packaging of the API. Make it available to your coding agent so it can upload, fetch, and manage pastes via this service.
 
-## Limitations
+## Cost
 
-1. If deployed on Cloudflare Worker free-tier plan, the service allows at most 100,000 reads and 1000 writes, 1000 deletes per day.
+The service runs on Cloudflare Workers, Workers KV, and R2. Each has a free tier; beyond it you pay only for what you use. Figures below are accurate as of writing — **prices change, so confirm against the official pricing pages before relying on them**:
+
+- **[Workers](https://developers.cloudflare.com/workers/platform/pricing/)** — Free plan: 100,000 requests/day, 10 ms CPU per invocation. Paid plan: $5/mo base, includes 10 M requests/month + 30 M ms CPU/month, then $0.30 per additional million requests and $0.02 per additional million CPU-ms. Egress is free. The $5/mo Paid plan also unlocks the higher KV limits below (KV does not have a separate paid plan).
+- **[Workers KV](https://developers.cloudflare.com/kv/platform/pricing/)** (small pastes and per-paste metadata) — Free plan (daily, resets 00:00 UTC): 100 k reads, 1 k writes, 1 k deletes, 1 k list ops, 1 GB storage. Paid plan (monthly + overage): 10 M reads ($0.50/M extra), 1 M writes ($5/M), 1 M deletes ($5/M), 1 M list ops ($5/M), 1 GB storage ($0.50/GB-month extra).
+- **[R2](https://developers.cloudflare.com/r2/pricing/)** (paste content above `R2_THRESHOLD`) — Free: 10 GB-month storage, 1 M Class A ops/month, 10 M Class B ops/month, **egress free**. Standard paid: $0.015/GB-month storage, $4.50 per million Class A ops (writes/lists), $0.36 per million Class B ops (reads). Class A op = upload (`PutObject`); Class B op = fetch (`GetObject`). Cloudflare rounds storage up to the next GB-month.
+- **[Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/)** (optional, off unless enabled in `wrangler.toml`) — Free: 200 k events/day, 3-day retention. Paid: 20 M events/month included + $0.60 per additional million, 7-day retention.
+
+For a personal deployment the free tier is typically sufficient. Costs scale primarily with: large file traffic (R2 ops + storage), high-volume reads (Workers requests + KV reads), and verbose logging (Workers Logs events).
+
+**Bottom line — what each tier comfortably handles**:
+
+- **Free tier**: a personal pastebin. The binding limits are KV writes (**1,000 uploads/day**) and KV/Workers reads (**~100,000 fetches/day**), with **1 GB** of small-paste storage and **10 GB** of large-paste storage on R2. Plenty for individual or small-team use.
+- **$5/month Paid**: a small public or community service. Roughly **~33,000 uploads/day** and **~333,000 fetches/day** stay within the included monthly KV allotment; Workers requests included to ~10 M/month (~333 k/day). R2 storage and ops come out of R2's separate free tier first, then a few cents per GB-month and per million ops — adding only a few dollars even at moderate traffic.
 
 ## Deploy
 
