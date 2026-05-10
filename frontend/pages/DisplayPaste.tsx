@@ -116,6 +116,8 @@ export function DisplayPaste({ config }: { config: Env }) {
         setForceShowBinary={setForceShowBinary}
         isLoading={isLoading}
         name={name}
+        ext={ext}
+        filename={filename}
         config={config}
       />
       <ErrorModal />

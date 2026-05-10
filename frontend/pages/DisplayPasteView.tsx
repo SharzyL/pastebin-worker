@@ -18,6 +18,8 @@ interface DisplayPasteViewProps {
   setForceShowBinary: (v: boolean) => void
   isLoading: boolean
   name: string
+  ext?: string
+  filename?: string
   config: Env
 }
 
@@ -33,6 +35,8 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     setForceShowBinary,
     isLoading,
     name,
+    ext,
+    filename,
     config,
   } = props
 
@@ -87,7 +91,13 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
               <span className="hidden md:inline">{indexPageTitle}</span>
             </Link>
             <span className="mx-2">{" / "}</span>
-            <code>{name}</code>
+            <span>{filename ? name : name + (ext ?? "")}</span>
+            {filename && (
+              <>
+                <span className="mx-2">{" / "}</span>
+                <span>{filename}</span>
+              </>
+            )}
             <span className="ml-1">
               {isDecrypted === "decrypted" ? " (Decrypted)" : isDecrypted === "encrypted" ? " (Encrypted)" : ""}
             </span>

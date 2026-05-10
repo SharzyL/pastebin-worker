@@ -54,7 +54,7 @@ export function Tooltip({ content, children }: TooltipProps) {
   return (
     <div
       ref={containerRef}
-      className="relative inline-flex translate-y-[0.05em]"
+      className={`relative inline-flex translate-y-[0.05em] ${show ? "z-50" : ""}`}
       onKeyDown={(e) => {
         if (e.key === "Escape" && show) {
           setShow(false)

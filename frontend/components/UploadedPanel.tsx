@@ -36,6 +36,7 @@ const RAW_URL_FLAGS: { syntax: string; desc: string }[] = [
 
 const DISPLAY_URL_FLAGS: { syntax: string; desc: string }[] = [
   { syntax: "?lang=js", desc: "Override syntax highlighting language" },
+  { syntax: "/foo.txt", desc: "Append a filename — shown in the header and used as the download name" },
 ]
 
 function InfoTooltip({ children }: { children: React.ReactNode }) {
@@ -58,7 +59,7 @@ function UrlTooltip({ desc, flags }: { desc?: React.ReactNode; flags?: { syntax:
       {desc && <div className={flags ? "mb-2" : ""}>{desc}</div>}
       {flags && (
         <>
-          <div className="font-medium mb-1">Append to the URL:</div>
+          <div className="font-medium mb-1">Options:</div>
           <div className="flex flex-col gap-1">
             {flags.map((f) => (
               <div key={f.syntax} className="flex flex-row gap-2 items-baseline">
@@ -135,7 +136,7 @@ export function UploadedPanel({
                   />
                 }
                 color={encryptionKey ? "success" : "default"}
-                className={encryptionKey ? "mb-2 [&_input]:bg-success-50" : "mb-2"}
+                className="mb-2"
                 value={makeDecryptionUrl(pasteResponse.url, encryptionKey)}
                 endContent={
                   <CopyWidget

@@ -282,8 +282,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   if (role === "d") {
     try {
       const { renderDisplayPage } = await import("../pages/display.js")
-      const displayName = url.pathname.slice(3) // Remove "/d/" prefix
-      const page = await renderDisplayPage(env, displayName, item.paste, item.metadata)
+      const page = await renderDisplayPage(env, name, filename, ext, item.paste, item.metadata)
       if (page) {
         return new Response(isHead ? null : page, {
           headers: {

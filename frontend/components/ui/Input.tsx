@@ -70,6 +70,7 @@ export function Input({
     : color === "success"
       ? "border-success focus-within:border-success"
       : "border-default-200 focus-within:border-default-400 hover:border-default-400"
+  const boxBg = color === "success" ? "bg-success-50" : "bg-default-100"
 
   return (
     <div className={`flex flex-col gap-1.5 min-w-0 ${className} ${classNames.base || ""}`}>
@@ -81,7 +82,7 @@ export function Input({
         </label>
       )}
       <div
-        className={`flex items-center bg-default-100 border rounded-xl color-tst ${borderColor} ${startContent || endContent || showClearButton ? "px-3" : ""} ${classNames.box || ""}`}
+        className={`flex items-center ${boxBg} border rounded-xl color-tst ${borderColor} ${startContent || endContent || showClearButton ? "px-3" : ""} ${classNames.box || ""}`}
       >
         {startContent && <div className="flex-shrink-0">{startContent}</div>}
         <input
