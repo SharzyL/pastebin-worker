@@ -7,6 +7,10 @@ export const mockedPasteUpload: PasteResponse = {
   manageUrl: "https://example.com/abcd:aaaaaaaaaaaaaaaaaa",
   expireAt: "2025-05-01T00:00:00.000Z",
   expirationSeconds: 300,
+  lastModifiedAt: "2025-04-30T23:55:00.000Z",
+  createdAt: "2025-04-30T23:55:00.000Z",
+  sizeBytes: 9,
+  location: "KV",
 }
 
 export const mockedPasteContent = "something"

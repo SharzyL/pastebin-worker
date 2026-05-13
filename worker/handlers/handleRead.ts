@@ -5,8 +5,7 @@ import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
 import { makeMarkdown } from "../pages/markdown.js"
 import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
-import { getPaste, getPasteMetadata } from "../storage/storage.js"
-import type { MetaResponse } from "../../shared/interfaces.js"
+import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
@@ -260,16 +259,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle metadata access
   if (role === "m") {
-    const returnedMetadata: MetaResponse = {
-      lastModifiedAt: new Date(item.metadata.lastModifiedAtUnix * 1000).toISOString(),
-      createdAt: new Date(item.metadata.createdAtUnix * 1000).toISOString(),
-      expireAt: new Date(item.metadata.willExpireAtUnix * 1000).toISOString(),
-      sizeBytes: item.metadata.sizeBytes,
-      location: item.metadata.location,
-      filename: item.metadata.filename,
-      highlightLanguage: item.metadata.highlightLanguage,
-      encryptionScheme: item.metadata.encryptionScheme,
-    }
+    const returnedMetadata = metaResponseFromMetadata(item.metadata)
     return new Response(isHead ? null : JSON.stringify(returnedMetadata, null, 2), {
       headers: {
         "Content-Type": `application/json;charset=UTF-8`,

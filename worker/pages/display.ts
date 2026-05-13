@@ -2,7 +2,8 @@ import { renderToReadableStream } from "react-dom/server.edge"
 import React from "react"
 import { DisplayPasteView } from "../../frontend/pages/DisplayPasteView.js"
 import type { PasteMetadata } from "../storage/storage.js"
-import type { SerializedPasteData, MetaResponse } from "../../shared/interfaces.js"
+import { metaResponseFromMetadata } from "../storage/storage.js"
+import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
 import chardet from "chardet"
@@ -62,16 +63,7 @@ export async function renderDisplayPage(
 
   const contentBase64 = arrayBufferToBase64(content)
 
-  const metaResponse: MetaResponse = {
-    lastModifiedAt: new Date(metadata.lastModifiedAtUnix * 1000).toISOString(),
-    createdAt: new Date(metadata.createdAtUnix * 1000).toISOString(),
-    expireAt: new Date(metadata.willExpireAtUnix * 1000).toISOString(),
-    sizeBytes: metadata.sizeBytes,
-    location: metadata.location,
-    filename: metadata.filename,
-    highlightLanguage: metadata.highlightLanguage,
-    encryptionScheme: metadata.encryptionScheme,
-  }
+  const metaResponse = metaResponseFromMetadata(metadata)
 
   const serializedData: SerializedPasteData = {
     content: contentBase64,

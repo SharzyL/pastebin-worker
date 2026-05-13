@@ -165,7 +165,14 @@ Upload your paste. It accept parameters in form-data:
   "url": "https://shz.al/abcd",
   "manageUrl": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
   "expirationSeconds": 1209600,
-  "expireAt": "2025-05-05T10:33:06.114Z"
+  "lastModifiedAt": "2025-05-01T10:33:06.114Z",
+  "createdAt": "2025-05-01T10:33:06.114Z",
+  "expireAt": "2025-05-05T10:33:06.114Z",
+  "sizeBytes": 4096,
+  "location": "KV",
+  "filename": "a.jpg",
+  "highlightLanguage": "rust",
+  "encryptionScheme": "AES-GCM"
 }
 ```
 
@@ -174,7 +181,8 @@ Explanation of the fields:
 - `url`: String. The URL to fetch the paste. When using a customized name, it looks like `https://shz.al/~myname`.
 - `manageUrl`: String. The URL to update and delete the paste, which is `url` suffixed by `:` and the password.
 - `expirationSeconds`: Number. The expiration seconds.
-- `expireAt`: String. An ISO String representing when the paste will expire.
+
+The remaining fields mirror the [`GET /m/<name>`](#get-mname) metadata response: `lastModifiedAt`, `createdAt`, `expireAt`, `sizeBytes`, `location`, and the optional `filename`, `highlightLanguage`, `encryptionScheme`.
 
 If error occurs, the worker returns status code different from `200`:
 

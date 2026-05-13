@@ -2,13 +2,6 @@
 
 export type PasteLocation = "KV" | "R2"
 
-export interface PasteResponse {
-  url: string
-  manageUrl: string
-  expirationSeconds: number
-  expireAt: string
-}
-
 export interface MetaResponse {
   lastModifiedAt: string
   createdAt: string
@@ -18,6 +11,12 @@ export interface MetaResponse {
   filename?: string
   highlightLanguage?: string
   encryptionScheme?: string
+}
+
+export interface PasteResponse extends MetaResponse {
+  url: string
+  manageUrl: string
+  expirationSeconds: number
 }
 
 export interface MPUCreateResponse {

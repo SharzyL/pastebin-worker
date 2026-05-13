@@ -1,6 +1,12 @@
 import { verifyAuth } from "../pages/auth.js"
 import { decode, genRandStr, WorkerError, timingSafeEqual } from "../common.js"
-import { createPaste, getPasteMetadata, pasteNameAvailable, updatePaste } from "../storage/storage.js"
+import {
+  createPaste,
+  getPasteMetadata,
+  metaResponseFromMetadata,
+  pasteNameAvailable,
+  updatePaste,
+} from "../storage/storage.js"
 import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN, PASSWD_SEP } from "../../shared/constants.js"
 import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
 import { verifyName, verifyPassword } from "../../shared/verify.js"
@@ -183,7 +189,7 @@ export async function handlePostOrPut(
     }
 
     const newPasswd = passwdFromForm || originalMetadata.passwd
-    await updatePaste(env, pasteName, content, originalMetadata, {
+    const newMetadata = await updatePaste(env, pasteName, content, originalMetadata, {
       expirationSeconds,
       now,
       passwd: newPasswd,
@@ -195,10 +201,10 @@ export async function handlePostOrPut(
     })
     return makeResponse(
       {
+        ...metaResponseFromMetadata(newMetadata),
         url: accessUrl(pasteName),
         manageUrl: manageUrl(pasteName, newPasswd),
         expirationSeconds,
-        expireAt: new Date(now.getTime() + 1000 * expirationSeconds).toISOString(),
       },
       { etag: r2Object?.httpEtag },
     )
@@ -222,7 +228,7 @@ export async function handlePostOrPut(
     const r2Object = isMPUComplete ? await handleMPUComplete(request, env, uploadedParts!) : undefined
 
     const password = passwdFromForm || genRandStr(DEFAULT_PASSWD_LEN)
-    await createPaste(env, pasteName, content, {
+    const newMetadata = await createPaste(env, pasteName, content, {
       expirationSeconds,
       now,
       passwd: password,
@@ -235,10 +241,10 @@ export async function handlePostOrPut(
 
     return makeResponse(
       {
+        ...metaResponseFromMetadata(newMetadata),
         url: accessUrl(pasteName),
         manageUrl: manageUrl(pasteName, password),
         expirationSeconds,
-        expireAt: new Date(now.getTime() + 1000 * expirationSeconds).toISOString(),
       },
       { etag: r2Object?.httpEtag },
     )

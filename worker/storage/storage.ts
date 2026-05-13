@@ -1,6 +1,6 @@
 import { dateToUnix, workerAssert, WorkerError } from "../common.js"
 import { parseSize } from "../../shared/parsers.js"
-import type { PasteLocation } from "../../shared/interfaces.js"
+import type { MetaResponse, PasteLocation } from "../../shared/interfaces.js"
 
 // since CF does not allow expiration shorter than 60s, extend the expiration to 70s
 const PASTE_EXPIRE_SPECIFIED_MIN = 70
@@ -37,6 +37,19 @@ interface PasteMetadataInStorage {
   filename?: string
   highlightLanguage?: string
   encryptionScheme?: string
+}
+
+export function metaResponseFromMetadata(metadata: PasteMetadata): MetaResponse {
+  return {
+    lastModifiedAt: new Date(metadata.lastModifiedAtUnix * 1000).toISOString(),
+    createdAt: new Date(metadata.createdAtUnix * 1000).toISOString(),
+    expireAt: new Date(metadata.willExpireAtUnix * 1000).toISOString(),
+    sizeBytes: metadata.sizeBytes,
+    location: metadata.location,
+    filename: metadata.filename,
+    highlightLanguage: metadata.highlightLanguage,
+    encryptionScheme: metadata.encryptionScheme,
+  }
 }
 
 function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
@@ -154,7 +167,7 @@ export async function updatePaste(
   content: ArrayBuffer | ReadableStream,
   originalMetadata: PasteMetadata,
   options: WriteOptions,
-) {
+): Promise<PasteMetadata> {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
   const expirationUnixSpecified =
     dateToUnix(options.now) + Math.max(options.expirationSeconds, PASTE_EXPIRE_SPECIFIED_MIN)
@@ -190,6 +203,8 @@ export async function updatePaste(
     metadata: metadata,
     expiration: expirationUnixSpecified,
   })
+
+  return metadata
 }
 
 export async function createPaste(
@@ -197,7 +212,7 @@ export async function createPaste(
   pasteName: string,
   content: ArrayBuffer | ReadableStream,
   options: WriteOptions,
-) {
+): Promise<PasteMetadata> {
   const expirationUnix = dateToUnix(options.now) + options.expirationSeconds
 
   const expirationUnixSpecified =
@@ -229,6 +244,8 @@ export async function createPaste(
     metadata: metadata,
     expiration: expirationUnixSpecified,
   })
+
+  return metadata
 }
 
 export async function pasteNameAvailable(env: Env, pasteName: string): Promise<boolean> {
