@@ -174,6 +174,9 @@ describe("uploadMPU", () => {
       if (url.includes("/mpu/complete")) {
         return Promise.resolve(jsonResp(complete))
       }
+      if (url.includes("/mpu/abort")) {
+        return Promise.resolve(new Response(null, { status: 204 }))
+      }
       return Promise.reject(new Error(`unexpected fetch ${url}`))
     })
     vi.stubGlobal("fetch", fetchMock)
@@ -289,16 +292,17 @@ describe("uploadMPU", () => {
   })
 
   it("throws UploadError when a chunk upload returns non-ok", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>((input) => {
-        const url = input instanceof URL ? input.toString() : (input as string)
-        if (url.includes("/mpu/create")) {
-          return Promise.resolve(jsonResp({ name: "~a", key: "k", uploadId: "uid" }))
-        }
-        return Promise.reject(new Error(`unexpected fetch ${url}`))
-      }),
-    )
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = input instanceof URL ? input.toString() : (input as string)
+      if (url.includes("/mpu/create")) {
+        return Promise.resolve(jsonResp({ name: "~a", key: "k", uploadId: "uid" }))
+      }
+      if (url.includes("/mpu/abort")) {
+        return Promise.resolve(new Response(null, { status: 204 }))
+      }
+      return Promise.reject(new Error(`unexpected fetch ${url}`))
+    })
+    vi.stubGlobal("fetch", fetchMock)
     setupXhr(() => ({ status: 500, body: "part failed" }))
 
     const err: unknown = await uploadMPU(API_URL, 4, {
@@ -308,6 +312,18 @@ describe("uploadMPU", () => {
 
     expect(err).toBeInstanceOf(UploadError)
     expect((err as UploadError).statusCode).toStrictEqual(500)
+
+    // Wait a microtask so the fire-and-forget abort fetch has a chance to land.
+    await new Promise((r) => setTimeout(r, 0))
+    const abortCall = fetchMock.mock.calls.find(([input]) => {
+      const url = input instanceof URL ? input.toString() : (input as string)
+      return url.includes("/mpu/abort")
+    })
+    expect(abortCall).toBeDefined()
+    const abortUrl = new URL(abortCall![0] instanceof URL ? abortCall![0].toString() : (abortCall![0] as string))
+    expect(abortUrl.searchParams.get("key")).toStrictEqual("k")
+    expect(abortUrl.searchParams.get("uploadId")).toStrictEqual("uid")
+    expect(abortCall![1]?.method).toStrictEqual("POST")
   })
 
   it("throws UploadError when complete returns non-ok", async () => {
@@ -320,6 +336,9 @@ describe("uploadMPU", () => {
         }
         if (url.includes("/mpu/complete")) {
           return Promise.resolve(new Response("complete failed", { status: 502 }))
+        }
+        if (url.includes("/mpu/abort")) {
+          return Promise.resolve(new Response(null, { status: 204 }))
         }
         return Promise.reject(new Error(`unexpected fetch ${url}`))
       }),

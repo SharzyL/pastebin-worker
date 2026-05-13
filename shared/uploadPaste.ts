@@ -195,10 +195,22 @@ export async function uploadMPU(
     else signal.addEventListener("abort", onExternalAbort, { once: true })
   }
 
+  // Captured once /mpu/create succeeds; used by the catch to release R2-side parts.
+  let createResp: MPUCreateResponse | undefined
+
   try {
     return await doMPU()
   } catch (e) {
     ctrl.abort()
+    if (createResp) {
+      const abortUrl = new URL(`${apiUrl}/mpu/abort`)
+      abortUrl.searchParams.set("key", createResp.key)
+      abortUrl.searchParams.set("uploadId", createResp.uploadId)
+      // Fire-and-forget: must outlive the cancellation that triggered us, no signal/progress.
+      void fetch(abortUrl, { method: "POST" }).catch(() => {
+        /* swallow: orphaned R2 parts are a soft failure */
+      })
+    }
     throw e
   } finally {
     signal?.removeEventListener("abort", onExternalAbort)
@@ -232,7 +244,9 @@ export async function uploadMPU(
     if (!createReqResp.ok) {
       throw new UploadError(createReqResp.status, await createReqResp.text())
     }
-    const createResp: MPUCreateResponse = await createReqResp.json()
+    const parsedCreateResp: MPUCreateResponse = await createReqResp.json()
+    createResp = parsedCreateResp
+    const { key: createKey, uploadId: createUploadId, name: createName } = parsedCreateResp
 
     const numParts = Math.ceil(content.size / chunkSize)
 
@@ -246,8 +260,8 @@ export async function uploadMPU(
       : undefined
     const uploadedParts = await runWithConcurrency(numParts, concurrency, async (i) => {
       const resumeUrl = new URL(`${apiUrl}/mpu/resume`)
-      resumeUrl.searchParams.set("key", createResp.key)
-      resumeUrl.searchParams.set("uploadId", createResp.uploadId)
+      resumeUrl.searchParams.set("key", createKey)
+      resumeUrl.searchParams.set("uploadId", createUploadId)
       resumeUrl.searchParams.set("partNumber", (i + 1).toString()) // because partNumber need to nonzero
       const chunk = content.slice(i * chunkSize, (i + 1) * chunkSize)
       const resumeReqResp = await xhrSend(resumeUrl, {
@@ -271,9 +285,9 @@ export async function uploadMPU(
 
     const completeFormData = new FormData()
     const completeUrl = new URL(`${apiUrl}/mpu/complete`)
-    completeUrl.searchParams.set("name", createResp.name)
-    completeUrl.searchParams.set("key", createResp.key)
-    completeUrl.searchParams.set("uploadId", createResp.uploadId)
+    completeUrl.searchParams.set("name", createName)
+    completeUrl.searchParams.set("key", createKey)
+    completeUrl.searchParams.set("uploadId", createUploadId)
     completeFormData.set("c", new File([JSON.stringify(uploadedParts)], content.name))
     if (expire !== undefined) {
       completeFormData.set("e", expire)

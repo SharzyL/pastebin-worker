@@ -96,6 +96,26 @@ describe("MPU error paths", () => {
     expect(await resp.text()).toContain("not consistent")
   })
 
+  it("handleMPUResume returns 410 when uploadId no longer exists", async () => {
+    const resp = await workerFetch(
+      ctx,
+      new Request(`${BASE_URL}/mpu/resume?key=nonexistent&uploadId=missinguploadid&partNumber=1`, {
+        method: "PUT",
+        body: new Uint8Array(8),
+      }),
+    )
+    expect(resp.status).toStrictEqual(410)
+    expect(await resp.text()).toContain("no longer exists")
+  })
+
+  it("handleMPUAbort is idempotent for an unknown uploadId", async () => {
+    const resp = await workerFetch(
+      ctx,
+      new Request(`${BASE_URL}/mpu/abort?key=nonexistent&uploadId=missinguploadid`, { method: "POST" }),
+    )
+    expect(resp.status).toStrictEqual(204)
+  })
+
   it("handleMPUComplete returns 413 when uploaded object exceeds R2_MAX_ALLOWED", async () => {
     const tightEnv = { ...env, R2_MAX_ALLOWED: "1K" }
 

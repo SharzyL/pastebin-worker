@@ -6,7 +6,13 @@ import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
 import { verifyName, verifyPassword } from "../../shared/verify.js"
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { MaxFileSizeExceededError, MultipartParseError, parseMultipartRequest } from "@mjackson/multipart-parser"
-import { handleMPUComplete, handleMPUCreate, handleMPUCreateUpdate, handleMPUResume } from "./handleMPU.js"
+import {
+  handleMPUAbort,
+  handleMPUComplete,
+  handleMPUCreate,
+  handleMPUCreateUpdate,
+  handleMPUResume,
+} from "./handleMPU.js"
 
 interface ParsedMultipartPart {
   filename?: string
@@ -75,6 +81,8 @@ export async function handlePostOrPut(
     return await handleMPUCreateUpdate(request, env)
   } else if (url.pathname === "/mpu/resume" && isPut) {
     return await handleMPUResume(request, env)
+  } else if (url.pathname === "/mpu/abort" && !isPut) {
+    return await handleMPUAbort(request, env)
   } else if (url.pathname === "/mpu/complete") {
     isMPUComplete = true // we will handle mpu complete later since it is uploaded with formdata
   } else if (url.pathname.startsWith("/mpu/")) {

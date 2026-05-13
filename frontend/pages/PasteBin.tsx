@@ -147,7 +147,6 @@ export function PasteBin({ config }: { config: Env }) {
 
   function onCancelUpload() {
     uploadAbortRef.current?.abort()
-    // TODO: also call a worker /mpu/abort endpoint to free orphaned R2 parts
   }
 
   function onStartDelete() {

@@ -305,7 +305,8 @@ def upload_mpu(
     paste_name = create["name"]
 
     bar = ProgressBar(total, label="MPU")
-    uploaded_parts = []
+    uploaded_parts: list = []
+    completed = False
     try:
         for i in range(num_parts):
             chunk = body[i * MPU_CHUNK_SIZE : (i + 1) * MPU_CHUNK_SIZE]
@@ -328,36 +329,50 @@ def upload_mpu(
             if not part_resp.ok:
                 die(f"MPU part {i + 1} {part_resp.status_code}: {part_resp.text}")
             uploaded_parts.append(part_resp.json())
-    finally:
-        bar.close()
 
-    complete_params = {"name": paste_name, "key": key, "uploadId": upload_id}
-    complete_data = dict(fields)
-    log_request(
-        "POST" if not is_update else "PUT",
-        f"{domain}/mpu/complete",
-        {**complete_data, "c": "<parts...>"},
-        complete_params,
-    )
-    try:
-        complete_resp = requests.request(
+        complete_params = {"name": paste_name, "key": key, "uploadId": upload_id}
+        complete_data = dict(fields)
+        log_request(
             "POST" if not is_update else "PUT",
             f"{domain}/mpu/complete",
-            params=complete_params,
-            data=complete_data,
-            files={"c": ("paste", json.dumps(uploaded_parts).encode())},
+            {**complete_data, "c": "<parts...>"},
+            complete_params,
         )
-    except requests.RequestException as e:
-        die(f"MPU complete failed: {e}")
-        return
-    if not complete_resp.ok:
-        die(f"MPU complete {complete_resp.status_code}: {complete_resp.text}")
+        try:
+            complete_resp = requests.request(
+                "POST" if not is_update else "PUT",
+                f"{domain}/mpu/complete",
+                params=complete_params,
+                data=complete_data,
+                files={"c": ("paste", json.dumps(uploaded_parts).encode())},
+            )
+        except requests.RequestException as e:
+            die(f"MPU complete failed: {e}")
+            return
+        if not complete_resp.ok:
+            die(f"MPU complete {complete_resp.status_code}: {complete_resp.text}")
 
-    try:
-        payload = complete_resp.json()
-    except ValueError:
-        die(f"non-JSON response from /mpu/complete: {complete_resp.text}")
-        return
+        try:
+            payload = complete_resp.json()
+        except ValueError:
+            die(f"non-JSON response from /mpu/complete: {complete_resp.text}")
+            return
+        completed = True
+    finally:
+        bar.close()
+        # Release R2-side multipart state if we didn't reach complete (chunk failed,
+        # complete failed, Ctrl-C, etc.). Knowing key+uploadId is the auth.
+        if not completed:
+            try:
+                requests.post(
+                    f"{domain}/mpu/abort",
+                    params={"key": key, "uploadId": upload_id},
+                    timeout=5,
+                )
+                logger.info("MPU aborted on server")
+            except requests.RequestException as abort_err:
+                logger.warning(f"MPU abort failed; orphaned parts may remain: {abort_err}")
+
     _finalize_response(payload, clip_flag)
 
 
