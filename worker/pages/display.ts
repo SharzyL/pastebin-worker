@@ -36,6 +36,18 @@ async function streamToArrayBuffer(stream: ReadableStream<Uint8Array>): Promise<
   return result.buffer
 }
 
+const utf8CompatibleEncodings = ["UTF-8", "ASCII", "ISO-8859-1"]
+
+function detectEncoding(content: ArrayBuffer | Uint8Array): string | null {
+  const bytes = content instanceof Uint8Array ? content : new Uint8Array(content)
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+    return "UTF-8"
+  } catch {
+    return chardet.detect(bytes)
+  }
+}
+
 export async function renderDisplayPage(
   env: Env,
   name: string,
@@ -56,9 +68,7 @@ export async function renderDisplayPage(
 
   const content = paste instanceof ArrayBuffer ? paste : await streamToArrayBuffer(paste)
 
-  // Detect binary files
-  const utf8CompatibleEncodings = ["UTF-8", "ASCII", "ISO-8859-1"]
-  const encoding = chardet.detect(new Uint8Array(content))
+  const encoding = detectEncoding(content)
   const isBinary = encoding === null || !utf8CompatibleEncodings.includes(encoding)
 
   const contentBase64 = arrayBufferToBase64(content)

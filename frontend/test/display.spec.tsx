@@ -60,6 +60,22 @@ describe("DisplayPaste", () => {
     expect(article.textContent).toStrictEqual(text)
   })
 
+  it("auto-fetches valid UTF-8 text even when chardet guesses a legacy encoding", async () => {
+    const text = "\u043c"
+    server.use(
+      ...mockPaste("abcd", {
+        body: new TextEncoder().encode(text).buffer,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    const article = await screen.findByRole("article")
+    expect(article.textContent).toStrictEqual(text)
+  })
+
   it("renders plain image via raw URL without downloading bytes", async () => {
     // Body is irrelevant: the frontend should not GET it. We still provide a
     // GET handler that would fail loudly if it were called.

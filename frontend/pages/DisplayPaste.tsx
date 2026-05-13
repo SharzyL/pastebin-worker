@@ -13,6 +13,16 @@ import "../styles/highlight-theme-dark.css"
 
 const utf8CompatibleEncodings = ["UTF-8", "ASCII", "ISO-8859-1"]
 
+function detectEncoding(content: ArrayBuffer | Uint8Array): string | null {
+  const bytes = content instanceof Uint8Array ? content : new Uint8Array(content)
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+    return "UTF-8"
+  } catch {
+    return chardet.detect(bytes)
+  }
+}
+
 export function DisplayPaste({ config }: { config: Env }) {
   const [pasteFile, setPasteFile] = useState<File | undefined>(undefined)
   const [pasteContentBuffer, setPasteContentBuffer] = useState<Uint8Array | undefined>(undefined)
@@ -72,7 +82,7 @@ export function DisplayPaste({ config }: { config: Env }) {
           setDecrypted("encrypted")
           setFileBinary(true)
         } else {
-          const encoding = chardet.detect(respBytes)
+          const encoding = detectEncoding(respBytes)
           setFileBinary(encoding === null || !utf8CompatibleEncodings.includes(encoding))
           setGuessedEncoding(encoding)
         }
@@ -95,7 +105,7 @@ export function DisplayPaste({ config }: { config: Env }) {
         }
         setPasteFile(new File([decrypted as BlobPart], inferredFilename || name, { type: blobMime }))
         setPasteContentBuffer(decrypted)
-        const encoding = chardet.detect(decrypted)
+        const encoding = detectEncoding(decrypted)
         setFileBinary(encoding === null || !utf8CompatibleEncodings.includes(encoding))
         setDecrypted("decrypted")
         setGuessedEncoding(encoding)
