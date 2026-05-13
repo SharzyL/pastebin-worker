@@ -72,6 +72,12 @@ curl -X DELETE                   <manageUrl>
 
 - Default expiration is `{{DEFAULT_EXPIRATION}}`, max `{{MAX_EXPIRATION}}`. Pastes are deleted on expiry.
 - Max upload size is `{{R2_MAX_ALLOWED}}`.
+- A single request body is capped at 100 MB by Cloudflare (you get
+  HTTP `413 Payload Too Large` back, returned by the platform before the
+  worker runs). Files larger than 100 MB therefore cannot be sent via a
+  single `curl -Fc=@…` — use the web UI at `{{BASE_URL}}` or the `pb` CLI
+  (see [scripts/](https://github.com/SharzyL/pastebin-worker/tree/goshujin/scripts)),
+  both of which split large files automatically.
 - Treat the service as ephemeral storage — do not rely on it for archival.
 
 ## Full docs

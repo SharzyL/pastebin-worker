@@ -10,9 +10,16 @@ __pb_hist_names() {
     compadd -- ${(u)${(Oa)names}}
 }
 
-local -a root_args=(
+# Flags accepted at any position (before OR after the action).
+local -a common_args=(
     '(-h --help)'{-h,--help}'[print help]'
+    '(-d --dry)'{-d,--dry}'[dry run]'
+    '(-v --verbose)'{-v,--verbose}'[verbose]'
     '--base-url[Base URL (overrides $PB_DOMAIN)]:url'
+)
+
+local -a root_args=(
+    $common_args
     '1:command:->commands'
     '*::arguments:->arguments'
 )
@@ -30,10 +37,6 @@ case "$state" in
     _describe -t pb-commands 'pb.sh command' cmdlist
     ;;
 (arguments)
-    local -a common_args=(
-        '(-d --dry)'{-d,--dry}'[dry run]'
-        '(-v --verbose)'{-v,--verbose}'[verbose]'
-    )
 
     case ${line[1]} in
     (p|post)

@@ -5,13 +5,11 @@ set -l commands p post u update g get d delete
 
 complete -c pb -f
 
-# common_args:
+# common args (accepted at any position: before or after the action)
 complete -c pb -s d -l dry -d 'dry run'
 complete -c pb -s v -l verbose -d 'verbose output'
-
-# root_args:
-complete -c pb -n "not __fish_seen_subcommand_from $commands" -s h -l help -d 'print help'
-complete -c pb -n "not __fish_seen_subcommand_from $commands" -l base-url -x -d 'Base URL (overrides $PB_DOMAIN)'
+complete -c pb -s h -l help -d 'print help'
+complete -c pb -l base-url -x -d 'Base URL (overrides $PB_DOMAIN)'
 
 # cmdlist:
 complete -c pb -n "not __fish_seen_subcommand_from $commands" -a post -d "Post paste"

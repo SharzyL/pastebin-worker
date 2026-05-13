@@ -17,9 +17,9 @@ This is a pastebin running on Cloudflare workers. Try it on [shz.al](https://shz
 
 1. You can post, update, delete your paste directly on the website (such as [shz.al](https://shz.al)).
 
-2. It also provides a convenient HTTP API to use. See [API reference](doc/api.md) for details. You can easily call API via command line (using `curl` or similar tools).
+2. It also provides a convenient HTTP API to use. See [API reference](doc/api.md) for details. You can easily call API via command line (using `curl` or similar tools). Note that a single request body is capped at 100 MB by Cloudflare (the platform returns HTTP `413` for larger bodies before the worker runs) — for larger files, use the website or the `pb` CLI below, which transparently chunk the upload.
 
-3. [pb](/scripts) is a Python script (requires Python 3.9+ with the `requests` package) to make it easier to use on command line.
+3. [pb](/scripts) is a Python script (requires Python 3.9+ with the `requests` package) to make it easier to use on command line; it automatically switches to multipart upload above 5 MiB and shows a progress bar.
 
 4. [doc/skill.md](doc/skill.md) is a concise, AI-agent-oriented packaging of the API. Make it available to your coding agent so it can upload, fetch, and manage pastes via this service.
 

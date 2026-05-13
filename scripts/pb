@@ -6,17 +6,21 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import requests
 
 DEFAULT_DOMAIN = "https://shz.al"
 SCRIPT_NAME = "pb"
+MPU_THRESHOLD = 5 * 1024 * 1024  # switch to multipart upload above this size
+MPU_CHUNK_SIZE = 5 * 1024 * 1024  # R2 requires every part except the last to be >=5 MiB
 
 LEVEL_COLORS = {
     logging.DEBUG: "90",
@@ -41,6 +45,82 @@ class ColorFormatter(logging.Formatter):
 
 
 logger = logging.getLogger(SCRIPT_NAME)
+
+
+def _format_size(n: int) -> str:
+    if n >= 1024 * 1024:
+        return f"{n / 1024 / 1024:.1f} MiB"
+    if n >= 1024:
+        return f"{n / 1024:.1f} KiB"
+    return f"{n} B"
+
+
+class ProgressBar:
+    """Single-line progress bar rendered to stderr; no-op when stderr isn't a TTY."""
+
+    def __init__(self, total: int, label: str = "upload") -> None:
+        self.total = total
+        self.done = 0
+        self.label = label
+        # Suppress the bar when verbose logging is on: its per-part debug lines
+        # already trace progress and the \r-redraw would otherwise interleave.
+        self.tty = sys.stderr.isatty() and not logger.isEnabledFor(logging.DEBUG)
+        self.last_render = 0.0
+        self.width = 30
+
+    def update(self, delta: int) -> None:
+        self.done = min(self.done + delta, self.total)
+        self._render(force=self.done >= self.total)
+
+    def _render(self, force: bool = False) -> None:
+        if not self.tty:
+            return
+        now = time.monotonic()
+        if not force and now - self.last_render < 0.1:
+            return
+        self.last_render = now
+        frac = self.done / self.total if self.total > 0 else 1.0
+        filled = int(self.width * frac)
+        if filled >= self.width:
+            bar = "=" * self.width
+        else:
+            bar = "=" * filled + ">" + " " * (self.width - filled - 1)
+        msg = (
+            f"\r{self.label} [{bar}] {_format_size(self.done)} / "
+            f"{_format_size(self.total)} ({frac * 100:.0f}%)"
+        )
+        sys.stderr.write(msg)
+        sys.stderr.flush()
+
+    def close(self) -> None:
+        if self.tty:
+            sys.stderr.write("\n")
+            sys.stderr.flush()
+
+
+class ProgressReader:
+    """File-like wrapper over a bytes buffer; calls on_read(n) as bytes are consumed.
+
+    requests streams from `data=<file-like>` by calling .read(size) repeatedly,
+    so we get fine-grained progress within a single PUT/POST.
+    """
+
+    def __init__(self, buf: bytes, on_read: Callable[[int], None]) -> None:
+        self.buf = buf
+        self.pos = 0
+        self.on_read = on_read
+
+    def __len__(self) -> int:
+        return len(self.buf)
+
+    def read(self, size: int = -1) -> bytes:
+        if size is None or size < 0:
+            size = len(self.buf) - self.pos
+        chunk = self.buf[self.pos : self.pos + size]
+        self.pos += len(chunk)
+        if chunk:
+            self.on_read(len(chunk))
+        return chunk
 
 
 def setup_logger(verbose: bool) -> None:
@@ -131,6 +211,156 @@ def manage_basename(manage_url: str) -> str:
     return manage_url.rstrip("/").rsplit("/", 1)[-1]
 
 
+def _print_json(payload: dict) -> None:
+    """Pretty-print JSON. If `jq` is on PATH, hand off to it for syntax coloring
+    (matching what the old Bash script did); otherwise use stdlib indentation.
+    `jq -C` forces color even when its stdout is not a TTY, so we gate on the
+    real TTY here."""
+    raw = json.dumps(payload, ensure_ascii=False)
+    if shutil.which("jq"):
+        color_flag = "-C" if sys.stdout.isatty() else "-M"
+        try:
+            subprocess.run(["jq", color_flag, "."], input=raw.encode(), check=True)
+            return
+        except (subprocess.CalledProcessError, OSError) as e:
+            logger.debug(f"jq failed, falling back to plain JSON: {e}")
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+def _finalize_response(payload: dict, clip_flag: bool) -> None:
+    _print_json(payload)
+    manage_url = payload.get("manageUrl")
+    if manage_url:
+        append_history(manage_basename(manage_url))
+    page_url = payload.get("url")
+    if clip_flag and page_url:
+        clip(page_url)
+
+
+def upload_mpu(
+    domain: str,
+    body: bytes,
+    fields: dict,
+    is_update: bool,
+    name: Optional[str],
+    passwd: Optional[str],
+    is_private: bool,
+    expire: Optional[str],
+    dry: bool,
+    clip_flag: bool,
+) -> None:
+    """Multipart upload for files larger than MPU_THRESHOLD.
+
+    For post:   POST /mpu/create?n=&p=&e=
+    For update: POST /mpu/create-update?name=&password=&e=
+    Then PUT /mpu/resume?key=&uploadId=&partNumber= for each 5 MiB chunk.
+    Finally POST /mpu/complete?name=&key=&uploadId= with `c=<json parts list>`.
+    """
+    total = len(body)
+    num_parts = max(1, math.ceil(total / MPU_CHUNK_SIZE))
+
+    if is_update:
+        create_url = f"{domain}/mpu/create-update"
+        create_params: dict = {"name": name, "password": passwd}
+    else:
+        create_url = f"{domain}/mpu/create"
+        create_params = {}
+        if name:
+            create_params["n"] = name.lstrip("~")
+        if is_private:
+            create_params["p"] = "1"
+    if expire:
+        create_params["e"] = expire
+
+    masked_create_params = dict(create_params)
+    if "password" in masked_create_params:
+        masked_create_params["password"] = "***"
+    log_request("POST", create_url, {}, masked_create_params)
+    logger.info(
+        f"using MPU: {_format_size(total)} in {num_parts} part(s) of "
+        f"{_format_size(MPU_CHUNK_SIZE)}"
+    )
+    if dry:
+        for i in range(num_parts):
+            chunk_size = min(MPU_CHUNK_SIZE, total - i * MPU_CHUNK_SIZE)
+            log_request(
+                "PUT",
+                f"{domain}/mpu/resume",
+                {},
+                {"partNumber": i + 1, "size": chunk_size},
+            )
+        log_request("POST", f"{domain}/mpu/complete", {**fields, "c": "<parts...>"}, {})
+        return
+
+    try:
+        create_resp = requests.post(create_url, params=create_params)
+    except requests.RequestException as e:
+        die(f"MPU create failed: {e}")
+        return
+    if not create_resp.ok:
+        die(f"MPU create {create_resp.status_code}: {create_resp.text}")
+    create = create_resp.json()
+    key = create["key"]
+    upload_id = create["uploadId"]
+    paste_name = create["name"]
+
+    bar = ProgressBar(total, label="MPU")
+    uploaded_parts = []
+    try:
+        for i in range(num_parts):
+            chunk = body[i * MPU_CHUNK_SIZE : (i + 1) * MPU_CHUNK_SIZE]
+            logger.debug(f"PUT part {i + 1}/{num_parts}  size={len(chunk)}")
+            reader = ProgressReader(chunk, bar.update)
+            try:
+                part_resp = requests.put(
+                    f"{domain}/mpu/resume",
+                    params={
+                        "key": key,
+                        "uploadId": upload_id,
+                        "partNumber": i + 1,
+                    },
+                    data=reader,
+                    headers={"Content-Length": str(len(chunk))},
+                )
+            except requests.RequestException as e:
+                die(f"MPU part {i + 1} failed: {e}")
+                return
+            if not part_resp.ok:
+                die(f"MPU part {i + 1} {part_resp.status_code}: {part_resp.text}")
+            uploaded_parts.append(part_resp.json())
+    finally:
+        bar.close()
+
+    complete_params = {"name": paste_name, "key": key, "uploadId": upload_id}
+    complete_data = dict(fields)
+    log_request(
+        "POST" if not is_update else "PUT",
+        f"{domain}/mpu/complete",
+        {**complete_data, "c": "<parts...>"},
+        complete_params,
+    )
+    try:
+        complete_resp = requests.request(
+            "POST" if not is_update else "PUT",
+            f"{domain}/mpu/complete",
+            params=complete_params,
+            data=complete_data,
+            files={"c": ("paste", json.dumps(uploaded_parts).encode())},
+        )
+    except requests.RequestException as e:
+        die(f"MPU complete failed: {e}")
+        return
+    if not complete_resp.ok:
+        die(f"MPU complete {complete_resp.status_code}: {complete_resp.text}")
+
+    try:
+        payload = complete_resp.json()
+    except ValueError:
+        die(f"non-JSON response from /mpu/complete: {complete_resp.text}")
+        return
+    _finalize_response(payload, clip_flag)
+
+
 def post_or_put(
     method: str,
     url: str,
@@ -172,15 +402,7 @@ def post_or_put(
         die(f"non-JSON response: {resp.text}")
         return
 
-    print(json.dumps(payload, indent=2, ensure_ascii=False))
-
-    manage_url = payload.get("manageUrl")
-    if manage_url:
-        append_history(manage_basename(manage_url))
-
-    page_url = payload.get("url")
-    if clip_flag and page_url:
-        clip(page_url)
+    _finalize_response(payload, clip_flag)
 
 
 def parse_name_passwd(arg: str) -> tuple[str, Optional[str]]:
@@ -198,6 +420,27 @@ def cmd_post(args: argparse.Namespace, domain: str) -> None:
 
     file = args.file or args.file_pos
     body = read_content(file, args.content)
+
+    if len(body) > MPU_THRESHOLD:
+        mpu_fields: dict = {}
+        if args.expire:
+            mpu_fields["e"] = args.expire
+        if args.passwd:
+            mpu_fields["s"] = args.passwd
+        upload_mpu(
+            domain,
+            body,
+            mpu_fields,
+            is_update=False,
+            name=args.name,
+            passwd=None,
+            is_private=bool(args.private),
+            expire=args.expire,
+            dry=args.dry,
+            clip_flag=args.clip,
+        )
+        return
+
     fields: dict = {}
     if args.expire:
         fields["e"] = args.expire
@@ -221,6 +464,27 @@ def cmd_update(args: argparse.Namespace, domain: str) -> None:
         )
 
     body = read_content(args.file, args.content)
+
+    if len(body) > MPU_THRESHOLD:
+        mpu_fields: dict = {}
+        if args.expire:
+            mpu_fields["e"] = args.expire
+        if args.passwd:
+            mpu_fields["s"] = args.passwd
+        upload_mpu(
+            domain,
+            body,
+            mpu_fields,
+            is_update=True,
+            name=name,
+            passwd=passwd,
+            is_private=False,
+            expire=args.expire,
+            dry=args.dry,
+            clip_flag=args.clip,
+        )
+        return
+
     fields: dict = {}
     if args.expire:
         fields["e"] = args.expire
@@ -269,7 +533,7 @@ def cmd_get(args: argparse.Namespace, domain: str) -> None:
         except ValueError:
             die(f"non-JSON response from /m/: {resp.text}")
             return
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        _print_json(payload)
         return
 
     if args.output:
@@ -302,23 +566,44 @@ def cmd_delete(args: argparse.Namespace, domain: str) -> None:
         die(f"{resp.status_code}: {resp.text}")
 
 
-def add_common(p: argparse.ArgumentParser) -> None:
-    p.add_argument("-v", "--verbose", action="store_true", help="verbose output")
-    p.add_argument(
-        "-d", "--dry", action="store_true", help="dry run, do not send the request"
-    )
+def build_common_parser() -> argparse.ArgumentParser:
+    """Parent parser holding flags that may appear before OR after the action.
 
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog=SCRIPT_NAME,
-        description="pastebin-worker command-line client",
+    Using default=argparse.SUPPRESS means subparser parsing does NOT clobber
+    values already set by the main parser when the same flag appears before
+    the action.
+    """
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help="verbose output",
     )
-    parser.add_argument(
+    common.add_argument(
+        "-d",
+        "--dry",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help="dry run, do not send the request",
+    )
+    common.add_argument(
         "--base-url",
         dest="base_url",
         metavar="URL",
+        default=argparse.SUPPRESS,
         help=f"base URL of the pastebin instance (overrides $PB_DOMAIN, default: {DEFAULT_DOMAIN})",
+    )
+    return common
+
+
+def build_parser() -> argparse.ArgumentParser:
+    common = build_common_parser()
+    parser = argparse.ArgumentParser(
+        prog=SCRIPT_NAME,
+        description="pastebin-worker command-line client",
+        parents=[common],
     )
     sub = parser.add_subparsers(dest="action", required=True, metavar="ACTION")
 
@@ -328,6 +613,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="upload a paste",
         description="Upload a paste. If neither FILE nor -c/--content is given, "
         "the paste content is read from stdin.",
+        parents=[common],
     )
     p_post.add_argument("-c", "--content", help="inline content of the paste")
     p_post.add_argument("-e", "--expire", help="expiration time (e.g. 60, 1h, 7d)")
@@ -343,7 +629,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_post.add_argument(
         "file_pos", nargs="?", metavar="FILE", help="read paste from file (positional)"
     )
-    add_common(p_post)
     p_post.set_defaults(func=cmd_post)
 
     p_update = sub.add_parser(
@@ -353,6 +638,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Update an existing paste. If neither -f/--file nor -c/--content "
         "is given, the new content is read from stdin. If PASSWD is omitted, it is "
         "looked up from the history file.",
+        parents=[common],
     )
     p_update.add_argument("target", help="NAME[:PASSWD]")
     p_update.add_argument("-c", "--content", help="inline content of the paste")
@@ -362,10 +648,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_update.add_argument(
         "-x", "--clip", action="store_true", help="copy URL to clipboard"
     )
-    add_common(p_update)
     p_update.set_defaults(func=cmd_update)
 
-    p_get = sub.add_parser("get", aliases=["g"], help="fetch a paste")
+    p_get = sub.add_parser(
+        "get",
+        aliases=["g"],
+        help="fetch a paste",
+        parents=[common],
+    )
     p_get.add_argument("name", help="NAME[.EXT]")
     p_get.add_argument("-o", "--output", help="write to FILE instead of stdout")
     p_get.add_argument(
@@ -374,12 +664,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_get.add_argument(
         "--meta", action="store_true", help="fetch /m/<name> metadata as pretty JSON"
     )
-    add_common(p_get)
     p_get.set_defaults(func=cmd_get)
 
-    p_del = sub.add_parser("delete", aliases=["d"], help="delete a paste")
+    p_del = sub.add_parser(
+        "delete",
+        aliases=["d"],
+        help="delete a paste",
+        parents=[common],
+    )
     p_del.add_argument("target", help="NAME[:PASSWD]")
-    add_common(p_del)
     p_del.set_defaults(func=cmd_delete)
 
     return parser
@@ -388,13 +681,25 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[list] = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
-    setup_logger(getattr(args, "verbose", False))
+    # These flags use default=argparse.SUPPRESS so that placing them before
+    # the action does not get clobbered by the subparser. Fill in fallbacks.
+    args.verbose = getattr(args, "verbose", False)
+    args.dry = getattr(args, "dry", False)
+    base_url = getattr(args, "base_url", None)
+    setup_logger(args.verbose)
 
-    domain = (args.base_url or os.environ.get("PB_DOMAIN") or DEFAULT_DOMAIN).rstrip(
-        "/"
-    )
+    domain = (base_url or os.environ.get("PB_DOMAIN") or DEFAULT_DOMAIN).rstrip("/")
     args.func(args, domain)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Ensure any in-flight progress bar leaves the cursor on a fresh line.
+        if sys.stderr.isatty():
+            sys.stderr.write("\n")
+            sys.stderr.flush()
+        if logger.handlers:
+            logger.warning("interrupted")
+        sys.exit(130)

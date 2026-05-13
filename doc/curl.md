@@ -242,16 +242,24 @@ Deletion may take a few seconds to propagate globally.
 - The maximum allowed upload size is set per deployment via `R2_MAX_ALLOWED`.
   Exceeding it returns HTTP `413`.
 
+- A single HTTP request body is capped at **100 MB** by Cloudflare Workers
+  (HTTP `413 Payload Too Large` is returned before the request ever reaches
+  the worker), regardless of the deployment's `R2_MAX_ALLOWED`. To upload
+  larger files, use the web UI at `{{BASE_URL}}` or the
+  [`pb`](https://github.com/SharzyL/pastebin-worker/tree/goshujin/scripts)
+  CLI — both automatically switch to a multipart upload that streams 5 MiB
+  chunks through the `/mpu/*` endpoints.
+
 ## Common errors
 
-| Status | Meaning                                                  |
-| -----: | -------------------------------------------------------- |
-|  `400` | Malformed request (bad field, illegal name, bad expire). |
-|  `403` | Wrong password when updating or deleting.                |
-|  `404` | Paste not found, or already expired.                     |
-|  `409` | Custom name is already in use.                           |
-|  `413` | Content exceeds the configured max size.                 |
-|  `500` | Unexpected server error — please report it.              |
+| Status | Meaning                                                                                                                                                 |
+| -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|  `400` | Malformed request (bad field, illegal name, bad expire).                                                                                                |
+|  `403` | Wrong password when updating or deleting.                                                                                                               |
+|  `404` | Paste not found, or already expired.                                                                                                                    |
+|  `409` | Custom name is already in use.                                                                                                                          |
+|  `413` | Request body exceeds 100 MB (platform cap, intercepted by Cloudflare before reaching the worker), or content exceeds the deployment's `R2_MAX_ALLOWED`. |
+|  `500` | Unexpected server error — please report it.                                                                                                             |
 
 For the full HTTP API including `HEAD`, `OPTIONS`, response headers, and edge
 cases, see [api.md]({{BASE_URL}}/doc/api).
