@@ -19,7 +19,7 @@ This is a pastebin running on Cloudflare workers. Try it on [shz.al](https://shz
 
 2. It also provides a convenient HTTP API to use. See [API reference](doc/api.md) for details. You can easily call API via command line (using `curl` or similar tools).
 
-3. [pb](/scripts) is a bash script to make it easier to use on command line.
+3. [pb](/scripts) is a Python script (requires Python 3.9+ with the `requests` package) to make it easier to use on command line.
 
 4. [doc/skill.md](doc/skill.md) is a concise, AI-agent-oriented packaging of the API. Make it available to your coding agent so it can upload, fetch, and manage pastes via this service.
 

@@ -6,7 +6,7 @@ This directory contains a set of scripts that facilitate the usage and developme
 
 This is a wrapper script to make it easier to use our pastebin.
 
-**Requirements**: `bash`, `jq`, `getopt`, `curl`
+**Requirements**: `python3` (>=3.9) with the `requests` package available
 
 **Installation**: download `pb` to your `PATH` and give it execution permission. For example:
 
@@ -29,19 +29,19 @@ Usage:
   pb [-h|--help]
     print this help message
 
-  pb [p|post] [OPTIONS] [-f] FILE
-    upload your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
-    read the paste from stdin.
+  pb [p|post] [OPTIONS]
+    upload your text to pastebin, if neither '-f FILE' nor '-c CONTENT' are
+    given, read the paste from stdin.
 
-  pb [u|update] NAME[:PASSWD]
-    Update your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
-    read the paste from stdin. If 'PASSWD' is not given, try to read password
-    from the history file.
+  pb [u|update] [OPTIONS] NAME[:PASSWD]
+    Update your text to pastebin, if neither '-f FILE' nor '-c CONTENT' are
+    given, read the paste from stdin. If 'PASSWD' is not given, try to read
+    password from the history file.
 
   pb [g|get] [OPTIONS] NAME[.EXT]
     fetch the paste with name 'NAME' and extension 'EXT'
 
-  pb [d|delete] [OPTIONS] NAME
+  pb [d|delete] [OPTIONS] NAME[:PASSWD]
     delete the paste with name 'NAME'
 
 Options:
@@ -61,15 +61,14 @@ Options:
     -x, --clip              clip the url to the clipboard
 
   get options:
-    -l, --lang LANG         highlight the paste with language 'LANG' in a web page
-    -m, --mime MIME         set the 'Content-Type' header according to mime-type MIME
     -o, --output FILE       output the paste in file 'FILE'
     -u, --url               make a 302 URL redirection
+    --meta                  fetch /m/<name> metadata as pretty JSON
 
   delete options:
     none
 
   general options:
-    -v, --verbose           display the 'underlying' curl command
-    -d, --dry               do a dry run, executing no 'curl' command at all
+    -v, --verbose           log the planned request (method, URL, fields)
+    -d, --dry               do a dry run, sending no HTTP request at all
 ```

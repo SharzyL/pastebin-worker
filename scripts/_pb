@@ -1,9 +1,18 @@
 #compdef pb
 
+__pb_hist_names() {
+    local hist_file="${XDG_CONFIG_DIR:-$HOME/.config}/pb_hist"
+    [[ -r "$hist_file" ]] || return
+    local -a names
+    # strip ":passwd", drop empties, reverse (latest first), then dedup keeping first
+    names=(${${(f)"$(<$hist_file)"}%%:*})
+    names=(${names:#})
+    compadd -- ${(u)${(Oa)names}}
+}
+
 local -a root_args=(
-    '(-d --dry)'{-d,--dry}'[dry run]'
-    '(-v --verbose)'{-v,--verbose}'[verbose]'
     '(-h --help)'{-h,--help}'[print help]'
+    '--base-url[Base URL (overrides $PB_DOMAIN)]:url'
     '1:command:->commands'
     '*::arguments:->arguments'
 )
@@ -56,12 +65,11 @@ case "$state" in
 
     (g|get)
         local -a args=(
-            '*:paste name'
+            '*:paste name:__pb_hist_names'
 
-            '(-l --lang)'{-l,--lang}'[Highlight with language in a web page]:language'
-            '(-m --mine)'{-m,--mine}'[Content of the paste]:mimetype'
             '(-o --output)'{-o,--output}'[Output the paste in file]:file:_files'
-            '(-u --url)'{-u,--url}'[Make a 302 redirection]'
+            '(-u --url --meta)'{-u,--url}'[Make a 302 redirection]'
+            '(-u --url --meta)--meta[Fetch /m/<name> metadata as JSON]'
         )
         _arguments -s $args $common_args
         ;;

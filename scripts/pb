@@ -1,348 +1,400 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+"""pb: command-line client for pastebin-worker."""
 
-domain="${PB_DOMAIN:-https://shz.al}"
-hist_file="${XDG_CONFIG_DIR:-$HOME/.config}/pb_hist"
+from __future__ import annotations
 
-script_name=${0##*/}
+import argparse
+import json
+import logging
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
 
-_print_with_color() {
-    color=$1
-    shift
-    [ -t 2 ] && printf "\x1b[0;%sm" "$color" >&2
-    echo -n "$*" >&2
-    [ -t 2 ] && printf "\x1b[0m\n" >&2
+import requests
+
+DEFAULT_DOMAIN = "https://shz.al"
+SCRIPT_NAME = "pb"
+
+LEVEL_COLORS = {
+    logging.DEBUG: "90",
+    logging.INFO: "0",
+    logging.WARNING: "33",
+    logging.ERROR: "31",
+    logging.CRITICAL: "31",
 }
 
-_die() {
-    _print_with_color 31 "$@"
-    exit 1
-}
 
-[ -d "${hist_file%/*}" ] || mkdir -p "${hist_file%/*}" || _die "cannot create directory for '$hist_file'"
-touch "$hist_file" || _die "cannot create history file '$hist_file'"
+class ColorFormatter(logging.Formatter):
+    def __init__(self, use_color: bool) -> None:
+        super().__init__(fmt="%(name)s: %(message)s")
+        self.use_color = use_color
 
-_verbose() {
-    _print_with_color 90 "$script_name: $*"
-}
+    def format(self, record: logging.LogRecord) -> str:
+        msg = super().format(record)
+        if not self.use_color:
+            return msg
+        code = LEVEL_COLORS.get(record.levelno, "0")
+        return f"\x1b[0;{code}m{msg}\x1b[0m"
 
-_clip() {
-    if [ -x "$(command -v pbcopy)" ]; then
-        echo "$@" | pbcopy
-    elif [ -x "$(command -v xclip)" ]; then
-        echo "$@" | xclip -selection clipboard
-    elif [ -x "$(command -v xsel)" ]; then
-        echo "$@" | xsel -b
-    elif [ -x "$(command -v wl-copy)" ]; then
-        echo "$@" | wl-copy
-    else
-        _verbose "Cannot find a clipboard tool. Requires one of 'pbcopy' (macOS), 'xclip' (xorg), 'xsel' (xorg) or 'wl-copy' (wayland)."
+
+logger = logging.getLogger(SCRIPT_NAME)
+
+
+def setup_logger(verbose: bool) -> None:
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(ColorFormatter(use_color=sys.stderr.isatty()))
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+
+
+def die(msg: str) -> "Optional[None]":
+    logger.error(msg)
+    sys.exit(1)
+
+
+def history_path() -> Path:
+    base = os.environ.get("XDG_CONFIG_DIR") or os.path.expanduser("~/.config")
+    return Path(base) / "pb_hist"
+
+
+def ensure_history() -> Path:
+    p = history_path()
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.touch(exist_ok=True)
+    except OSError as e:
+        die(f"cannot create history file '{p}': {e}")
+    return p
+
+
+def append_history(entry: str) -> None:
+    p = ensure_history()
+    with p.open("a") as f:
+        f.write(entry + "\n")
+
+
+def lookup_passwd(name: str) -> Optional[str]:
+    p = ensure_history()
+    found: Optional[str] = None
+    with p.open() as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if line.startswith(f"{name}:"):
+                found = line.split(":", 1)[1]
+    return found
+
+
+def clip(text: str) -> None:
+    candidates = [
+        ("pbcopy", []),
+        ("xclip", ["-selection", "clipboard"]),
+        ("xsel", ["-b"]),
+        ("wl-copy", []),
+    ]
+    for cmd, args in candidates:
+        if shutil.which(cmd):
+            try:
+                subprocess.run([cmd, *args], input=text.encode(), check=True)
+                logger.info(f"'{text}' is copied to your clipboard")
+            except subprocess.CalledProcessError as e:
+                logger.warning(f"clipboard command '{cmd}' failed: {e}")
+            return
+    logger.warning(
+        "Cannot find a clipboard tool. Requires one of "
+        "'pbcopy' (macOS), 'xclip' (xorg), 'xsel' (xorg) or 'wl-copy' (wayland)."
+    )
+
+
+def read_content(file: Optional[str], content: Optional[str]) -> bytes:
+    if content is not None and file is not None:
+        die("cannot set both 'content' and 'file'")
+    if file is not None:
+        try:
+            return Path(file).read_bytes()
+        except OSError as e:
+            die(f"cannot read file '{file}': {e}")
+    if content is not None:
+        return content.encode()
+    return sys.stdin.buffer.read()
+
+
+def log_request(method: str, url: str, fields: dict, params: dict) -> None:
+    masked = {k: ("***" if k == "s" else v) for k, v in fields.items()}
+    logger.debug(f"{method} {url}  fields={masked}  params={params}")
+
+
+def manage_basename(manage_url: str) -> str:
+    return manage_url.rstrip("/").rsplit("/", 1)[-1]
+
+
+def post_or_put(
+    method: str,
+    url: str,
+    fields: dict,
+    body: Optional[bytes],
+    verbose: bool,
+    dry: bool,
+    clip_flag: bool,
+    log_url: Optional[str] = None,
+) -> None:
+    files: dict = {}
+    data: dict = {}
+    for k, v in fields.items():
+        data[k] = v
+    if body is not None:
+        files["c"] = ("paste", body)
+
+    log_request(
+        method,
+        log_url or url,
+        {**fields, "c": "<...>" if body is not None else None},
+        {},
+    )
+    if dry:
         return
-    fi
-    _verbose "'$*' is copied to your clipboard"
-}
 
-curl_code() {
-    status_code=$(curl -sS -w '%{response_code}' "$@")
-    if [ "$status_code" != '200' ] && [ "$status_code" != '302' ]; then
-        return 1
-    fi
-}
+    try:
+        resp = requests.request(method, url, data=data, files=files or None)
+    except requests.RequestException as e:
+        die(f"request failed: {e}")
+        return  # for type-checker; die() exits
 
-main() {
-    action="$1"
-    shift
-    case "$action" in
-        (p|post  ) pb_post "$@";;
-        (u|update) pb_update "$@";;
-        (d|delete) pb_delete "$@";;
-        (g|get   ) pb_get "$@";;
-        (-h|--help) usage;;
-        (*) _die "no action given. try '$script_name' -h for more information"
-    esac
-}
+    if resp.status_code not in (200, 302):
+        die(f"{resp.status_code}: {resp.text}")
 
-usage() {
-    cat <<-EOF
-Usage:
-  ${script_name} [-h|--help]
-    print this help message
+    try:
+        payload = resp.json()
+    except ValueError:
+        die(f"non-JSON response: {resp.text}")
+        return
 
-  ${script_name} [p|post] [OPTIONS] [-f] FILE
-    upload your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
-    read the paste from stdin.
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
 
-  ${script_name} [u|update] NAME[:PASSWD]
-    Update your text to pastebin, if neither 'FILE' and 'CONTENT' are given,
-    read the paste from stdin. If 'PASSWD' is not given, try to read password
-    from the history file.
+    manage_url = payload.get("manageUrl")
+    if manage_url:
+        append_history(manage_basename(manage_url))
 
-  ${script_name} [g|get] [OPTIONS] NAME[.EXT]
-    fetch the paste with name 'NAME' and extension 'EXT'
+    page_url = payload.get("url")
+    if clip_flag and page_url:
+        clip(page_url)
 
-  ${script_name} [d|delete] [OPTIONS] NAME
-    delete the paste with name 'NAME'
 
-Options:
-  post options:
-    -c, --content CONTENT   the content of the paste
-    -e, --expire SECONDS    the expiration time of the paste (in seconds)
-    -n, --name NAME         the name of the paste
-    -s, --passwd PASSWD     the password
-    -p, --private           make the generated paste name longer for better privacy
-    -x, --clip              clip the url to the clipboard
+def parse_name_passwd(arg: str) -> tuple[str, Optional[str]]:
+    if ":" in arg:
+        name, passwd = arg.split(":", 1)
+        return name, passwd
+    return arg, None
 
-  update options:
-    -f, --file FILE         read the paste from file
-    -c, --content CONTENT   the content of the paste
-    -e, --expire SECONDS    the expiration time of the paste (in seconds)
-    -s, --passwd PASSWD     the password
-    -x, --clip              clip the url to the clipboard
 
-  get options:
-    -l, --lang LANG         highlight the paste with language 'LANG' in a web page
-    -m, --mime MIME         set the 'Content-Type' header according to mime-type MIME
-    -o, --output FILE       output the paste in file 'FILE'
-    -u, --url               make a 302 URL redirection
+def cmd_post(args: argparse.Namespace, domain: str) -> None:
+    if args.private and args.name:
+        die("cannot set both 'private' and 'name'")
+    if args.file and args.file_pos:
+        die("cannot specify FILE both as positional argument and via '-f'")
 
-  delete options:
-    none
+    file = args.file or args.file_pos
+    body = read_content(file, args.content)
+    fields: dict = {}
+    if args.expire:
+        fields["e"] = args.expire
+    if args.name:
+        fields["n"] = args.name
+    if args.passwd:
+        fields["s"] = args.passwd
+    if args.private:
+        fields["p"] = "true"
 
-  general options:
-    -v, --verbose           display the 'underlying' curl command
-    -d, --dry               do a dry run, executing no 'curl' command at all
-EOF
-}
+    post_or_put("POST", f"{domain}/", fields, body, args.verbose, args.dry, args.clip)
 
-pb_post() {
-    # parse args
-    short_args="c:e:n:s:f:vhpxd"
-    long_args="content:,expire:,name:,passwd:,file:,verbose,private,clip,dry"
-    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-        || return 1
-    eval set -- "$TEMP";
 
-    local content expire name passwd private verbose clip dry
-    while [[ ${1:0:1} == - ]]; do
-        [[ $1 =~ ^-f|--|--file$ ]]  && {
-            shift 1;
-            if [ -n "$1" ]; then file="$1"; shift 1; continue; fi
-        };
-        [[ $1 =~ ^-c|--content$ ]]  && { content="$2"; shift 2; continue; };
-        [[ $1 =~ ^-e|--expire$ ]]   && { expire="$2"; shift 2; continue; };
-        [[ $1 =~ ^-n|--name$ ]]     && { name="$2"; shift 2; continue; };
-        [[ $1 =~ ^-s|--passwd$ ]]   && { passwd="$2"; shift 2; continue; };
-        [[ $1 =~ ^-p|--private$ ]]  && { private="true"; shift 1; continue; };
-        [[ $1 =~ ^-v|--verbose$ ]]  && { verbose="true"; shift 1; continue; };
-        [[ $1 =~ ^-x|--clip$ ]]     && { clip="true"; shift 1; continue; };
-        [[ $1 =~ ^-d|--dry$ ]]      && { dry="true"; shift 1; continue; };
-        break;
-    done
-    [ "$#" -gt 0 ] && _die "redundant arguments '$*'"
+def cmd_update(args: argparse.Namespace, domain: str) -> None:
+    name, passwd = parse_name_passwd(args.target)
+    if passwd is None:
+        passwd = args.passwd or lookup_passwd(name)
+    if not passwd:
+        die(
+            f"no passwd given, and cannot find passwd in history file '{history_path()}'"
+        )
 
-    # check arguments
-    [ -n "$content" ] && [ -n "$file" ] && _die "cannot set both 'content' and 'file'"
-    [ -n "$file" ] && [ ! -r "$file" ]  && _die "cannot read file '${file}'"
-    [ -n "$private" ] && [ -n "$name" ] && _die "cannot set both 'private' and 'name'"
+    body = read_content(args.file, args.content)
+    fields: dict = {}
+    if args.expire:
+        fields["e"] = args.expire
+    if args.passwd:
+        fields["s"] = args.passwd
 
-    # build arguments
-    declare -a args=("curl_code" "-sS" "$domain")
-    [ -n "$file" ]    && args+=("-Fc=@$file")
-    [ -n "$content" ] && args+=("-Fc=\"$content\"")
-    [ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
-    [ -n "$name" ]    && args+=("-Fn=\"$name\"")
-    [ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
-    [ -n "$private" ] && args+=("-Fp=true")
-    [ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
+    post_or_put(
+        "PUT",
+        f"{domain}/{name}:{passwd}",
+        fields,
+        body,
+        args.verbose,
+        args.dry,
+        args.clip,
+        log_url=f"{domain}/{name}:***",
+    )
 
-    # prepare curl
-    tmp_file=$(mktemp)
-    trap 'rm -f "$tmp_file"' EXIT
 
-    [ -n "$verbose" ] && _verbose "${args[@]}"
+def cmd_get(args: argparse.Namespace, domain: str) -> None:
+    if args.meta:
+        if args.url:
+            die("cannot combine --meta with --url")
+        prefix = "m"
+    elif args.url:
+        prefix = "u"
+    else:
+        prefix = None
+    base = f"{domain}/{prefix}/{args.name}" if prefix else f"{domain}/{args.name}"
 
-    # curl if not dry-run
-    if [ -z "$dry" ]; then
-        "${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
-    else
-        return 0
-    fi
+    log_request("GET", base, {}, {})
+    if args.dry:
+        return
 
-    # report error if jq parse error
-    jq . "$tmp_file"
+    try:
+        resp = requests.get(base, allow_redirects=False)
+    except requests.RequestException as e:
+        die(f"request failed: {e}")
+        return
 
-    # record history
-    manage_url=$(jq -r '.manageUrl' "$tmp_file")
-    manage_path=${manage_url##*/}
-    echo "$manage_path" >> "$hist_file"
+    if resp.status_code not in (200, 302):
+        die(f"{resp.status_code}: {resp.text}")
 
-    # copy URL to clipboard
-    url=$(jq -r '.url' "$tmp_file")
-    [ -n "$clip" ] && _clip "$url"
+    if args.meta:
+        try:
+            payload = resp.json()
+        except ValueError:
+            die(f"non-JSON response from /m/: {resp.text}")
+            return
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
 
-    return 0
-}
+    if args.output:
+        Path(args.output).write_bytes(resp.content)
+    else:
+        sys.stdout.buffer.write(resp.content)
 
-pb_update() {
-    # parse args
-    short_args="c:e:s:f:vhxd"
-    long_args="content:,expire:,passwd:,file:,verbose,clip,dry"
-    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-        || return 1
-    eval set -- "$TEMP";
 
-    local name_passwd file content expire passwd verbose clip dry
-    while [[ ${1:0:1} == - ]]; do
-        [[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
-        [[ $1 =~ ^-f|--file$ ]]    && { file="$2"; shift 2; continue; };
-        [[ $1 =~ ^-c|--content$ ]] && { content="$2"; shift 2; continue; };
-        [[ $1 =~ ^-e|--expire$ ]]  && { expire="$2"; shift 2; continue; };
-        [[ $1 =~ ^-s|--passwd$ ]]  && { passwd="$2"; shift 2; continue; };
-        [[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
-        [[ $1 =~ ^-x|--clip$ ]]    && { clip="true"; shift 1; continue; };
-        [[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
-        break;
-    done
-    [ "$#" -gt 0 ] && _die "redundant arguments '$*'"
+def cmd_delete(args: argparse.Namespace, domain: str) -> None:
+    name, passwd = parse_name_passwd(args.target)
+    if passwd is None:
+        passwd = lookup_passwd(name)
+    if not passwd:
+        die(
+            f"no passwd given, and cannot find passwd in history file '{history_path()}'"
+        )
 
-    # parse name and passwd
-    [ -z "$name_passwd" ] && _die "no name and passwd given"
-    name=${name_passwd%:*}
-    if [[ "$name_passwd" =~ : ]]; then
-        passwd=${name_passwd#*:}
-    else
-        name_passwd=$(grep "^$name:" "$hist_file" | tail -1) && [ -n "$name_passwd" ] && passwd=${name_passwd#*:}
-    fi
-    [ -z "$passwd" ] && _die "no passwd given, and cannot find passwd in history file '$hist_file'"
+    url = f"{domain}/{name}:{passwd}"
+    log_request("DELETE", f"{domain}/{name}:***", {}, {})
+    if args.dry:
+        return
 
-    # check arguments
-    [ -n "$content" ] && [ -n "$file" ] && _die "cannot set both 'content' and 'file'"
-    [ -n "$file" ] && [ ! -r "$file" ]  && _die "cannot read file '${file}'"
+    try:
+        resp = requests.delete(url)
+    except requests.RequestException as e:
+        die(f"request failed: {e}")
+        return
 
-    # build arguments
-    declare -a args=("curl_code" "-X" "PUT" "$domain/$name:$passwd")
-    [ -n "$file" ]    && args+=("-Fc=@$file")
-    [ -n "$content" ] && args+=("-Fc=\"$content\"")
-    [ -n "$expire" ]  && args+=("-Fe=\"$expire\"")
-    [ -n "$passwd" ]  && args+=("-Fs=\"$passwd\"")
-    [ -z "$content" ] && [ -z "$file" ] && args+=("-Fc=@-")
+    if resp.status_code != 200:
+        die(f"{resp.status_code}: {resp.text}")
 
-    # prepare curl
-    tmp_file=$(mktemp)
-    trap 'rm -f "$tmp_file"' EXIT
 
-    [ -n "$verbose" ] && _verbose "${args[@]}"
+def add_common(p: argparse.ArgumentParser) -> None:
+    p.add_argument("-v", "--verbose", action="store_true", help="verbose output")
+    p.add_argument(
+        "-d", "--dry", action="store_true", help="dry run, do not send the request"
+    )
 
-    # curl if not dry-run
-    if [ -z "$dry" ]; then
-        "${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
-    else
-        return 0
-    fi
 
-    # report error if jq parse error
-    jq . "$tmp_file" 2>/dev/null || _die "$(cat "$tmp_file")"
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog=SCRIPT_NAME,
+        description="pastebin-worker command-line client",
+    )
+    parser.add_argument(
+        "--base-url",
+        dest="base_url",
+        metavar="URL",
+        help=f"base URL of the pastebin instance (overrides $PB_DOMAIN, default: {DEFAULT_DOMAIN})",
+    )
+    sub = parser.add_subparsers(dest="action", required=True, metavar="ACTION")
 
-    # record history
-    manage_url=$(jq -r '.manageUrl' "$tmp_file")
-    manage_path=${manage_url##*/}
-    echo "$manage_path" >> "$hist_file"
+    p_post = sub.add_parser(
+        "post",
+        aliases=["p"],
+        help="upload a paste",
+        description="Upload a paste. If neither FILE nor -c/--content is given, "
+        "the paste content is read from stdin.",
+    )
+    p_post.add_argument("-c", "--content", help="inline content of the paste")
+    p_post.add_argument("-e", "--expire", help="expiration time (e.g. 60, 1h, 7d)")
+    p_post.add_argument("-n", "--name", help="custom name (prefix with ~)")
+    p_post.add_argument("-s", "--passwd", help="password")
+    p_post.add_argument(
+        "-p", "--private", action="store_true", help="use longer random name"
+    )
+    p_post.add_argument(
+        "-x", "--clip", action="store_true", help="copy URL to clipboard"
+    )
+    p_post.add_argument("-f", "--file", help="read paste from file")
+    p_post.add_argument(
+        "file_pos", nargs="?", metavar="FILE", help="read paste from file (positional)"
+    )
+    add_common(p_post)
+    p_post.set_defaults(func=cmd_post)
 
-    # copy URL to clipboard
-    url=$(jq -r '.url' "$tmp_file")
-    [ -n "$clip" ] && _clip "$url"
+    p_update = sub.add_parser(
+        "update",
+        aliases=["u"],
+        help="update an existing paste",
+        description="Update an existing paste. If neither -f/--file nor -c/--content "
+        "is given, the new content is read from stdin. If PASSWD is omitted, it is "
+        "looked up from the history file.",
+    )
+    p_update.add_argument("target", help="NAME[:PASSWD]")
+    p_update.add_argument("-c", "--content", help="inline content of the paste")
+    p_update.add_argument("-e", "--expire", help="expiration time")
+    p_update.add_argument("-s", "--passwd", help="password (overrides history lookup)")
+    p_update.add_argument("-f", "--file", help="read paste from file")
+    p_update.add_argument(
+        "-x", "--clip", action="store_true", help="copy URL to clipboard"
+    )
+    add_common(p_update)
+    p_update.set_defaults(func=cmd_update)
 
-    return 0
-}
+    p_get = sub.add_parser("get", aliases=["g"], help="fetch a paste")
+    p_get.add_argument("name", help="NAME[.EXT]")
+    p_get.add_argument("-o", "--output", help="write to FILE instead of stdout")
+    p_get.add_argument(
+        "-u", "--url", action="store_true", help="hit /u/ for 302 URL redirect"
+    )
+    p_get.add_argument(
+        "--meta", action="store_true", help="fetch /m/<name> metadata as pretty JSON"
+    )
+    add_common(p_get)
+    p_get.set_defaults(func=cmd_get)
 
-pb_get() {
-    # parse args
-    short_args="l:m:o::uvd"
-    long_args="lang:,mime:,output:,url,verbose,dry"
-    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-        || return 1
-    eval set -- "$TEMP";
+    p_del = sub.add_parser("delete", aliases=["d"], help="delete a paste")
+    p_del.add_argument("target", help="NAME[:PASSWD]")
+    add_common(p_del)
+    p_del.set_defaults(func=cmd_delete)
 
-    local name lang mime output url verbose dry
-    while [[ ${1:0:1} == - ]]; do
-        [[ $1 == -- ]]             && { name="$2"; shift 2; break; };
-        [[ $1 =~ ^-l|--lang$ ]]    && { lang="$2"; shift 2; continue; };
-        [[ $1 =~ ^-m|--mime$ ]]    && { mime="$2"; shift 2; continue; };
-        [[ $1 =~ ^-o|--output$ ]]  && { output="$2"; shift 2; continue; };
-        [[ $1 =~ ^-u|--url$ ]]     && { url="true"; shift 1; continue; };
-        [[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
-        [[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
-        break;
-    done
-    [ "$#" -gt 1 ] && _die "redundant arguments '$*'"
+    return parser
 
-    # check args
-    [ -z "$name" ] && _die "no paste name is given"
 
-    # build arguments
-    tmp_file=$(mktemp)
-    trap 'rm -f "$tmp_file"' EXIT
-    declare -a args=("curl_code" "-G")
-    [ -n "$url" ]     && args+=("$domain/u/$name") || args+=("$domain/$name")
-    [ -n "$lang" ]    && args+=("-d" "lang=$lang")
-    [ -n "$mime" ]    && args+=("-d" "mime=$mime")
-    [ -n "$output" ]  && args+=("-o" "$output") || args+=("-o" "$tmp_file")
+def main(argv: Optional[list] = None) -> None:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    setup_logger(getattr(args, "verbose", False))
 
-    # prepare curl
-    [ -n "$verbose" ] && _verbose "${args[@]}"
+    domain = (args.base_url or os.environ.get("PB_DOMAIN") or DEFAULT_DOMAIN).rstrip(
+        "/"
+    )
+    args.func(args, domain)
 
-    # curl if not dry-run
-    if [ -z "$dry" ]; then
-        "${args[@]}" || _die "$status_code: $(cat "$tmp_file")"
-        [ -z "$output" ] && cat "$tmp_file"
-    else
-        return 0
-    fi
 
-    return 0
-}
-
-pb_delete() {
-    # parse args
-    short_args="vd"
-    long_args="verbose,dry"
-    TEMP=$(getopt -o "$short_args" --long "$long_args" -n "$script_name" -- "$@") \
-        || return 1
-    eval set -- "$TEMP";
-
-    local name_passwd verbose dry
-    while [[ ${1:0:1} == - ]]; do
-        [[ $1 == -- ]]             && { name_passwd="$2"; shift 2; break; };
-        [[ $1 =~ ^-v|--verbose$ ]] && { verbose="true"; shift 1; continue; };
-        [[ $1 =~ ^-d|--dry$ ]]     && { dry="true"; shift 1; continue; };
-        break;
-    done
-    [ "$#" -gt 0 ] && _die "redundant arguments '$*'"
-
-    # parse name and passwd
-    [ -z "$name_passwd" ] && _die "no name and passwd given"
-    name=${name_passwd%:*}
-    if [[ "$name_passwd" =~ : ]]; then
-        passwd=${name_passwd#*:}
-    else
-        name_passwd=$(grep "^$name:" "$hist_file" | tail -1) && [ -n "$name_passwd" ] && passwd=${name_passwd#*:}
-    fi
-    [ -z "$passwd" ] && _die "no passwd given, and cannot find passwd in history file '$hist_file'"
-
-    # build arguments
-    tmp_file=$(mktemp)
-    trap 'rm -f "$tmp_file"' EXIT
-    declare -a args=("curl_code" "-X" "DELETE" "$domain/$name:$passwd")
-
-    [ -n "$verbose" ] && _verbose "${args[@]}"
-
-    # curl if not dry-run
-    if [ -z "$dry" ]; then
-        "${args[@]}" -o "$tmp_file" || _die "$status_code: $(cat "$tmp_file")"
-    else
-        return 0
-    fi
-
-    return 0
-}
-
-main "$@"
+if __name__ == "__main__":
+    main()
