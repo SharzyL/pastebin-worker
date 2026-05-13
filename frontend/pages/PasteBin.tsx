@@ -44,6 +44,7 @@ export function PasteBin({ config }: { config: Env }) {
   const [uploadedEncryptionKey, setUploadedEncryptionKey] = useState<string | undefined>(undefined)
 
   const [isUploadPending, startUpload] = useTransition()
+  const [isDeletePending, startDelete] = useTransition()
   const [loadingProgress, setLoadingProgress] = useState<UploadProgress | undefined>(undefined)
   const uploadAbortRef = useRef<AbortController | null>(null)
   const [isInitPasteLoading, startFetchingInitPaste] = useTransition()
@@ -137,6 +138,7 @@ export function PasteBin({ config }: { config: Env }) {
           controller.signal,
         )
         setPasteResponse(uploaded)
+        setPasteSetting({ ...pasteSetting, uploadKind: "manage", manageUrl: uploaded.manageUrl })
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
           handleError("Error on Uploading Paste", e as Error)
@@ -152,12 +154,13 @@ export function PasteBin({ config }: { config: Env }) {
   }
 
   function onStartDelete() {
-    startUpload(async () => {
+    startDelete(async () => {
       try {
         const resp = await fetch(pasteSetting.manageUrl, { method: "DELETE" })
         if (resp.ok) {
           showModal("Deleted Successfully", "It may takes 60 seconds for the deletion to propagate to the world")
           setPasteResponse(undefined)
+          setPasteSetting({ ...pasteSetting, uploadKind: "short", manageUrl: "" })
         } else {
           await handleFailedResp("Error on Delete Paste", resp)
         }
@@ -229,8 +232,8 @@ export function PasteBin({ config }: { config: Env }) {
   )
 
   const isManageMode = pasteSetting.uploadKind === "manage"
-  const uploadDisabled = !canUpload() || isUploadPending
-  const deleteDisabled = !canDelete()
+  const uploadDisabled = !canUpload() || isUploadPending || isDeletePending
+  const deleteDisabled = !canDelete() || isUploadPending || isDeletePending
 
   const baseActionClass = `flex-1 py-3 text-center font-bold ${tst}`
   const uploadClass =
