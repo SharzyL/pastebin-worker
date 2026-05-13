@@ -19,6 +19,14 @@ export const server = setupServer(
   http.post(`${__WRANGLER_CONFIG__.DEPLOY_URL}/`, () => {
     return HttpResponse.json(mockedPasteUpload)
   }),
+  http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
+    return new HttpResponse(null, {
+      headers: {
+        "Content-Type": "text/plain;charset=UTF-8",
+        "Content-Length": String(new TextEncoder().encode(mockedPasteContent).length),
+      },
+    })
+  }),
   http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
     return HttpResponse.text(mockedPasteContent)
   }),

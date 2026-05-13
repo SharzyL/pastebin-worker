@@ -7,3 +7,4 @@ export const MAX_PASSWD_LEN = 128
 export const MIN_PASSWD_LEN = 8
 export const MAX_URL_REDIRECT_LEN = 2000
 export const PASSWD_SEP = ":"
+export const MAX_MANAGE_URL_AUTO_FETCH_BYTES = 10 * 1024

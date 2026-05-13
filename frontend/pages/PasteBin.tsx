@@ -12,7 +12,7 @@ import { PasteInputPanel } from "../components/PasteInputPanel.js"
 
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
-import { PASSWD_SEP, MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
+import { PASSWD_SEP, MAX_URL_REDIRECT_LEN, MAX_MANAGE_URL_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 
 import { verifyExpiration, verifyManageUrl, getMaxExpirationReadable } from "../utils/utils.js"
 import { verifyName, verifyPassword, isLegalUrl } from "../../shared/verify.js"
@@ -63,9 +63,7 @@ export function PasteBin({ config }: { config: Env }) {
     // SSR environment check
     if (typeof window === "undefined") return
 
-    // TODO: do not fetch paste for a large file paste
     const pathname = location.pathname
-    // const pathname = new URL("http://localhost:8787/ds2W:ShNkSKdf5rZypdcJEcAdFmw3").pathname
     if (!pathname.includes(PASSWD_SEP)) return
     const { name, password, filename, ext } = parsePath(pathname)
 
@@ -82,35 +80,39 @@ export function PasteBin({ config }: { config: Env }) {
 
       startFetchingInitPaste(async () => {
         try {
+          const headResp = await fetch(pasteUrl, { method: "HEAD" })
+          if (!headResp.ok) {
+            await handleFailedResp(`Error on Fetching ${pasteUrl}`, headResp)
+            return
+          }
+          const contentType = headResp.headers.get("Content-Type")
+          const contentLength = Number(headResp.headers.get("Content-Length"))
+          const contentLang = headResp.headers.get("X-PB-Highlight-Language")
+          const contentDisp = headResp.headers.get("Content-Disposition")
+
+          const isText = contentType?.startsWith("text/") || !!contentLang
+          if (!isText || !Number.isFinite(contentLength) || contentLength >= MAX_MANAGE_URL_AUTO_FETCH_BYTES) {
+            return
+          }
+
           const resp = await fetch(pasteUrl)
           if (!resp.ok) {
             await handleFailedResp(`Error on Fetching ${pasteUrl}`, resp)
             return
           }
-          const contentType = resp.headers.get("Content-Type")
-          const contentDisp = resp.headers.get("Content-Disposition")
-          const contentLang = resp.headers.get("X-PB-Highlight-Language")
 
           let pasteFilename = filename
           if (pasteFilename === undefined && contentDisp !== null) {
             pasteFilename = parseFilenameFromContentDisposition(contentDisp)
           }
 
-          if (contentLang || contentType?.startsWith("text/")) {
-            setEditorState({
-              editKind: "edit",
-              editContent: await resp.text(),
-              file: null,
-              editHighlightLang: contentLang || undefined,
-              editFilename: pasteFilename,
-            })
-          } else {
-            setEditorState({
-              editKind: "file",
-              editContent: "",
-              file: new File([await resp.blob()], pasteFilename || "[unknown filename]"),
-            })
-          }
+          setEditorState({
+            editKind: "edit",
+            editContent: await resp.text(),
+            file: null,
+            editHighlightLang: contentLang || undefined,
+            editFilename: pasteFilename,
+          })
         } catch (e) {
           handleError(`Error on Fetching ${pasteUrl}`, e as Error)
         }
