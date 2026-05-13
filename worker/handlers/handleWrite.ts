@@ -15,10 +15,10 @@ interface ParsedMultipartPart {
   contentLength: number
 }
 
-async function multipartToMap(req: Request, sizeLimit: number): Promise<Map<string, ParsedMultipartPart>> {
+async function multipartToMap(req: Request, sizeLimit: string): Promise<Map<string, ParsedMultipartPart>> {
   const partsMap = new Map<string, ParsedMultipartPart>()
   try {
-    for await (const part of parseMultipartRequest(req, { maxFileSize: sizeLimit })) {
+    for await (const part of parseMultipartRequest(req, { maxFileSize: parseSize(sizeLimit)! })) {
       if (part.name) {
         if (part.isFile) {
           const arrayBuffer = part.arrayBuffer
@@ -41,7 +41,7 @@ async function multipartToMap(req: Request, sizeLimit: number): Promise<Map<stri
     }
   } catch (err) {
     if (err instanceof MaxFileSizeExceededError) {
-      throw new WorkerError(413, `payload too large (max ${sizeLimit} bytes allowed)`)
+      throw new WorkerError(413, `payload too large (max ${sizeLimit} allowed)`)
     } else if (err instanceof MultipartParseError) {
       console.warn("Failed to parse multipart request:", err.message)
       throw new WorkerError(400, "Failed to parse multipart request")
@@ -88,7 +88,7 @@ export async function handlePostOrPut(
     throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
 
-  const parts = await multipartToMap(request, parseSize(env.R2_MAX_ALLOWED)!)
+  const parts = await multipartToMap(request, env.R2_MAX_ALLOWED)
 
   if (!parts.has("c")) {
     throw new WorkerError(400, "cannot find content in formdata")
@@ -147,7 +147,7 @@ export async function handlePostOrPut(
   if (isPut) {
     let pasteName: string | undefined
     let password: string | undefined
-    // if isMPCComplete, we cannot parse path
+    // if isMPUComplete, we cannot parse path
     if (!isMPUComplete) {
       const parsed = parsePath(url.pathname)
       if (parsed.password === undefined) {

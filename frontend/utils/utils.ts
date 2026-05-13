@@ -1,5 +1,5 @@
 import { PASSWD_SEP } from "../../shared/constants.js"
-import { parseExpiration, parseExpirationReadable } from "../../shared/parsers.js"
+import { parseExpiration, parseExpirationReadable, parseSize } from "../../shared/parsers.js"
 import { verifyExpiration as verifyExpirationShared } from "../../shared/verify.js"
 
 export function getMaxExpirationSeconds(config: Env): number {
@@ -11,6 +11,12 @@ export function getMaxExpirationReadable(config: Env): string {
 }
 
 export { ErrorWithTitle } from "./errors.js"
+
+export function verifyFileSize(size: number, config: Env): [boolean, string] {
+  const max = parseSize(config.R2_MAX_ALLOWED)
+  if (max === null || size <= max) return [true, ""]
+  return [false, `File too large (${formatSize(size)} > ${formatSize(max)})`]
+}
 
 export function formatSize(size: number): string {
   if (!size) return "0"

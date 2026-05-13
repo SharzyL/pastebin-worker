@@ -1,4 +1,4 @@
-import { useEffect, useState, useTransition } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 
 import { Link } from "../components/ui/index.js"
 
@@ -17,6 +17,7 @@ import { PASSWD_SEP, MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 import { verifyExpiration, verifyManageUrl, getMaxExpirationReadable } from "../utils/utils.js"
 import { verifyName, verifyPassword, isLegalUrl } from "../../shared/verify.js"
 import { useNameAvailability } from "../utils/useNameAvailability.js"
+import type { UploadProgress } from "../utils/uploader.js"
 import { uploadPaste } from "../utils/uploader.js"
 import { tst } from "../utils/overrides.js"
 
@@ -43,7 +44,8 @@ export function PasteBin({ config }: { config: Env }) {
   const [uploadedEncryptionKey, setUploadedEncryptionKey] = useState<string | undefined>(undefined)
 
   const [isUploadPending, startUpload] = useTransition()
-  const [loadingProgress, setLoadingProgress] = useState<number | undefined>(undefined)
+  const [loadingProgress, setLoadingProgress] = useState<UploadProgress | undefined>(undefined)
+  const uploadAbortRef = useRef<AbortController | null>(null)
   const [isInitPasteLoading, startFetchingInitPaste] = useTransition()
 
   const [_, modeSelection, setModeSelection] = useDarkModeSelection()
@@ -117,6 +119,11 @@ export function PasteBin({ config }: { config: Env }) {
   }, [])
 
   function onStartUpload() {
+    const controller = new AbortController()
+    uploadAbortRef.current = controller
+    // Clear any previous result so a failed/cancelled retry doesn't show stale URLs.
+    setPasteResponse(undefined)
+    setUploadedEncryptionKey(undefined)
     startUpload(async () => {
       try {
         const uploaded = await uploadPaste(
@@ -125,12 +132,22 @@ export function PasteBin({ config }: { config: Env }) {
           setUploadedEncryptionKey,
           config,
           setLoadingProgress,
+          controller.signal,
         )
         setPasteResponse(uploaded)
       } catch (e) {
-        handleError("Error on Uploading Paste", e as Error)
+        if ((e as Error).name !== "AbortError") {
+          handleError("Error on Uploading Paste", e as Error)
+        }
+      } finally {
+        if (uploadAbortRef.current === controller) uploadAbortRef.current = null
       }
     })
+  }
+
+  function onCancelUpload() {
+    uploadAbortRef.current?.abort()
+    // TODO: also call a worker /mpu/abort endpoint to free orphaned R2 parts
   }
 
   function onStartDelete() {
@@ -257,6 +274,8 @@ export function PasteBin({ config }: { config: Env }) {
           isPasteLoading={isInitPasteLoading}
           state={editorState}
           onStateChange={setEditorState}
+          config={config}
+          showModal={showModal}
           className="mt-6 mb-4 mx-2 lg:mx-0"
         />
         <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
@@ -272,6 +291,7 @@ export function PasteBin({ config }: { config: Env }) {
             <UploadedPanel
               isLoading={isUploadPending}
               loadingProgress={loadingProgress}
+              onCancel={onCancelUpload}
               pasteResponse={pasteResponse}
               encryptionKey={uploadedEncryptionKey}
               highlightLang={editorState.editKind === "edit" ? editorState.editHighlightLang : undefined}

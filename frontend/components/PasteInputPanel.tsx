@@ -2,7 +2,7 @@ import type { CardProps } from "./ui/index.js"
 import { Card, CardBody, Tab, Tabs } from "./ui/index.js"
 import type { DragEvent } from "react"
 import { useRef, useState } from "react"
-import { formatSize } from "../utils/utils.js"
+import { formatSize, verifyFileSize } from "../utils/utils.js"
 import { XIcon } from "./icons.js"
 import { cardOverrides, tst } from "../utils/overrides.js"
 import { CodeEditor } from "./CodeEditor.js"
@@ -21,14 +21,32 @@ interface PasteEditorProps extends CardProps {
   isPasteLoading: boolean
   state: PasteEditState
   onStateChange: (state: PasteEditState) => void
+  config: Env
+  showModal: (title: string, content: string) => void
 }
 
-export function PasteInputPanel({ isPasteLoading, state, onStateChange, ...rest }: PasteEditorProps) {
+export function PasteInputPanel({
+  isPasteLoading,
+  state,
+  onStateChange,
+  config,
+  showModal,
+  ...rest
+}: PasteEditorProps) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [isDragged, setDragged] = useState<boolean>(false)
   const [isEditDragged, setEditDragged] = useState<boolean>(false)
 
   function setFile(file: File | null) {
+    if (file) {
+      const [ok, msg] = verifyFileSize(file.size, config)
+      if (!ok) {
+        showModal("File too large", msg)
+        // also reset the underlying input so picking the same file again re-triggers onChange
+        if (fileInput.current) fileInput.current.value = ""
+        return
+      }
+    }
     onStateChange({ ...state, editKind: "file", file })
   }
 

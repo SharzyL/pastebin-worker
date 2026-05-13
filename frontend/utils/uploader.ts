@@ -16,14 +16,21 @@ async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Ar
 
 const encryptionScheme: EncryptionScheme = "AES-GCM"
 
-const minChunkSize = 5 * 1024 * 1024
+const mpuChunkSize = 5 * 1024 * 1024
+const mpuThreshold = 5 * 1024 * 1024
+
+export interface UploadProgress {
+  doneBytes: number
+  totalBytes: number
+}
 
 export async function uploadPaste(
   pasteSetting: PasteSetting,
   editorState: PasteEditState,
   onEncryptionKeyChange: (k: string | undefined) => void, // we only generate key on upload, so need a callback of key generation
   config: Env,
-  onProgress?: (progress: number | undefined) => void,
+  onProgress?: (progress: UploadProgress | undefined) => void,
+  signal?: AbortSignal,
 ): Promise<PasteResponse> {
   async function constructContent(): Promise<File> {
     if (editorState.editKind === "file") {
@@ -67,15 +74,16 @@ export async function uploadPaste(
   }
 
   const contentLength = options.content.size
+  const reportProgress = (doneBytes: number, totalBytes: number) => {
+    if (onProgress) onProgress({ doneBytes, totalBytes })
+  }
 
   try {
-    if (contentLength < 5 * 1024 * 1024) {
-      return await uploadNormal(config.DEPLOY_URL, options)
+    if (onProgress) onProgress({ doneBytes: 0, totalBytes: contentLength })
+    if (contentLength <= mpuThreshold) {
+      return await uploadNormal(config.DEPLOY_URL, options, reportProgress, signal)
     } else {
-      if (onProgress) onProgress(0)
-      return await uploadMPU(config.DEPLOY_URL, minChunkSize, options, (doneBytes, allBytes) => {
-        if (onProgress) onProgress((100 * doneBytes) / allBytes)
-      })
+      return await uploadMPU(config.DEPLOY_URL, mpuChunkSize, options, reportProgress, undefined, signal)
     }
   } catch (e) {
     if (e instanceof UploadError) {

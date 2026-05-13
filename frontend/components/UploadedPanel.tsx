@@ -2,16 +2,29 @@ import type React from "react"
 import { useState } from "react"
 
 import type { CardProps } from "./ui/index.js"
-import { Card, CardBody, CardHeader, CircularProgress, Divider, Input, Tooltip, mergeClasses } from "./ui/index.js"
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  CircularProgress,
+  Divider,
+  Input,
+  Tooltip,
+  mergeClasses,
+} from "./ui/index.js"
 
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { tst } from "../utils/overrides.js"
+import type { UploadProgress } from "../utils/uploader.js"
+import { formatSize } from "../utils/utils.js"
 import { CopyWidget } from "./CopyWidget.js"
 import { ChevronDownIcon, InfoIcon } from "./icons.js"
 
 interface UploadedPanelProps extends CardProps {
   isLoading: boolean
-  loadingProgress?: number
+  loadingProgress?: UploadProgress
+  onCancel?: () => void
   pasteResponse?: PasteResponse
   encryptionKey?: string
   highlightLang?: string
@@ -79,6 +92,7 @@ function UrlTooltip({ desc, flags }: { desc?: React.ReactNode; flags?: { syntax:
 export function UploadedPanel({
   isLoading,
   loadingProgress,
+  onCancel,
   pasteResponse,
   className,
   encryptionKey,
@@ -119,12 +133,21 @@ export function UploadedPanel({
       <Divider />
       <CardBody>
         {isLoading ? (
-          <div className={"min-h-[5rem] w-full relative"}>
+          <div className="w-full flex flex-col items-center justify-center gap-2 py-4">
             <CircularProgress
               aria-label={"Loading..."}
-              value={loadingProgress ?? 50}
-              className={"absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"}
+              value={loadingProgress ? (100 * loadingProgress.doneBytes) / Math.max(loadingProgress.totalBytes, 1) : 50}
             />
+            {loadingProgress && (
+              <span className="text-sm text-foreground-500 tabular-nums">
+                Uploaded {formatSize(loadingProgress.doneBytes)} / {formatSize(loadingProgress.totalBytes)}
+              </span>
+            )}
+            {onCancel && (
+              <Button size="sm" variant="ghost" onPress={onCancel} className="mt-1">
+                Cancel
+              </Button>
+            )}
           </div>
         ) : (
           pasteResponse && (

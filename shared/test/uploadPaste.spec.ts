@@ -15,9 +15,67 @@ function makeFile(size: number, name = "blob"): File {
   return new File([new Uint8Array(size)], name)
 }
 
+interface XhrCall {
+  method: string
+  url: string
+  body: BodyInit | null
+}
+
+class FakeXHR {
+  static respond: ((req: XhrCall) => { status: number; body: string }) | null = null
+  static calls: XhrCall[] = []
+
+  private _method = ""
+  private _url = ""
+  status = 0
+  responseText = ""
+
+  private _uploadListeners = new Map<string, ((e: ProgressEvent) => void)[]>()
+  upload = {
+    addEventListener: (type: string, cb: (e: ProgressEvent) => void) => {
+      const list = this._uploadListeners.get(type) ?? []
+      list.push(cb)
+      this._uploadListeners.set(type, list)
+    },
+  }
+
+  private _listeners = new Map<string, (() => void)[]>()
+
+  open(method: string, url: string) {
+    this._method = method
+    this._url = url
+  }
+
+  addEventListener(type: string, cb: () => void) {
+    const list = this._listeners.get(type) ?? []
+    list.push(cb)
+    this._listeners.set(type, list)
+  }
+
+  send(body: BodyInit | null) {
+    queueMicrotask(() => {
+      const call = { method: this._method, url: this._url, body }
+      FakeXHR.calls.push(call)
+      const resp = FakeXHR.respond!(call)
+      this.status = resp.status
+      this.responseText = resp.body
+      this._listeners.get("load")?.forEach((cb) => cb())
+    })
+  }
+}
+
+function setupXhr(respond: (req: XhrCall) => { status: number; body: string }): XhrCall[] {
+  FakeXHR.respond = respond
+  FakeXHR.calls = []
+  vi.stubGlobal("XMLHttpRequest", FakeXHR)
+  return FakeXHR.calls
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
+  FakeXHR.respond = null
+  FakeXHR.calls = []
 })
 
 describe("UploadError", () => {
@@ -29,14 +87,12 @@ describe("UploadError", () => {
   })
 })
 
-type FetchCall = [input: string | URL, init: RequestInit]
-
 describe("uploadNormal", () => {
   it("POSTs to apiUrl on create and returns parsed json", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResp({ url: "https://example.com/abcd", manageUrl: "https://example.com/abcd:pw" }))
-    vi.stubGlobal("fetch", fetchMock)
+    const calls = setupXhr(() => ({
+      status: 200,
+      body: JSON.stringify({ url: "https://example.com/abcd", manageUrl: "https://example.com/abcd:pw" }),
+    }))
 
     const resp = await uploadNormal(API_URL, {
       content: makeFile(16, "x.txt"),
@@ -50,12 +106,11 @@ describe("uploadNormal", () => {
     })
 
     expect(resp.url).toStrictEqual("https://example.com/abcd")
-    expect(fetchMock).toHaveBeenCalledOnce()
-    const [target, init] = fetchMock.mock.calls[0] as FetchCall
-    expect(target).toStrictEqual(API_URL)
-    expect(init.method).toStrictEqual("POST")
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toStrictEqual(API_URL)
+    expect(calls[0].method).toStrictEqual("POST")
 
-    const fd = init.body as FormData
+    const fd = calls[0].body as FormData
     expect(fd.get("e")).toStrictEqual("10m")
     expect(fd.get("s")).toStrictEqual("pw")
     expect(fd.get("n")).toStrictEqual("abcd")
@@ -66,32 +121,29 @@ describe("uploadNormal", () => {
   })
 
   it("PUTs to manageUrl on update and skips name field", async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResp({ url: "u", manageUrl: "m" }))
-    vi.stubGlobal("fetch", fetchMock)
+    const calls = setupXhr(() => ({ status: 200, body: JSON.stringify({ url: "u", manageUrl: "m" }) }))
 
     await uploadNormal(API_URL, {
       content: makeFile(8),
       isUpdate: true,
       manageUrl: "https://example.com/abcd:pw",
-      name: "abcd", // should be ignored on update
+      name: "abcd",
     })
 
-    const [target, init] = fetchMock.mock.calls[0] as FetchCall
-    expect(target).toStrictEqual("https://example.com/abcd:pw")
-    expect(init.method).toStrictEqual("PUT")
-    expect((init.body as FormData).get("n")).toBeNull()
+    expect(calls[0].url).toStrictEqual("https://example.com/abcd:pw")
+    expect(calls[0].method).toStrictEqual("PUT")
+    expect((calls[0].body as FormData).get("n")).toBeNull()
   })
 
   it("throws TypeError when isUpdate without manageUrl", async () => {
-    const fetchMock = vi.fn<typeof fetch>()
-    vi.stubGlobal("fetch", fetchMock)
+    const calls = setupXhr(() => ({ status: 200, body: "{}" }))
 
     await expect(uploadNormal(API_URL, { content: makeFile(8), isUpdate: true })).rejects.toBeInstanceOf(TypeError)
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(calls).toHaveLength(0)
   })
 
   it("throws UploadError carrying statusCode on non-ok response", async () => {
-    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(new Response("bad name", { status: 400 })))
+    setupXhr(() => ({ status: 400, body: "bad name" }))
 
     const err: unknown = await uploadNormal(API_URL, {
       content: makeFile(8),
@@ -106,32 +158,38 @@ describe("uploadNormal", () => {
 
 describe("uploadMPU", () => {
   function setupHappyPath(numParts: number, complete = { url: "u", manageUrl: "m" }) {
-    const calls: { url: string; method: string; body?: BodyInit | null }[] = []
+    const fetchCalls: { url: string; method: string; body?: BodyInit | null }[] = []
     const partResponses: R2UploadedPart[] = Array.from({ length: numParts }, (_, i) => ({
       partNumber: i + 1,
       etag: `etag${i + 1}`,
     }))
     let partIdx = 0
+
     const fetchMock = vi.fn<typeof fetch>((input, init = {}) => {
       const url = input instanceof URL ? input.toString() : (input as string)
-      calls.push({ url, method: init.method || "GET", body: init.body as BodyInit | null })
+      fetchCalls.push({ url, method: init.method || "GET", body: init.body as BodyInit | null })
       if (url.includes("/mpu/create")) {
         return Promise.resolve(jsonResp({ name: "~abcd", key: "k", uploadId: "uid" }))
-      }
-      if (url.includes("/mpu/resume")) {
-        return Promise.resolve(jsonResp(partResponses[partIdx++]))
       }
       if (url.includes("/mpu/complete")) {
         return Promise.resolve(jsonResp(complete))
       }
-      return Promise.reject(new Error(`unexpected url ${url}`))
+      return Promise.reject(new Error(`unexpected fetch ${url}`))
     })
     vi.stubGlobal("fetch", fetchMock)
-    return { calls, fetchMock }
+
+    const xhrCalls = setupXhr((call) => {
+      if (call.url.includes("/mpu/resume")) {
+        return { status: 200, body: JSON.stringify(partResponses[partIdx++]) }
+      }
+      throw new Error(`unexpected xhr ${call.url}`)
+    })
+
+    return { fetchCalls, xhrCalls, fetchMock }
   }
 
   it("uploads in chunks, calls progress callback, and forwards optional fields on complete", async () => {
-    const { calls } = setupHappyPath(3)
+    const { fetchCalls, xhrCalls } = setupHappyPath(3)
 
     const progress = vi.fn()
     await uploadMPU(
@@ -150,27 +208,30 @@ describe("uploadMPU", () => {
       progress,
     )
 
-    expect(progress).toHaveBeenCalledTimes(3)
-    expect(progress.mock.calls[0]).toEqual([4, 10])
-    expect(progress.mock.calls[1]).toEqual([8, 10])
-    expect(progress.mock.calls[2]).toEqual([10, 10])
+    // final progress reports full size
+    expect(progress).toHaveBeenLastCalledWith(10, 10)
+    // each cumulative checkpoint appears at some point
+    const progressValues = progress.mock.calls.map((c) => c[0] as number)
+    expect(progressValues).toContain(4)
+    expect(progressValues).toContain(8)
+    expect(progressValues).toContain(10)
 
-    const create = calls[0]
+    const create = fetchCalls[0]
     expect(create.method).toStrictEqual("POST")
     expect(create.url).toContain("/mpu/create")
     expect(create.url).toContain("n=abcd")
     expect(create.url).toContain("p=1")
     expect(create.url).toContain("e=1d")
 
-    expect(calls[1].method).toStrictEqual("PUT")
-    expect(calls[1].url).toContain("/mpu/resume")
-    expect(calls[1].url).toContain("partNumber=1")
-    expect(calls[3].url).toContain("partNumber=3")
+    const resumeCalls = xhrCalls.filter((c) => c.url.includes("/mpu/resume"))
+    expect(resumeCalls).toHaveLength(3)
+    expect(resumeCalls.every((c) => c.method === "PUT")).toBe(true)
+    const partNumbers = resumeCalls.map((c) => new URL(c.url).searchParams.get("partNumber")).sort()
+    expect(partNumbers).toEqual(["1", "2", "3"])
 
-    const complete = calls[4]
-    expect(complete.url).toContain("/mpu/complete")
-    expect(complete.method).toStrictEqual("POST")
-    const fd = complete.body as FormData
+    const completeReq = fetchCalls.find((c) => c.url.includes("/mpu/complete"))!
+    expect(completeReq.method).toStrictEqual("POST")
+    const fd = completeReq.body as FormData
     expect(fd.get("e")).toStrictEqual("1d")
     expect(fd.get("s")).toStrictEqual("pw")
     expect(fd.get("lang")).toStrictEqual("rust")
@@ -178,7 +239,7 @@ describe("uploadMPU", () => {
   })
 
   it("uses create-update endpoint and PUT on update with manageUrl password", async () => {
-    const { calls } = setupHappyPath(1)
+    const { fetchCalls } = setupHappyPath(1)
 
     await uploadMPU(API_URL, 16, {
       content: makeFile(4),
@@ -186,11 +247,11 @@ describe("uploadMPU", () => {
       manageUrl: "https://example.com/abcd:secretpw",
     })
 
-    expect(calls[0].url).toContain("/mpu/create-update")
-    expect(calls[0].url).toContain("name=abcd")
-    expect(calls[0].url).toContain("password=secretpw")
-    expect(calls[2].method).toStrictEqual("PUT")
-    expect(calls[2].url).toContain("/mpu/complete")
+    expect(fetchCalls[0].url).toContain("/mpu/create-update")
+    expect(fetchCalls[0].url).toContain("name=abcd")
+    expect(fetchCalls[0].url).toContain("password=secretpw")
+    const completeCall = fetchCalls.find((c) => c.url.includes("/mpu/complete"))!
+    expect(completeCall.method).toStrictEqual("PUT")
   })
 
   it("throws TypeError when isUpdate without manageUrl", async () => {
@@ -228,15 +289,17 @@ describe("uploadMPU", () => {
   })
 
   it("throws UploadError when a chunk upload returns non-ok", async () => {
-    let call = 0
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>(() => {
-        call++
-        if (call === 1) return Promise.resolve(jsonResp({ name: "~a", key: "k", uploadId: "uid" }))
-        return Promise.resolve(new Response("part failed", { status: 500 }))
+      vi.fn<typeof fetch>((input) => {
+        const url = input instanceof URL ? input.toString() : (input as string)
+        if (url.includes("/mpu/create")) {
+          return Promise.resolve(jsonResp({ name: "~a", key: "k", uploadId: "uid" }))
+        }
+        return Promise.reject(new Error(`unexpected fetch ${url}`))
       }),
     )
+    setupXhr(() => ({ status: 500, body: "part failed" }))
 
     const err: unknown = await uploadMPU(API_URL, 4, {
       content: makeFile(8),
@@ -248,16 +311,20 @@ describe("uploadMPU", () => {
   })
 
   it("throws UploadError when complete returns non-ok", async () => {
-    let call = 0
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>(() => {
-        call++
-        if (call === 1) return Promise.resolve(jsonResp({ name: "~a", key: "k", uploadId: "uid" }))
-        if (call === 2) return Promise.resolve(jsonResp({ partNumber: 1, etag: "e" }))
-        return Promise.resolve(new Response("complete failed", { status: 502 }))
+      vi.fn<typeof fetch>((input) => {
+        const url = input instanceof URL ? input.toString() : (input as string)
+        if (url.includes("/mpu/create")) {
+          return Promise.resolve(jsonResp({ name: "~a", key: "k", uploadId: "uid" }))
+        }
+        if (url.includes("/mpu/complete")) {
+          return Promise.resolve(new Response("complete failed", { status: 502 }))
+        }
+        return Promise.reject(new Error(`unexpected fetch ${url}`))
       }),
     )
+    setupXhr(() => ({ status: 200, body: JSON.stringify({ partNumber: 1, etag: "e" }) }))
 
     const err: unknown = await uploadMPU(API_URL, 8, {
       content: makeFile(4),

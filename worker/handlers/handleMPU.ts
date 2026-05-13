@@ -115,7 +115,7 @@ export async function handleMPUComplete(request: Request, env: Env, completeBody
   const object = await multipartUpload.complete(completeBody)
   if (object.size > parseSize(env.R2_MAX_ALLOWED)!) {
     await env.R2.delete(object.key)
-    throw new WorkerError(413, `payload too large (max ${parseSize(env.R2_MAX_ALLOWED)!} bytes allowed)`)
+    throw new WorkerError(413, `payload too large (max ${env.R2_MAX_ALLOWED} allowed)`)
   }
   return object
 }
