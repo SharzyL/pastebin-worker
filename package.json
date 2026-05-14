@@ -24,7 +24,7 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.2",
+    "@cloudflare/vitest-pool-workers": "^0.16.4",
     "@craftamap/esbuild-plugin-html": "^0.9.0",
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.1",
@@ -32,19 +32,19 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/mdast": "^4.0.4",
-    "@types/node": "^25.6.1",
+    "@types/node": "^25.7.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "@vitest/coverage-istanbul": "4.1.5",
+    "@vitest/coverage-istanbul": "4.1.6",
     "eslint": "^10.3.0",
     "jsdom": "^29.1.1",
-    "msw": "^2.14.4",
+    "msw": "^2.14.6",
     "prettier": "^3.8.3",
     "toml": "^4.1.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.59.2",
+    "typescript-eslint": "^8.59.3",
     "vite": "^8.0.12",
-    "vitest": "4.1.5",
-    "wrangler": "^4.89.1"
+    "vitest": "4.1.6",
+    "wrangler": "^4.90.1"
   },
   "prettier": {
     "singleQuote": false,
@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@mjackson/multipart-parser": "^0.10.1",
-    "@tailwindcss/vite": "^4.2.4",
+    "@tailwindcss/vite": "^4.3.0",
     "@types/bcrypt": "^6.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -72,7 +72,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "tailwindcss": "^4.2.4",
+    "tailwindcss": "^4.3.0",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0"
   },
