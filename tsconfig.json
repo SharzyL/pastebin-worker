@@ -8,7 +8,8 @@
     "strict": true,
     "jsx": "react-jsx",
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["*"]
   },
   "include": ["frontend/**/*", "worker/**/*", "shared/**/*", "worker-configuration.d.ts"],
   "exclude": ["node_modules", "dist"]
