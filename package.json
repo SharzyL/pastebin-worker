@@ -61,7 +61,6 @@
     "@types/react-dom": "^19.2.3",
     "bcrypt-ts": "^8.0.1",
     "chardet": "^2.1.1",
-    "framer-motion": "^12.38.0",
     "github-slugger": "^2.0.0",
     "highlight.js": "^11.11.1",
     "mdast-util-to-string": "^4.0.0",
