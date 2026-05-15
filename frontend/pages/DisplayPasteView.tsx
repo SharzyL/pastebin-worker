@@ -4,7 +4,8 @@ import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeTogg
 import { DownloadIcon, HomeIcon } from "../components/icons.js"
 import { CopyWidget } from "../components/CopyWidget.js"
 import { tst } from "../utils/overrides.js"
-import { highlightHTML, useHLJS } from "../utils/HighlightLoader.js"
+import { highlightHTML } from "../utils/HighlightLoader.js"
+import { useHljsForLang } from "../utils/HighlightContext.js"
 import { formatSize } from "../utils/utils.js"
 
 interface PendingInfo {
@@ -98,7 +99,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const indexPageTitle = config.INDEX_PAGE_TITLE || "Pastebin"
 
   const [, modeSelection, setModeSelection] = useDarkModeSelection()
-  const hljs = useHLJS()
+  const hljs = useHljsForLang(pasteLang)
   const [downloadUrl, setDownloadUrl] = useState<string>("#")
 
   // Create and cleanup blob URL

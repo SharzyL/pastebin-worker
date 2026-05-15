@@ -3,7 +3,8 @@ import type { SelectHandle } from "./ui/index.js"
 import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/index.js"
 
 import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
-import { useHLJS, highlightHTML } from "../utils/HighlightLoader.js"
+import { highlightHTML } from "../utils/HighlightLoader.js"
+import { useHljsForLang } from "../utils/HighlightContext.js"
 import { XIcon } from "./icons.js"
 
 import "../styles/highlight-theme-light.css"
@@ -82,7 +83,7 @@ export function CodeEditor({
   const lineCount = (content?.match(/\n/g)?.length || 0) + 1
   const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, idx) => <span key={idx} />), [lineCount])
   const [heightPx, setHeightPx] = useState<number>(Math.max(lineCount * 24, 100)) // Estimate initial height for SSR
-  const hljs = useHLJS()
+  const hljs = useHljsForLang(lang)
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
 
   function syncScroll() {
