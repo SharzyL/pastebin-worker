@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useState } from "react"
-import chardet from "chardet"
 import { useErrorModal } from "../components/ErrorModal.js"
 import { DisplayPasteView } from "./DisplayPasteView.js"
 import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
 import { MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
+import { detectUtf8 } from "../../shared/encoding.js"
 import type { EncryptionScheme } from "../utils/encryption.js"
 import { decodeKey, decrypt } from "../utils/encryption.js"
 
 import "../style.css"
 import "../styles/highlight-theme-light.css"
 import "../styles/highlight-theme-dark.css"
-
-const utf8CompatibleEncodings = ["UTF-8", "ASCII", "ISO-8859-1"]
 
 export function DisplayPaste({ config }: { config: Env }) {
   const [pasteFile, setPasteFile] = useState<File | undefined>(undefined)
@@ -72,8 +70,8 @@ export function DisplayPaste({ config }: { config: Env }) {
           setDecrypted("encrypted")
           setFileBinary(true)
         } else {
-          const encoding = chardet.detect(respBytes)
-          setFileBinary(encoding === null || !utf8CompatibleEncodings.includes(encoding))
+          const encoding = detectUtf8(respBytes)
+          setFileBinary(encoding === null)
           setGuessedEncoding(encoding)
         }
       } else {
@@ -95,8 +93,8 @@ export function DisplayPaste({ config }: { config: Env }) {
         }
         setPasteFile(new File([decrypted as BlobPart], inferredFilename || name, { type: blobMime }))
         setPasteContentBuffer(decrypted)
-        const encoding = chardet.detect(decrypted)
-        setFileBinary(encoding === null || !utf8CompatibleEncodings.includes(encoding))
+        const encoding = detectUtf8(decrypted)
+        setFileBinary(encoding === null)
         setDecrypted("decrypted")
         setGuessedEncoding(encoding)
       }

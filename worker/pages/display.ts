@@ -6,7 +6,7 @@ import { metaResponseFromMetadata } from "../storage/storage.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/manifest.json"
-import chardet from "chardet"
+import { detectUtf8 } from "../../shared/encoding.js"
 import { getAssetPaths, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -56,10 +56,8 @@ export async function renderDisplayPage(
 
   const content = paste instanceof ArrayBuffer ? paste : await streamToArrayBuffer(paste)
 
-  // Detect binary files
-  const utf8CompatibleEncodings = ["UTF-8", "ASCII", "ISO-8859-1"]
-  const encoding = chardet.detect(new Uint8Array(content))
-  const isBinary = encoding === null || !utf8CompatibleEncodings.includes(encoding)
+  const encoding = detectUtf8(new Uint8Array(content))
+  const isBinary = encoding === null
 
   const contentBase64 = arrayBufferToBase64(content)
 
