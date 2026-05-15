@@ -5,7 +5,7 @@ import type { PasteMetadata } from "../storage/storage.js"
 import { metaResponseFromMetadata } from "../storage/storage.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { decode, escapeHtml } from "../common.js"
-import manifest from "../../dist/frontend/.vite/manifest.json"
+import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { detectUtf8 } from "../../shared/encoding.js"
 import { getAssetPaths, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
 

@@ -2,7 +2,7 @@ import { renderToReadableStream } from "react-dom/server.edge"
 import React from "react"
 import { PasteBin } from "../../frontend/pages/PasteBin.js"
 import { decode, escapeHtml } from "../common.js"
-import manifest from "../../dist/frontend/.vite/manifest.json"
+import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { PASSWD_SEP } from "../../shared/constants.js"
 import { getAssetPaths, DARK_MODE_SCRIPT } from "../ssrUtils.js"
 

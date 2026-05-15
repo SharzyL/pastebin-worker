@@ -1,17 +1,15 @@
-export interface ManifestEntry {
-  file: string
-  imports?: string[]
-  css?: string[]
+// Slim per-entry asset map produced by the `ssr-manifest` Vite plugin in
+// frontend/vite.config.js. Importing the full Vite manifest pulls every chunk
+// (one per highlight.js language) into the worker bundle, which we don't want.
+export interface SsrAssetPaths {
+  jsFile: string
+  cssPath: string
 }
 
-export type Manifest = Record<string, ManifestEntry>
+export type SsrManifest = Record<string, SsrAssetPaths>
 
-export function getAssetPaths(manifest: Manifest, entryKey: string) {
-  const entry = manifest[entryKey]
-  const jsFile = entry?.file || `assets/${entryKey.replace(".html", ".js")}`
-  const cssImport = entry?.imports?.find((i) => manifest[i]?.css)
-  const cssPath = (cssImport && manifest[cssImport]?.css?.[0]) || "assets/style.css"
-  return { jsFile, cssPath }
+export function getAssetPaths(manifest: SsrManifest, entryKey: string): SsrAssetPaths {
+  return manifest[entryKey] ?? { jsFile: `assets/${entryKey.replace(".html", ".js")}`, cssPath: "assets/style.css" }
 }
 
 export const DARK_MODE_SCRIPT = `(function() {

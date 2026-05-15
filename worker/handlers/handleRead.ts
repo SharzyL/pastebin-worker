@@ -8,7 +8,7 @@ import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
 import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
-import manifest from "../../dist/frontend/.vite/manifest.json"
+import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { getAssetPaths, DARK_MODE_SCRIPT } from "../ssrUtils.js"
 
 type Headers = Record<string, string>
