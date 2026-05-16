@@ -19,6 +19,14 @@ function loaderForLang(lang: string): (() => Promise<{ default: LanguageFn }>) |
   return languageLoaders[`../../node_modules/highlight.js/es/languages/${lang}.js`]
 }
 
+// All language names known to the bundled highlight.js, derived at build time
+// from the glob keys. Used by the editor's language picker, which must know
+// the full set even though only one language is loaded at a time.
+export const ALL_LANGUAGES: readonly string[] = Object.keys(languageLoaders)
+  .map((p) => /\/([^/]+)\.js$/.exec(p)?.[1])
+  .filter((s): s is string => !!s)
+  .sort()
+
 export function useHLJS(lang: string | undefined): HLJSApi | undefined {
   const [hljs, setHljs] = useState<HLJSApi | undefined>(undefined)
 

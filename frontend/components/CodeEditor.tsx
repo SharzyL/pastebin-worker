@@ -4,7 +4,7 @@ import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/
 
 import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
 import { highlightHTML } from "../utils/HighlightLoader.js"
-import { useHljsForLang } from "../utils/HighlightContext.js"
+import { useAvailableLanguages, useHljsForLang } from "../utils/HighlightContext.js"
 import { XIcon } from "./icons.js"
 
 import "../styles/highlight-theme-light.css"
@@ -84,6 +84,7 @@ export function CodeEditor({
   const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, idx) => <span key={idx} />), [lineCount])
   const [heightPx, setHeightPx] = useState<number>(Math.max(lineCount * 24, 100)) // Estimate initial height for SSR
   const hljs = useHljsForLang(lang)
+  const availableLanguages = useAvailableLanguages()
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
 
   function syncScroll() {
@@ -159,9 +160,9 @@ export function CodeEditor({
           label={"Language"}
           size={"sm"}
           isClearable
-          defaultItems={hljs ? hljs.listLanguages().map((lang) => ({ key: lang })) : []}
+          defaultItems={availableLanguages.map((lang) => ({ key: lang }))}
           // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
-          selectedKey={hljs && lang && hljs.listLanguages().includes(lang) ? lang : ""}
+          selectedKey={lang && availableLanguages.includes(lang) ? lang : ""}
           onSelectionChange={(key) => {
             setLang(key || undefined) // when key is empty string, convert back to undefined
           }}
