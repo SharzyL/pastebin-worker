@@ -4,7 +4,7 @@ import { PasteBin } from "../../frontend/pages/PasteBin.js"
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { PASSWD_SEP } from "../../shared/constants.js"
-import { getAssetPaths, DARK_MODE_SCRIPT } from "../ssrUtils.js"
+import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
 
 export async function renderIndexPage(env: Env, pathname: string): Promise<string | null> {
   // Admin URLs (containing password separator) skip SSR because they need client-side fetch
@@ -34,7 +34,7 @@ export async function renderIndexPage(env: Env, pathname: string): Promise<strin
   }
 
   // Get resource paths from manifest
-  const { jsFile, cssPath } = getAssetPaths(manifest, "index.html")
+  const { jsFile, cssPaths } = getAssetPaths(manifest, "index.html")
 
   // Generate complete HTML
   return `<!doctype html>
@@ -44,7 +44,7 @@ export async function renderIndexPage(env: Env, pathname: string): Promise<strin
 <link rel="icon" href="/favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${escapeHtml(env.INDEX_PAGE_TITLE)}</title>
-<link rel="stylesheet" href="/${cssPath}">
+${renderCssLinks(cssPaths)}
 <script>
 ${DARK_MODE_SCRIPT}
 </script>

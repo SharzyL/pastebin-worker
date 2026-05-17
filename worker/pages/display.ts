@@ -7,7 +7,7 @@ import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { detectUtf8 } from "../../shared/encoding.js"
-import { getAssetPaths, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
+import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -115,7 +115,7 @@ export async function renderDisplayPage(
     html += decode(value.buffer as ArrayBuffer)
   }
 
-  const { jsFile, cssPath } = getAssetPaths(manifest, "display.html")
+  const { jsFile, cssPaths } = getAssetPaths(manifest, "display.html")
 
   return `<!doctype html>
 <html lang="en">
@@ -124,7 +124,7 @@ export async function renderDisplayPage(
 <link rel="icon" href="/favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${escapeHtml(env.INDEX_PAGE_TITLE)} / ${escapeHtml(titleName)}</title>
-<link rel="stylesheet" href="/${cssPath}">
+${renderCssLinks(cssPaths)}
 <script>
 ${DARK_MODE_SCRIPT}
 </script>

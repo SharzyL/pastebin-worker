@@ -9,7 +9,7 @@ import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
-import { getAssetPaths, DARK_MODE_SCRIPT } from "../ssrUtils.js"
+import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
 
 type Headers = Record<string, string>
 
@@ -104,7 +104,7 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
     }
 
     // CSR fallback: dynamically generate empty HTML shell
-    const { jsFile, cssPath } = getAssetPaths(manifest, "index.html")
+    const { jsFile, cssPaths } = getAssetPaths(manifest, "index.html")
 
     return new Response(
       `<!doctype html>
@@ -114,7 +114,7 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
 <link rel="icon" href="/favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${escapeHtml(env.INDEX_PAGE_TITLE)}</title>
-<link rel="stylesheet" href="/${cssPath}">
+${renderCssLinks(cssPaths)}
 <script>
 ${DARK_MODE_SCRIPT}
 </script>
