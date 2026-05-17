@@ -5,7 +5,7 @@
 // page so the browser hits cache when navigating between the two.
 import "../../styles/highlight-theme-light.css"
 import "../../styles/highlight-theme-dark.css"
-import { canonicalLangName, loaderForLang } from "../../utils/hljsLanguages.js"
+import { canonicalLangName, loaderForLang } from "../../utils/highlight-client.js"
 
 const LANG_RE = /language-([\w-]+)/i
 

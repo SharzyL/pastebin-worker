@@ -3,8 +3,7 @@ import type { SelectHandle } from "./ui/index.js"
 import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/index.js"
 
 import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
-import { highlightHTML } from "../utils/HighlightLoader.js"
-import { useAvailableLanguages, useHljsForLang } from "../utils/HighlightContext.js"
+import { highlightHTML, useAvailableLanguages, useHljsForLang } from "../utils/highlight.js"
 import { XIcon } from "./icons.js"
 
 import "../styles/highlight-theme-light.css"

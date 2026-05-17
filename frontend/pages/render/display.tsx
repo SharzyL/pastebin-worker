@@ -1,7 +1,7 @@
 import { hydrateRoot } from "react-dom/client"
 import React from "react"
 import { DisplayPaste } from "../DisplayPaste.js"
-import { HljsProvider } from "../../utils/HljsProvider.js"
+import { HljsProvider } from "../../utils/highlight-client.js"
 
 const rootElement = document.getElementById("root")!
 const config = __WRANGLER_CONFIG__
