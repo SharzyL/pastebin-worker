@@ -32,7 +32,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25.7.0",
-    "@vitejs/plugin-react": "^5.2.0",
+    "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-istanbul": "4.1.6",
     "eslint": "^10.3.0",
     "jsdom": "^29.1.1",
