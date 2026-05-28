@@ -24,7 +24,7 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.8",
+    "@cloudflare/vitest-pool-workers": "^0.16.10",
     "@craftamap/esbuild-plugin-html": "^0.9.0",
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.1",
@@ -40,10 +40,10 @@
     "prettier": "^3.8.3",
     "toml": "^4.1.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.4",
+    "typescript-eslint": "^8.60.0",
     "vite": "^8.0.14",
     "vitest": "4.1.7",
-    "wrangler": "^4.93.1"
+    "wrangler": "^4.95.0"
   },
   "prettier": {
     "singleQuote": false,
