@@ -8,6 +8,7 @@ import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { detectUtf8 } from "../../shared/encoding.js"
 import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
+import { filenameForTitle } from "../../shared/filename.js"
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -74,8 +75,10 @@ export async function renderDisplayPage(
 
   const inferredFilename = urlFilename || (urlExt && name + urlExt) || metadata.filename || name
   const pasteFile = new File([content], inferredFilename)
+  const displayName = metadata.filenames?.length ? `${metadata.filenames.length} files` : filenameForTitle(metadata.filename)
+  const titleUrlFilename = filenameForTitle(urlFilename)
   const titleName =
-    name + (urlFilename ? " / " + urlFilename : urlExt ? urlExt : metadata.filename ? " / " + metadata.filename : "")
+    name + (titleUrlFilename ? " / " + titleUrlFilename : urlExt ? urlExt : displayName ? " / " + displayName : "")
 
   const config: Env = {
     DEPLOY_URL: env.DEPLOY_URL,
@@ -104,6 +107,7 @@ export async function renderDisplayPage(
       ext: urlExt,
       filename: urlFilename,
       metaFilename: metadata.filename,
+      originalFiles: metadata.filenames,
       config,
     }),
   )
@@ -114,7 +118,7 @@ export async function renderDisplayPage(
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
-    html += decode(value.buffer as ArrayBuffer)
+    html += decode(value)
   }
 
   const { jsFile, cssPaths } = getAssetPaths(manifest, "display.html")

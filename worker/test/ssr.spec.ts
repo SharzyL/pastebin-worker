@@ -20,6 +20,7 @@ describe("SSR Display Page", () => {
 
     // Should contain valid HTML structure
     expect(html).toContain("<!doctype html>")
+    expect(html.includes("\u0000")).toStrictEqual(false)
     expect(html).toContain('<div id="root">')
     expect(html).toContain(name) // Title should contain paste name
 

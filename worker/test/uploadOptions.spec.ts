@@ -168,3 +168,34 @@ test("highlight with option lang", async () => {
   expect(getResp.headers.get("Access-Control-Expose-Headers")?.includes("X-PB-Highlight-Language")).toStrictEqual(true)
   expect(metaResp.highlightLanguage).toStrictEqual(lang)
 })
+
+test("filenames metadata", async () => {
+  const ctx = createExecutionContext()
+  const filenames = [
+    { name: "a.txt", sizeBytes: 3 },
+    { name: "b.bin", sizeBytes: 5 },
+  ]
+
+  const uploadResp = await upload(ctx, {
+    c: { content: genRandomBlob(8), filename: "paste-files-abc123.zip" },
+    filenames: JSON.stringify(filenames),
+  })
+
+  const metaResp: MetaResponse = await (await workerFetch(ctx, addRole(uploadResp.url, "m"))).json()
+  expect(uploadResp.filename).toStrictEqual("paste-files-abc123.zip")
+  expect(uploadResp.filenames).toStrictEqual(filenames)
+  expect(metaResp.filename).toStrictEqual("paste-files-abc123.zip")
+  expect(metaResp.filenames).toStrictEqual(filenames)
+})
+
+test("invalid filenames metadata", async () => {
+  const ctx = createExecutionContext()
+  await uploadExpectStatus(
+    ctx,
+    {
+      c: { content: genRandomBlob(8), filename: "paste-files-abc123.zip" },
+      filenames: JSON.stringify([{ name: "a.txt", sizeBytes: -1 }]),
+    },
+    400,
+  )
+})

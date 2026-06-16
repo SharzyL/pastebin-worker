@@ -27,7 +27,7 @@ export function PasteBin({ config }: { config: Env }) {
   const [editorState, setEditorState] = useState<PasteEditState>({
     editKind: "edit",
     editContent: "",
-    file: null,
+    files: [],
     editHighlightLang: "plaintext",
   })
 
@@ -110,7 +110,7 @@ export function PasteBin({ config }: { config: Env }) {
           setEditorState({
             editKind: "edit",
             editContent: await resp.text(),
-            file: null,
+            files: [],
             editHighlightLang: contentLang || undefined,
             editFilename: pasteFilename,
           })
@@ -173,7 +173,7 @@ export function PasteBin({ config }: { config: Env }) {
   function canUpload(): boolean {
     if (editorState.editKind === "edit" && editorState.editContent.length === 0) {
       return false
-    } else if (editorState.editKind === "file" && editorState.file === null) {
+    } else if (editorState.editKind === "file" && editorState.files.length === 0) {
       return false
     }
 

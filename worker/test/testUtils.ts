@@ -5,6 +5,7 @@ import crypto from "crypto"
 
 import worker from "../index.js"
 import type { PasteResponse } from "../../shared/interfaces.js"
+import { DEFAULT_EDIT_FILENAME } from "../../shared/constants.js"
 
 export const BASE_URL: string = env.DEPLOY_URL
 export const RAND_NAME_REGEX = /^[ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678]+$/
@@ -102,7 +103,7 @@ export function createFormData(kv: FormDataBuild): FormData {
     if (typeof v === "string") {
       fd.set(k, v)
     } else if (v instanceof Blob) {
-      fd.set(k, v, "") // fd.set automatically set filename to k, not what we desired
+      fd.set(k, v, DEFAULT_EDIT_FILENAME) // fd.set automatically sets filename to k, not what we want for content.
     } else {
       // hack for typing
       const { content, filename } = v

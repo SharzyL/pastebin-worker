@@ -8,3 +8,4 @@ export const MIN_PASSWD_LEN = 8
 export const MAX_URL_REDIRECT_LEN = 2000
 export const PASSWD_SEP = ":"
 export const MAX_AUTO_FETCH_BYTES = 256 * 1024
+export const DEFAULT_EDIT_FILENAME = "Untitled"

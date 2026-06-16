@@ -1,6 +1,6 @@
 // we will move this file to a shared directory later
 
-import type { MPUCreateResponse, PasteResponse } from "./interfaces.js"
+import type { MPUCreateResponse, OriginalFileInfo, PasteResponse } from "./interfaces.js"
 import type { EncryptionScheme } from "../frontend/utils/encryption.js"
 import { parsePath } from "./parsers.js"
 
@@ -15,6 +15,7 @@ export class UploadError extends Error {
 
 export interface UploadOptions {
   content: File
+  filenames?: OriginalFileInfo[]
   isUpdate: boolean
 
   // we allow it to be undefined for convenience
@@ -125,6 +126,7 @@ export async function uploadNormal(
   apiUrl: string,
   {
     content,
+    filenames,
     isUpdate,
     isPrivate,
     password,
@@ -141,6 +143,7 @@ export async function uploadNormal(
 
   // typescript cannot handle overload on union types
   fd.set("c", content)
+  if (filenames !== undefined) fd.set("filenames", JSON.stringify(filenames))
 
   if (isUpdate && manageUrl === undefined) {
     throw TypeError("uploadMPU: no manageUrl specified in update")
@@ -174,6 +177,7 @@ export async function uploadMPU(
   chunkSize: number,
   {
     content,
+    filenames,
     isUpdate,
     isPrivate,
     password,
@@ -289,6 +293,9 @@ export async function uploadMPU(
     completeUrl.searchParams.set("key", createKey)
     completeUrl.searchParams.set("uploadId", createUploadId)
     completeFormData.set("c", new File([JSON.stringify(uploadedParts)], content.name))
+    if (filenames !== undefined) {
+      completeFormData.set("filenames", JSON.stringify(filenames))
+    }
     if (expire !== undefined) {
       completeFormData.set("e", expire)
     }

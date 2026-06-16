@@ -8,7 +8,7 @@ import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
-import { MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
+import { DEFAULT_EDIT_FILENAME, MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { formatSize } from "../utils/utils.js"
 
@@ -287,6 +287,64 @@ describe("DisplayPaste", () => {
     expect(article.textContent).toStrictEqual(text)
     const heading = await screen.findByRole("heading")
     expect(heading.textContent).toContain("ssr.txt")
+  })
+
+  it("hides the default Untitled filename from the heading but keeps it for content and download", async () => {
+    const text = "untitled hello"
+    const injected: SerializedPasteData = {
+      content: btoa(text),
+      name: "abcd",
+      isBinary: false,
+      guessedEncoding: "UTF-8",
+      metadata: {
+        lastModifiedAt: "",
+        createdAt: "",
+        expireAt: "",
+        sizeBytes: text.length,
+        location: "KV",
+        filename: DEFAULT_EDIT_FILENAME,
+      },
+    }
+    window.__PASTE_DATA__ = injected
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    const article = await screen.findByRole("article")
+    expect(article.textContent).toStrictEqual(text)
+
+    const heading = await screen.findByRole("heading")
+    expect(heading.textContent).not.toContain(DEFAULT_EDIT_FILENAME)
+    expect(screen.getByText(DEFAULT_EDIT_FILENAME)).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Download" }).getAttribute("download")).toStrictEqual(
+      DEFAULT_EDIT_FILENAME,
+    )
+  })
+
+  it("shows SSR-injected zip content as a non-renderable archive", async () => {
+    const zipBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])
+    const injected: SerializedPasteData = {
+      content: btoa(String.fromCharCode(...zipBytes)),
+      name: "abcd",
+      isBinary: true,
+      guessedEncoding: null,
+      metadata: {
+        lastModifiedAt: "",
+        createdAt: "",
+        expireAt: "",
+        sizeBytes: zipBytes.byteLength,
+        location: "KV",
+        filename: "files.zip",
+      },
+    }
+    window.__PASTE_DATA__ = injected
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    expect(await screen.findByText(/Not a renderable file \(application\/zip\)/)).toBeInTheDocument()
+    expect(screen.getByText("Download raw")).toBeInTheDocument()
+    expect(screen.queryByText(/not in UTF-8/)).not.toBeInTheDocument()
   })
 
   it("fetches and renders content when user clicks load anyway on oversized text", async () => {

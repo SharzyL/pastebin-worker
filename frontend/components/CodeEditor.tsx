@@ -5,6 +5,7 @@ import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/
 import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
 import { highlightHTML, useAvailableLanguages, useHljsForLang } from "../utils/highlight.js"
 import { XIcon } from "./icons.js"
+import { DEFAULT_EDIT_FILENAME } from "../../shared/constants.js"
 
 import "../styles/highlight-theme-light.css"
 import "../styles/highlight-theme-dark.css"
@@ -147,7 +148,7 @@ export function CodeEditor({
           classNames={inputOverrides}
           type={"text"}
           label={"File name"}
-          placeholder={"No filename"}
+          placeholder={DEFAULT_EDIT_FILENAME}
           size={"sm"}
           value={filename || ""}
           onValueChange={setFilename}

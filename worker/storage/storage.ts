@@ -1,6 +1,6 @@
 import { dateToUnix, workerAssert, WorkerError } from "../common.js"
 import { parseSize } from "../../shared/parsers.js"
-import type { MetaResponse, PasteLocation } from "../../shared/interfaces.js"
+import type { MetaResponse, OriginalFileInfo, PasteLocation } from "../../shared/interfaces.js"
 
 // since CF does not allow expiration shorter than 60s, extend the expiration to 70s
 const PASTE_EXPIRE_SPECIFIED_MIN = 70
@@ -19,6 +19,7 @@ export interface PasteMetadata {
   accessCounter: number // a counter representing how frequent it is accessed, to administration usage
   sizeBytes: number
   filename?: string
+  filenames?: OriginalFileInfo[]
   highlightLanguage?: string
   encryptionScheme?: string
 }
@@ -35,6 +36,7 @@ interface PasteMetadataInStorage {
   accessCounter?: number
   sizeBytes?: number
   filename?: string
+  filenames?: OriginalFileInfo[]
   highlightLanguage?: string
   encryptionScheme?: string
 }
@@ -47,6 +49,7 @@ export function metaResponseFromMetadata(metadata: PasteMetadata): MetaResponse 
     sizeBytes: metadata.sizeBytes,
     location: metadata.location,
     filename: metadata.filename,
+    filenames: metadata.filenames,
     highlightLanguage: metadata.highlightLanguage,
     encryptionScheme: metadata.encryptionScheme,
   }
@@ -65,6 +68,7 @@ function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
     accessCounter: original.accessCounter || 0,
     sizeBytes: original.sizeBytes || 0,
     filename: original.filename,
+    filenames: original.filenames,
     highlightLanguage: original.highlightLanguage,
     encryptionScheme: original.encryptionScheme,
   }
@@ -156,6 +160,7 @@ interface WriteOptions {
   expirationSeconds: number
   passwd: string
   filename?: string
+  filenames?: OriginalFileInfo[]
   highlightLanguage?: string
   encryptionScheme?: string
   isMPUComplete: boolean
@@ -188,6 +193,7 @@ export async function updatePaste(
     schemaVersion: 1,
     location: newLocation,
     filename: options.filename,
+    filenames: options.filenames,
     highlightLanguage: options.highlightLanguage,
     passwd: options.passwd,
 
@@ -229,6 +235,7 @@ export async function createPaste(
     schemaVersion: 1,
     location: location,
     filename: options.filename,
+    filenames: options.filenames,
     highlightLanguage: options.highlightLanguage,
     passwd: options.passwd,
 

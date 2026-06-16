@@ -96,6 +96,7 @@ describe("uploadNormal", () => {
 
     const resp = await uploadNormal(API_URL, {
       content: makeFile(16, "x.txt"),
+      filenames: [{ name: "a.txt", sizeBytes: 4 }],
       isUpdate: false,
       isPrivate: true,
       password: "pw",
@@ -117,6 +118,7 @@ describe("uploadNormal", () => {
     expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM")
     expect(fd.get("lang")).toStrictEqual("ts")
     expect(fd.get("p")).toStrictEqual("1")
+    expect(fd.get("filenames")).toStrictEqual(JSON.stringify([{ name: "a.txt", sizeBytes: 4 }]))
     expect(fd.get("c")).toBeInstanceOf(File)
   })
 
@@ -206,6 +208,7 @@ describe("uploadMPU", () => {
         password: "pw",
         highlightLanguage: "rust",
         encryptionScheme: "AES-GCM",
+        filenames: [{ name: "a.bin", sizeBytes: 6 }],
         expire: "1d",
       },
       progress,
@@ -239,6 +242,7 @@ describe("uploadMPU", () => {
     expect(fd.get("s")).toStrictEqual("pw")
     expect(fd.get("lang")).toStrictEqual("rust")
     expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM")
+    expect(fd.get("filenames")).toStrictEqual(JSON.stringify([{ name: "a.bin", sizeBytes: 6 }]))
   })
 
   it("uses create-update endpoint and PUT on update with manageUrl password", async () => {

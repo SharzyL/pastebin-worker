@@ -10,8 +10,7 @@ import {
 import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN, PASSWD_SEP } from "../../shared/constants.js"
 import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
 import { verifyName, verifyPassword } from "../../shared/verify.js"
-import type { PasteResponse } from "../../shared/interfaces.js"
-import { MaxFileSizeExceededError, MultipartParseError, parseMultipartRequest } from "@mjackson/multipart-parser"
+import type { OriginalFileInfo, PasteResponse } from "../../shared/interfaces.js"
 import {
   handleMPUAbort,
   handleMPUComplete,
@@ -22,45 +21,79 @@ import {
 
 interface ParsedMultipartPart {
   filename?: string
-  content: ReadableStream | ArrayBuffer
+  content: ArrayBuffer
   contentAsString: () => string
   contentLength: number
 }
 
+function parseOriginalFileInfos(raw: string | undefined): OriginalFileInfo[] | undefined {
+  if (!raw) return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new WorkerError(400, "invalid filenames metadata")
+  }
+  if (!Array.isArray(parsed)) {
+    throw new WorkerError(400, "invalid filenames metadata")
+  }
+  return parsed.map((item) => {
+    if (!isOriginalFileInfo(item)) {
+      throw new WorkerError(400, "invalid filenames metadata")
+    }
+    return { name: item.name, sizeBytes: item.sizeBytes }
+  })
+}
+
+function isOriginalFileInfo(value: unknown): value is OriginalFileInfo {
+  if (typeof value !== "object" || value === null) return false
+  const record = value as Record<string, unknown>
+  return (
+    typeof record.name === "string" &&
+    typeof record.sizeBytes === "number" &&
+    Number.isFinite(record.sizeBytes) &&
+    record.sizeBytes >= 0
+  )
+}
+
 async function multipartToMap(req: Request, sizeLimit: string): Promise<Map<string, ParsedMultipartPart>> {
   const partsMap = new Map<string, ParsedMultipartPart>()
+  const maxPartSize = parseSize(sizeLimit)!
+  let formData: FormData
+
   try {
-    for await (const part of parseMultipartRequest(req, { maxFileSize: parseSize(sizeLimit)! })) {
-      if (part.name) {
-        if (part.isFile) {
-          const arrayBuffer = part.arrayBuffer
-          partsMap.set(part.name, {
-            filename: part.filename,
-            content: arrayBuffer,
-            contentLength: arrayBuffer.byteLength,
-            contentAsString: () => decode(arrayBuffer),
-          })
-        } else {
-          const arrayBuffer = part.arrayBuffer
-          partsMap.set(part.name, {
-            filename: part.filename,
-            content: arrayBuffer,
-            contentAsString: () => decode(arrayBuffer),
-            contentLength: arrayBuffer.byteLength,
-          })
-        }
-      }
-    }
+    formData = await req.formData()
   } catch (err) {
-    if (err instanceof MaxFileSizeExceededError) {
-      throw new WorkerError(413, `payload too large (max ${sizeLimit} allowed)`)
-    } else if (err instanceof MultipartParseError) {
-      console.warn("Failed to parse multipart request:", err.message)
-      throw new WorkerError(400, "Failed to parse multipart request")
+    console.warn("Failed to parse multipart request:", err instanceof Error ? err.message : err)
+    throw new WorkerError(400, "Failed to parse multipart request")
+  }
+
+  for (const [name, value] of formData.entries()) {
+    if (typeof value === "string") {
+      const bytes = new TextEncoder().encode(value)
+      if (bytes.byteLength > maxPartSize) {
+        throw new WorkerError(413, `payload too large (max ${sizeLimit} allowed)`)
+      }
+      const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      partsMap.set(name, {
+        content: arrayBuffer,
+        contentLength: bytes.byteLength,
+        contentAsString: () => value,
+      })
     } else {
-      throw err
+      const arrayBuffer = await value.arrayBuffer()
+      if (arrayBuffer.byteLength > maxPartSize) {
+        throw new WorkerError(413, `payload too large (max ${sizeLimit} allowed)`)
+      }
+      partsMap.set(name, {
+        filename: value.name,
+        content: arrayBuffer,
+        contentLength: arrayBuffer.byteLength,
+        contentAsString: () => decode(arrayBuffer),
+      })
     }
   }
+
   return partsMap
 }
 
@@ -114,6 +147,7 @@ export async function handlePostOrPut(
   const expireFromForm: string | undefined = parts.get("e")?.contentAsString()
   const encryptionScheme: string | undefined = parts.get("encryption-scheme")?.contentAsString()
   const highlightLanguage = parts.get("lang")?.contentAsString()
+  const filenames = parseOriginalFileInfos(parts.get("filenames")?.contentAsString())
   const expire = expireFromForm ? expireFromForm : env.DEFAULT_EXPIRATION
 
   const uploadedParts = isMPUComplete ? (JSON.parse(contentAsString()) as R2UploadedPart[]) : undefined
@@ -195,6 +229,7 @@ export async function handlePostOrPut(
       passwd: newPasswd,
       contentLength: r2Object?.size || contentLength,
       filename,
+      filenames,
       highlightLanguage,
       encryptionScheme,
       isMPUComplete,
@@ -233,6 +268,7 @@ export async function handlePostOrPut(
       now,
       passwd: password,
       filename,
+      filenames,
       highlightLanguage,
       contentLength: r2Object?.size || contentLength,
       encryptionScheme,

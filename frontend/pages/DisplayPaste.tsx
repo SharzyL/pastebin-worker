@@ -4,7 +4,7 @@ import { DisplayPasteView } from "./DisplayPasteView.js"
 import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
 import { MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 import { detectUtf8 } from "../../shared/encoding.js"
-import type { MetaResponse } from "../../shared/interfaces.js"
+import type { MetaResponse, OriginalFileInfo } from "../../shared/interfaces.js"
 import type { EncryptionScheme } from "../utils/encryption.js"
 import { decodeKey, decrypt } from "../utils/encryption.js"
 
@@ -20,6 +20,7 @@ interface InitialPasteState {
   guessedEncoding: string | null
   isDecrypted: "not encrypted" | "encrypted" | "decrypted"
   metaFilename?: string
+  originalFiles?: OriginalFileInfo[]
 }
 
 function getInitialPasteState(url: URL, name: string, ext: string | undefined, filename: string | undefined) {
@@ -45,6 +46,7 @@ function getInitialPasteState(url: URL, name: string, ext: string | undefined, f
     guessedEncoding: initialData.guessedEncoding,
     isDecrypted: scheme ? "encrypted" : "not encrypted",
     metaFilename: initialData.metadata.filename,
+    originalFiles: initialData.metadata.filenames,
   } satisfies InitialPasteState
 }
 
@@ -81,6 +83,7 @@ export function DisplayPaste({ config }: { config: Env }) {
     contentType: string
   } | null>(null)
   const [metaFilename, setMetaFilename] = useState<string | undefined>(initialPasteState.metaFilename)
+  const [originalFiles, setOriginalFiles] = useState<OriginalFileInfo[] | undefined>(initialPasteState.originalFiles)
 
   const { ErrorModal, showModal, handleFailedResp } = useErrorModal()
 
@@ -100,6 +103,12 @@ export function DisplayPaste({ config }: { config: Env }) {
       console.warn(`Failed to fetch metadata for ${name}`, e)
       return null
     }
+  }
+
+  function applyMetadata(metadata: MetaResponse | null, hasHeadFilename = false) {
+    if (!metadata) return
+    if (!hasHeadFilename && metadata.filename) setMetaFilename(metadata.filename)
+    if (metadata.filenames) setOriginalFiles(metadata.filenames)
   }
 
   const fetchPasteBody = useCallback(async () => {
@@ -201,9 +210,15 @@ export function DisplayPaste({ config }: { config: Env }) {
         }
         if (metaFilenameFromHead) setMetaFilename(metaFilenameFromHead)
 
-        const metadata = contentLength === null || !metaFilenameFromHead ? await fetchMetadata() : null
+        const shouldAwaitMetadata = contentLength === null
+        const metadataPromise = fetchMetadata()
+        const metadata = shouldAwaitMetadata ? await metadataPromise : null
+        applyMetadata(metadata, !!metaFilenameFromHead)
+        if (!shouldAwaitMetadata) {
+          void metadataPromise.then((metadata) => applyMetadata(metadata, true))
+        }
+
         const sizeBytes = contentLength ?? metadata?.sizeBytes ?? null
-        if (!metaFilenameFromHead && metadata?.filename) setMetaFilename(metadata.filename)
 
         const isText = effectiveContentType?.startsWith("text/") || !!contentLang
         const isMedia =
@@ -265,6 +280,7 @@ export function DisplayPaste({ config }: { config: Env }) {
         pendingInfo={pendingInfo}
         mediaInfo={mediaInfo}
         metaFilename={metaFilename}
+        originalFiles={originalFiles}
         onLoadAnyway={() => void fetchPasteBody()}
       />
       <ErrorModal />

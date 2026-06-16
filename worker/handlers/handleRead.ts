@@ -8,6 +8,7 @@ import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
 import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
+import { filenameForTitle } from "../../shared/filename.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
 
@@ -297,9 +298,13 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     const pageUrl = url
     pageUrl.search = ""
     pageUrl.pathname = "/display.html"
+    const displayName = item.metadata.filenames?.length
+      ? `${item.metadata.filenames.length} files`
+      : filenameForTitle(item.metadata.filename)
+    const titleFilename = filenameForTitle(filename)
     const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace(
       "{{PASTE_NAME}}",
-      name + (filename ? " / " + filename : ext ? ext : item.metadata.filename ? " / " + item.metadata.filename : ""),
+      name + (titleFilename ? " / " + titleFilename : ext ? ext : displayName ? " / " + displayName : ""),
     )
     return new Response(isHead ? null : page, {
       headers: {

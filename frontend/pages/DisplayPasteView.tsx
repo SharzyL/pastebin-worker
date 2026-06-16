@@ -6,6 +6,8 @@ import { CopyWidget } from "../components/CopyWidget.js"
 import { tst } from "../utils/overrides.js"
 import { highlightHTML, useHljsForLang } from "../utils/highlight.js"
 import { formatSize } from "../utils/utils.js"
+import type { OriginalFileInfo } from "../../shared/interfaces.js"
+import { filenameForTitle } from "../../shared/filename.js"
 
 interface PendingInfo {
   sizeBytes: number | null
@@ -58,6 +60,30 @@ function sizeSuffix(sizeBytes: number | null): string {
   return sizeBytes === null ? "" : ` (${formatSize(sizeBytes)})`
 }
 
+function OriginalFileList({ files }: { files: OriginalFileInfo[] }) {
+  return (
+    <div className="mt-2 w-full max-w-[32rem] text-sm">
+      {files.map((file, index) => (
+        <div key={`${file.name}-${index}`} className="flex justify-between gap-4 text-left">
+          <span className="truncate">{file.name}</span>
+          <span className="shrink-0 text-foreground-500">{formatSize(file.sizeBytes)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const zipSignatures = [
+  [0x50, 0x4b, 0x03, 0x04],
+  [0x50, 0x4b, 0x05, 0x06],
+  [0x50, 0x4b, 0x07, 0x08],
+] as const
+
+function isZipBuffer(buffer: Uint8Array | undefined): boolean {
+  if (!buffer || buffer.length < 4) return false
+  return zipSignatures.some((signature) => signature.every((byte, index) => buffer[index] === byte))
+}
+
 interface DisplayPasteViewProps {
   pasteFile?: File
   pasteContentBuffer?: Uint8Array
@@ -75,6 +101,7 @@ interface DisplayPasteViewProps {
   pendingInfo?: PendingInfo | null
   mediaInfo?: MediaInfo | null
   metaFilename?: string
+  originalFiles?: OriginalFileInfo[]
   onLoadAnyway?: () => void
 }
 
@@ -96,6 +123,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     pendingInfo,
     mediaInfo,
     metaFilename,
+    originalFiles,
     onLoadAnyway,
   } = props
 
@@ -122,21 +150,36 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const pasteStringContent = pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
   const highlightedHTML = pasteStringContent ? highlightHTML(hljs, pasteLang, pasteStringContent) : ""
   const pasteLineCount = (highlightedHTML?.match(/\n/g)?.length || 0) + 1
+  const hasOriginalFiles = originalFiles !== undefined && originalFiles.length > 0
+  const isZipArchive = isZipBuffer(pasteContentBuffer)
 
   const binaryFileIndicator = pasteFile && (
     <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full">
-      <div className="text-foreground-600 mb-2">{`${pasteFile?.name} (${formatSize(pasteFile.size)})`}</div>
+      <div className="text-foreground-600 mb-2">{`${hasOriginalFiles ? `${originalFiles.length} files` : pasteFile?.name} (${formatSize(pasteFile.size)})`}</div>
+      {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
       <div className="w-fit text-center">
-        This file seems to be binary or not in UTF-8{guessedEncoding ? ` (${guessedEncoding} guessed). ` : ". "}
-        <button className="text-primary-500 inline" onClick={() => setForceShowBinary(true)}>
-          (Click to show)
-        </button>
+        {isZipArchive ? (
+          <>
+            Not a renderable file (application/zip).{" "}
+            <a href={downloadUrl} download={pasteFile.name} className="text-primary-500 inline">
+              Download raw
+            </a>
+          </>
+        ) : (
+          <>
+            This file seems to be binary or not in UTF-8{guessedEncoding ? ` (${guessedEncoding} guessed). ` : ". "}
+            <button className="text-primary-500 inline" onClick={() => setForceShowBinary(true)}>
+              (Click to show)
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
 
-  const displayFilename = filename || metaFilename
-  const placeholderName = displayFilename || (ext ? name + ext : name)
+  const contentDisplayFilename = hasOriginalFiles ? `${originalFiles.length} files` : filename || metaFilename
+  const titleDisplayFilename = hasOriginalFiles ? `${originalFiles.length} files` : filenameForTitle(filename || metaFilename)
+  const placeholderName = contentDisplayFilename || (ext ? name + ext : name)
   const placeholderReason = (() => {
     if (!pendingInfo) return ""
     const ct = pendingInfo.contentType
@@ -153,6 +196,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const pendingFileIndicator = pendingInfo && !pasteFile && (
     <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full px-4">
       <div className="text-foreground-600 mb-2">{`${placeholderName}${sizeSuffix(pendingInfo.sizeBytes)}`}</div>
+      {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
       <div className="w-fit text-center">
         {placeholderReason}{" "}
         <Link href={`${pendingInfo.rawUrl}?a`} className="text-primary-500 inline">
@@ -193,12 +237,12 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
               {indexPageTitle}
             </Link>
             <span className="mx-2 shrink-0">{" / "}</span>
-            <span className="shrink-0">{displayFilename ? name : name + (ext ?? "")}</span>
-            {displayFilename && (
+            <span className="shrink-0">{titleDisplayFilename ? name : name + (ext ?? "")}</span>
+            {titleDisplayFilename && (
               <>
                 <span className="mx-2 shrink-0">{" / "}</span>
-                <span className="truncate min-w-0" title={displayFilename}>
-                  {displayFilename}
+                <span className="truncate min-w-0" title={titleDisplayFilename}>
+                  {titleDisplayFilename}
                 </span>
               </>
             )}
@@ -252,9 +296,10 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             ) : pasteFile && pasteMediaKind ? (
               <div>
                 <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
-                  <span>{pasteFile.name}</span>
+                  <span>{contentDisplayFilename || pasteFile.name}</span>
                   <span>{`(${formatSize(pasteFile.size)})`}</span>
                 </div>
+                {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
                 <MediaElement kind={pasteMediaKind} src={downloadUrl} name={pasteFile.name} />
               </div>
             ) : pendingInfo && !pasteFile ? (
@@ -265,7 +310,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                   {showFileContent ? (
                     <>
                       <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
-                        <span>{pasteFile?.name}</span>
+                        <span>{contentDisplayFilename || pasteFile?.name}</span>
                         <span>{`(${formatSize(pasteFile.size)})`}</span>
                         {forceShowBinary && (
                           <button className="ml-2 text-primary-500" onClick={() => setForceShowBinary(false)}>
@@ -274,6 +319,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                         )}
                         {pasteLang && <span className={"grow text-right"}>{pasteLang}</span>}
                       </div>
+                      {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
                       <div className="font-mono relative" role="article">
                         <pre
                           style={{ marginLeft: lineNumOffset, width: `calc(100% - ${lineNumOffset})` }}

@@ -43,6 +43,29 @@ describe("write error paths — content/format validation", () => {
     expect(resp.status).toStrictEqual(413)
   })
 
+  it("POST accepts multipart body when final CRLF arrives as a separate chunk", async () => {
+    const fd = new FormData()
+    fd.set("c", new File(["x"], "split.txt"))
+    const sourceReq = new Request(BASE_URL, { method: "POST", body: fd })
+    const body = new Uint8Array(await sourceReq.arrayBuffer())
+    const splitAt = body.byteLength - 2
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(body.slice(0, splitAt))
+        controller.enqueue(body.slice(splitAt))
+        controller.close()
+      },
+    })
+    const splitRequestInit = {
+      method: "POST",
+      headers: { "Content-Type": sourceReq.headers.get("Content-Type")! },
+      body: stream,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" }
+    const resp = await worker.fetch(new Request(BASE_URL, splitRequestInit), env, ctx)
+    expect(resp.status).toStrictEqual(200)
+  })
+
   it("POST/PUT to an unknown /mpu/* path returns 400", async () => {
     const fd = new FormData()
     fd.set("c", new Blob(["x"]))

@@ -1,7 +1,7 @@
 import { CHAR_GEN } from "../shared/constants.js"
 
-export function decode(arrayBuffer: ArrayBuffer): string {
-  return new TextDecoder().decode(arrayBuffer)
+export function decode(buffer: ArrayBuffer | ArrayBufferView<ArrayBufferLike>): string {
+  return new TextDecoder().decode(buffer)
 }
 
 export function btoa_utf8(value: string): string {
@@ -37,14 +37,19 @@ export function dateToUnix(date: Date): number {
   return Math.floor(date.getTime() / 1000)
 }
 
-export function genRandStr(len: number) {
-  // TODO: switch to Web Crypto random generator
-  let str = ""
-  const numOfRand = CHAR_GEN.length
+export function genRandStr(len: number): string {
+  let str = "";
+  const numOfRand = CHAR_GEN.length;
+
+  const randomValues = new Uint32Array(len);
+  crypto.getRandomValues(randomValues);
+
   for (let i = 0; i < len; i++) {
-    str += CHAR_GEN.charAt(Math.floor(Math.random() * numOfRand))
+    const randomIndex = randomValues[i] % numOfRand;
+    str += CHAR_GEN.charAt(randomIndex);
   }
-  return str
+
+  return str;
 }
 
 // Workers extension to SubtleCrypto, mirrored from worker-configuration.d.ts.

@@ -1,7 +1,7 @@
 import type { CardProps } from "./ui/index.js"
 import { Card, CardBody, Tab, Tabs } from "./ui/index.js"
 import type { DragEvent } from "react"
-import { useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { formatSize, verifyFileSize } from "../utils/utils.js"
 import { XIcon } from "./icons.js"
 import { cardOverrides, tst } from "../utils/overrides.js"
@@ -14,7 +14,24 @@ export interface PasteEditState {
   editContent: string
   editFilename?: string
   editHighlightLang?: string
-  file: File | null
+  files: File[]
+}
+
+function filesFromDataTransferItems(items: DataTransferItemList | undefined): File[] {
+  if (!items) return []
+  return Array.from(items)
+    .filter((item) => item.kind === "file")
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => file !== null)
+}
+
+function isPasteEditorFocused(): boolean {
+  const activeElement = document.activeElement
+  return activeElement instanceof HTMLTextAreaElement || (activeElement instanceof HTMLInputElement && !activeElement.readOnly)
+}
+
+function totalFileSize(files: File[]): number {
+  return files.reduce((sum, file) => sum + file.size, 0)
 }
 
 interface PasteEditorProps extends CardProps {
@@ -37,31 +54,41 @@ export function PasteInputPanel({
   const [isDragged, setDragged] = useState<boolean>(false)
   const [isEditDragged, setEditDragged] = useState<boolean>(false)
 
-  function setFile(file: File | null) {
-    if (file) {
-      const [ok, msg] = verifyFileSize(file.size, config)
-      if (!ok) {
-        showModal("File too large", msg)
-        // also reset the underlying input so picking the same file again re-triggers onChange
-        if (fileInput.current) fileInput.current.value = ""
-        return
-      }
+  const resetFileInput = useCallback(() => {
+    if (fileInput.current) fileInput.current.value = ""
+  }, [])
+
+  const setFiles = useCallback((files: File[]) => {
+    const totalSize = totalFileSize(files)
+    const [totalOk, totalMsg] = verifyFileSize(totalSize, config)
+    if (!totalOk) {
+      showModal(files.length > 1 ? "Files too large" : "File too large", totalMsg)
+      resetFileInput()
+      return
     }
-    onStateChange({ ...state, editKind: "file", file })
-  }
+
+    onStateChange({ ...state, editKind: "file", files })
+  }, [config, onStateChange, resetFileInput, showModal, state])
+
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      if (isPasteEditorFocused()) return
+
+      const files = filesFromDataTransferItems(e.clipboardData?.items)
+      if (files.length === 0) return
+
+      e.preventDefault()
+      setFiles(files)
+    }
+
+    document.addEventListener("paste", onPaste)
+    return () => document.removeEventListener("paste", onPaste)
+  }, [setFiles])
 
   function onDrop(e: DragEvent) {
     e.preventDefault()
-    const items = e.dataTransfer?.items
-    if (items) {
-      for (const item of Array.from(items)) {
-        if (item.kind === "file") {
-          const file = item.getAsFile()!
-          setFile(file)
-          break
-        }
-      }
-    }
+    const files = filesFromDataTransferItems(e.dataTransfer?.items)
+    if (files.length > 0) setFiles(files)
     setDragged(false)
     setEditDragged(false)
   }
@@ -76,9 +103,10 @@ export function PasteInputPanel({
           onChange={(e) => {
             const files = e.target.files
             if (files?.length) {
-              setFile(files[0])
+              setFiles(Array.from(files))
             }
           }}
+          multiple
         />
         <Tabs
           variant="underlined"
@@ -91,7 +119,6 @@ export function PasteInputPanel({
           selectedKey={state.editKind}
           onSelectionChange={(k) => {
             onStateChange({ ...state, editKind: k as EditKind })
-            if (k === "file") fileInput.current?.click()
           }}
         >
           {/*Possibly a bug of chrome, but Tab sometimes has a transient unexpected scrollbar when resizing*/}
@@ -155,23 +182,38 @@ export function PasteInputPanel({
               onClick={() => fileInput.current?.click()}
             >
               <div className="text-2xl my-2 font-bold px-4 text-center break-all">
-                {state.file !== null ? state.file.name : "Select File"}
+                {state.files.length === 0
+                  ? "Select Files"
+                  : state.files.length === 1
+                    ? state.files[0].name
+                    : `${state.files.length} files selected`}
               </div>
               <p className={`text-1xl text-foreground-500 ${tst} relative`}>
                 <span>
-                  {state.file !== null
-                    ? `${formatSize(state.file.size)} · Click or drag to replace`
-                    : "Click or drag & drop file here"}
+                  {state.files.length > 0
+                    ? `${formatSize(totalFileSize(state.files))} · Click or drag or paste to replace`
+                    : "Click or drag & drop or paste files here"}
                 </span>
               </p>
-              {state.file && (
+              {state.files.length > 1 && (
+                <div className="mt-3 max-h-32 overflow-auto text-sm text-foreground-600 w-full max-w-[32rem] px-4">
+                  {state.files.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="flex justify-between gap-4">
+                      <span className="truncate">{file.name}</span>
+                      <span className="shrink-0">{formatSize(file.size)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {state.files.length > 0 && (
                 <XIcon
                   aria-label="Remove file"
                   role="button"
                   className={`h-6 inline absolute top-2 right-2 text-red-400 ${tst}`}
                   onClick={(e) => {
                     e.stopPropagation()
-                    setFile(null)
+                    setFiles([])
+                    resetFileInput()
                   }}
                 />
               )}

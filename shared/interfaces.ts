@@ -2,6 +2,11 @@
 
 export type PasteLocation = "KV" | "R2"
 
+export interface OriginalFileInfo {
+  name: string
+  sizeBytes: number
+}
+
 export interface MetaResponse {
   lastModifiedAt: string
   createdAt: string
@@ -9,6 +14,7 @@ export interface MetaResponse {
   sizeBytes: number
   location: PasteLocation
   filename?: string
+  filenames?: OriginalFileInfo[]
   highlightLanguage?: string
   encryptionScheme?: string
 }

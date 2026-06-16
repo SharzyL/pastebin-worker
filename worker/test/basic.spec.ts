@@ -14,7 +14,7 @@ import {
   addRole,
 } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
-import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN } from "../../shared/constants.js"
+import { DEFAULT_EDIT_FILENAME, DEFAULT_PASSWD_LEN, PASTE_NAME_LEN } from "../../shared/constants.js"
 import { parsePath } from "../../shared/parsers.js"
 
 describe("upload", () => {
@@ -158,6 +158,15 @@ test("GET special static pages", async () => {
     namedHtml.includes(`/ ${namedName} / song.mp3</title>`),
     `bare URL should include metadata filename`,
   ).toStrictEqual(true)
+
+  const untitledResp = await upload(ctx, { c: { content: genRandomBlob(1024), filename: DEFAULT_EDIT_FILENAME } })
+  const untitledName = parsePath(new URL(untitledResp.url).pathname).name
+  const untitledHtml = await (await workerFetch(ctx, `${BASE_URL}/d/${untitledName}`)).text()
+  expect(
+    untitledHtml.includes(`/ ${untitledName}</title>`),
+    `bare URL should hide the default metadata filename from the title`,
+  ).toStrictEqual(true)
+  expect(untitledHtml.includes(`/ ${untitledName} / ${DEFAULT_EDIT_FILENAME}</title>`)).toStrictEqual(false)
 
   // test manage page
   const manageUrl = resp.manageUrl
