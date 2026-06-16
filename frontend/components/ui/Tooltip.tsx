@@ -49,7 +49,18 @@ export function Tooltip({ content, children }: TooltipProps) {
 
   // Compose aria-describedby with whatever the child already had so we don't clobber.
   const existingDescribedBy = children.props["aria-describedby"]
-  const describedBy = existingDescribedBy ? `${existingDescribedBy} ${tooltipId}` : tooltipId
+  const triggerProps: TriggerProps = {
+    onMouseEnter: () => setShow(true),
+    onMouseLeave: () => setShow(false),
+    onFocus: () => setShow(true),
+    onBlur: () => setShow(false),
+  }
+
+  if (show) {
+    triggerProps["aria-describedby"] = existingDescribedBy ? `${existingDescribedBy} ${tooltipId}` : tooltipId
+  } else if (existingDescribedBy) {
+    triggerProps["aria-describedby"] = existingDescribedBy
+  }
 
   return (
     <div
@@ -61,13 +72,7 @@ export function Tooltip({ content, children }: TooltipProps) {
         }
       }}
     >
-      {React.cloneElement(children, {
-        onMouseEnter: () => setShow(true),
-        onMouseLeave: () => setShow(false),
-        onFocus: () => setShow(true),
-        onBlur: () => setShow(false),
-        "aria-describedby": describedBy,
-      })}
+      {React.cloneElement(children, triggerProps)}
       {show && (
         <div
           ref={tooltipRef}

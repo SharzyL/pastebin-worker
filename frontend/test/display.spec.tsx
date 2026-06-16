@@ -10,6 +10,7 @@ import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
 import { MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
+import { formatSize } from "../utils/utils.js"
 
 interface RespInit {
   body: ArrayBuffer
@@ -334,11 +335,21 @@ describe("DisplayPaste", () => {
 
   it("falls back to placeholder when Content-Length is missing on text", async () => {
     let getCalled = false
+    const sizeBytes = MAX_AUTO_FETCH_BYTES + 1
     server.use(
       http.head("/abcd", () => {
         // No Content-Length header at all (e.g. chunked response).
         return new HttpResponse(null, {
           headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        })
+      }),
+      http.get("/m/abcd", () => {
+        return HttpResponse.json({
+          lastModifiedAt: "",
+          createdAt: "",
+          expireAt: "",
+          sizeBytes,
+          location: "R2",
         })
       }),
       http.get("/abcd", () => {
@@ -351,6 +362,7 @@ describe("DisplayPaste", () => {
     render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
 
     expect(await screen.findByText("load anyway")).toBeInTheDocument()
+    expect(screen.getByText(`abcd (${formatSize(sizeBytes)})`)).toBeInTheDocument()
     expect(getCalled).toStrictEqual(false)
   })
 

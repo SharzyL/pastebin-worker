@@ -161,7 +161,7 @@ export function CodeEditor({
           isClearable
           defaultItems={availableLanguages.map((lang) => ({ key: lang }))}
           // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
-          selectedKey={lang && availableLanguages.includes(lang) ? lang : ""}
+          selectedKey={lang || ""}
           onSelectionChange={(key) => {
             setLang(key || undefined) // when key is empty string, convert back to undefined
           }}

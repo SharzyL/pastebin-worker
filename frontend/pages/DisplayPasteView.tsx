@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Button, CircularProgress, Link, Tooltip } from "../components/ui/index.js"
+import { CircularProgress, Link, Tooltip } from "../components/ui/index.js"
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { DownloadIcon, HomeIcon } from "../components/icons.js"
 import { CopyWidget } from "../components/CopyWidget.js"
@@ -8,13 +8,13 @@ import { highlightHTML, useHljsForLang } from "../utils/highlight.js"
 import { formatSize } from "../utils/utils.js"
 
 interface PendingInfo {
-  sizeBytes: number
+  sizeBytes: number | null
   rawUrl: string
   contentType: string | null
 }
 
 interface MediaInfo {
-  sizeBytes: number
+  sizeBytes: number | null
   rawUrl: string
   contentType: string
 }
@@ -52,6 +52,10 @@ function MediaElement({ kind, src, name }: { kind: MediaKind; src: string; name:
     return <audio src={src} controls className="w-full" aria-label={name} />
   }
   return <video src={src} controls className="max-w-full h-auto mx-auto block" aria-label={name} />
+}
+
+function sizeSuffix(sizeBytes: number | null): string {
+  return sizeBytes === null ? "" : ` (${formatSize(sizeBytes)})`
 }
 
 interface DisplayPasteViewProps {
@@ -148,7 +152,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   })()
   const pendingFileIndicator = pendingInfo && !pasteFile && (
     <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full px-4">
-      <div className="text-foreground-600 mb-2">{`${placeholderName} (${formatSize(pendingInfo.sizeBytes)})`}</div>
+      <div className="text-foreground-600 mb-2">{`${placeholderName}${sizeSuffix(pendingInfo.sizeBytes)}`}</div>
       <div className="w-fit text-center">
         {placeholderReason}{" "}
         <Link href={`${pendingInfo.rawUrl}?a`} className="text-primary-500 inline">
@@ -169,6 +173,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
 
   const lineNumOffset = `${Math.floor(Math.log10(pasteLineCount)) + 3}ch`
   const buttonClasses = `${tst}`
+  const iconLinkClass = `inline-flex items-center justify-center rounded-full p-2 hover:bg-default-100 ${buttonClasses}`
 
   return (
     <main
@@ -177,11 +182,15 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
       <div className="w-full max-w-[64rem]">
         <div className="flex flex-row my-4 items-center justify-between">
           <h1 className="text-xl md:text-2xl grow inline-flex items-baseline min-w-0">
-            <Link href="/" className="text-foreground-500 text-[length:inherited] shrink-0">
-              <Button isIconOnly variant="light" aria-label={indexPageTitle} className={buttonClasses + " md:hidden"}>
-                <HomeIcon className="size-6" />
-              </Button>
-              <span className="hidden md:inline">{indexPageTitle}</span>
+            <a
+              href="/"
+              aria-label={indexPageTitle}
+              className={`${iconLinkClass} text-foreground-500 md:hidden shrink-0`}
+            >
+              <HomeIcon className="size-6" />
+            </a>
+            <Link href="/" className="text-foreground-500 text-[length:inherited] shrink-0 hidden md:inline">
+              {indexPageTitle}
             </Link>
             <span className="mx-2 shrink-0">{" / "}</span>
             <span className="shrink-0">{displayFilename ? name : name + (ext ?? "")}</span>
@@ -206,20 +215,21 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             )}
             {pasteFile ? (
               <Tooltip content={`Download as file`}>
-                <Button aria-label="Download" isIconOnly variant="light" className={buttonClasses}>
-                  <a href={downloadUrl} download={pasteFile.name}>
-                    <DownloadIcon className="size-6 inline" />
-                  </a>
-                </Button>
+                <a href={downloadUrl} download={pasteFile.name} aria-label="Download" className={iconLinkClass}>
+                  <DownloadIcon className="size-6 inline" />
+                </a>
               </Tooltip>
             ) : (
               (pendingInfo || mediaInfo) && (
                 <Tooltip content={`Download as file`}>
-                  <Button aria-label="Download" isIconOnly variant="light" className={buttonClasses}>
-                    <a href={(pendingInfo ?? mediaInfo)!.rawUrl} download={placeholderName}>
-                      <DownloadIcon className="size-6 inline" />
-                    </a>
-                  </Button>
+                  <a
+                    href={(pendingInfo ?? mediaInfo)!.rawUrl}
+                    download={placeholderName}
+                    aria-label="Download"
+                    className={iconLinkClass}
+                  >
+                    <DownloadIcon className="size-6 inline" />
+                  </a>
                 </Tooltip>
               )
             )}
@@ -235,7 +245,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
               <div>
                 <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
                   <span>{placeholderName}</span>
-                  <span>{`(${formatSize(mediaInfo.sizeBytes)})`}</span>
+                  {mediaInfo.sizeBytes !== null && <span>{`(${formatSize(mediaInfo.sizeBytes)})`}</span>}
                 </div>
                 <MediaElement kind={mediaInfoKind} src={mediaInfo.rawUrl} name={placeholderName} />
               </div>

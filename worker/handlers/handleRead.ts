@@ -278,7 +278,8 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   if (role === "d") {
     try {
       const { renderDisplayPage } = await import("../pages/display.js")
-      const page = await renderDisplayPage(env, name, filename, ext, item.paste, item.metadata)
+      const urlLang = url.searchParams.get("lang") || undefined
+      const page = await renderDisplayPage(env, name, filename, ext, urlLang, item.paste, item.metadata)
       if (page) {
         return new Response(isHead ? null : page, {
           headers: {

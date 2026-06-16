@@ -4,6 +4,7 @@ import { DisplayPasteView } from "./DisplayPasteView.js"
 import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
 import { MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 import { detectUtf8 } from "../../shared/encoding.js"
+import type { MetaResponse } from "../../shared/interfaces.js"
 import type { EncryptionScheme } from "../utils/encryption.js"
 import { decodeKey, decrypt } from "../utils/encryption.js"
 
@@ -11,31 +12,95 @@ import "../style.css"
 import "../styles/highlight-theme-light.css"
 import "../styles/highlight-theme-dark.css"
 
+interface InitialPasteState {
+  pasteFile?: File
+  pasteContentBuffer?: Uint8Array
+  pasteLang?: string
+  isFileBinary: boolean
+  guessedEncoding: string | null
+  isDecrypted: "not encrypted" | "encrypted" | "decrypted"
+  metaFilename?: string
+}
+
+function getInitialPasteState(url: URL, name: string, ext: string | undefined, filename: string | undefined) {
+  const initialData = window.__PASTE_DATA__
+  if (!initialData) {
+    return {
+      isFileBinary: false,
+      guessedEncoding: null,
+      isDecrypted: "not encrypted",
+    } satisfies InitialPasteState
+  }
+
+  const respBytes = Uint8Array.from(atob(initialData.content), (c) => c.charCodeAt(0))
+  const scheme = initialData.metadata.encryptionScheme as EncryptionScheme | undefined
+  const lang = url.searchParams.get("lang") || initialData.metadata.highlightLanguage
+  const inferredFilename = filename || (ext && name + ext) || initialData.metadata.filename
+
+  return {
+    pasteFile: new File([respBytes], inferredFilename || name),
+    pasteContentBuffer: respBytes,
+    pasteLang: lang || undefined,
+    isFileBinary: initialData.isBinary,
+    guessedEncoding: initialData.guessedEncoding,
+    isDecrypted: scheme ? "encrypted" : "not encrypted",
+    metaFilename: initialData.metadata.filename,
+  } satisfies InitialPasteState
+}
+
+function isMetaResponse(value: unknown): value is MetaResponse {
+  return typeof value === "object" && value !== null && typeof (value as MetaResponse).sizeBytes === "number"
+}
+
 export function DisplayPaste({ config }: { config: Env }) {
-  const [pasteFile, setPasteFile] = useState<File | undefined>(undefined)
-  const [pasteContentBuffer, setPasteContentBuffer] = useState<Uint8Array | undefined>(undefined)
-  const [pasteLang, setPasteLang] = useState<string | undefined>(undefined)
-  const [isFileBinary, setFileBinary] = useState(false)
-  const [guessedEncoding, setGuessedEncoding] = useState<string | null>(null)
-  const [isDecrypted, setDecrypted] = useState<"not encrypted" | "encrypted" | "decrypted">("not encrypted")
+  const url = new URL(location.toString())
+  const { name, ext, filename } = parsePath(url.pathname)
+  const pasteUrl = `/${name}`
+  const [initialPasteState] = useState(() => getInitialPasteState(url, name, ext, filename))
+
+  const [pasteFile, setPasteFile] = useState<File | undefined>(initialPasteState.pasteFile)
+  const [pasteContentBuffer, setPasteContentBuffer] = useState<Uint8Array | undefined>(
+    initialPasteState.pasteContentBuffer,
+  )
+  const [pasteLang, setPasteLang] = useState<string | undefined>(initialPasteState.pasteLang)
+  const [isFileBinary, setFileBinary] = useState(initialPasteState.isFileBinary)
+  const [guessedEncoding, setGuessedEncoding] = useState<string | null>(initialPasteState.guessedEncoding)
+  const [isDecrypted, setDecrypted] = useState<"not encrypted" | "encrypted" | "decrypted">(
+    initialPasteState.isDecrypted,
+  )
   const [forceShowBinary, setForceShowBinary] = useState(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [pendingInfo, setPendingInfo] = useState<{
-    sizeBytes: number
+    sizeBytes: number | null
     rawUrl: string
     contentType: string | null
   } | null>(null)
   const [mediaInfo, setMediaInfo] = useState<{
-    sizeBytes: number
+    sizeBytes: number | null
     rawUrl: string
     contentType: string
   } | null>(null)
-  const [metaFilename, setMetaFilename] = useState<string | undefined>(undefined)
+  const [metaFilename, setMetaFilename] = useState<string | undefined>(initialPasteState.metaFilename)
 
   const { ErrorModal, showModal, handleFailedResp } = useErrorModal()
-  const url = new URL(location.toString())
-  const { name, ext, filename } = parsePath(url.pathname)
-  const pasteUrl = `/${name}`
+
+  function parseContentLength(value: string | null): number | null {
+    if (value === null) return null
+    const parsed = Number(value)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  }
+
+  async function fetchMetadata(): Promise<MetaResponse | null> {
+    try {
+      const resp = await fetch(`/m/${name}`)
+      if (!resp.ok) return null
+      const metadata: unknown = await resp.json()
+      return isMetaResponse(metadata) ? metadata : null
+    } catch (e) {
+      console.warn(`Failed to fetch metadata for ${name}`, e)
+      return null
+    }
+  }
 
   const fetchPasteBody = useCallback(async () => {
     setIsLoading(true)
@@ -107,21 +172,7 @@ export function DisplayPaste({ config }: { config: Env }) {
   }, [pasteUrl, name, ext, filename])
 
   useEffect(() => {
-    const initialData = window.__PASTE_DATA__
-
-    if (initialData) {
-      const respBytes = Uint8Array.from(atob(initialData.content), (c) => c.charCodeAt(0))
-      const scheme = initialData.metadata.encryptionScheme as EncryptionScheme | undefined
-      const lang = url.searchParams.get("lang") || initialData.metadata.highlightLanguage
-      const inferredFilename = filename || (ext && name + ext) || initialData.metadata.filename
-
-      setPasteLang(lang || undefined)
-      setPasteFile(new File([respBytes], inferredFilename || name))
-      setPasteContentBuffer(respBytes)
-      setFileBinary(initialData.isBinary)
-      setGuessedEncoding(initialData.guessedEncoding)
-      setDecrypted(scheme ? "encrypted" : "not encrypted")
-      if (initialData.metadata.filename) setMetaFilename(initialData.metadata.filename)
+    if (window.__PASTE_DATA__) {
       return
     }
 
@@ -134,8 +185,7 @@ export function DisplayPaste({ config }: { config: Env }) {
           return
         }
         const contentType = headResp.headers.get("Content-Type")
-        const contentLengthRaw = headResp.headers.get("Content-Length")
-        const contentLength = contentLengthRaw === null ? NaN : Number(contentLengthRaw)
+        const contentLength = parseContentLength(headResp.headers.get("Content-Length"))
         const contentLang = headResp.headers.get("X-PB-Highlight-Language")
         const scheme = headResp.headers.get("X-PB-Encryption-Scheme") as EncryptionScheme | null
         const decryptedContentType = headResp.headers.get("X-PB-Decrypted-Content-Type")
@@ -151,13 +201,17 @@ export function DisplayPaste({ config }: { config: Env }) {
         }
         if (metaFilenameFromHead) setMetaFilename(metaFilenameFromHead)
 
+        const metadata = contentLength === null || !metaFilenameFromHead ? await fetchMetadata() : null
+        const sizeBytes = contentLength ?? metadata?.sizeBytes ?? null
+        if (!metaFilenameFromHead && metadata?.filename) setMetaFilename(metadata.filename)
+
         const isText = effectiveContentType?.startsWith("text/") || !!contentLang
         const isMedia =
           effectiveContentType?.startsWith("image/") ||
           effectiveContentType?.startsWith("audio/") ||
           effectiveContentType?.startsWith("video/") ||
           false
-        const sizeOk = Number.isFinite(contentLength) && contentLength < MAX_AUTO_FETCH_BYTES
+        const sizeOk = sizeBytes !== null && sizeBytes < MAX_AUTO_FETCH_BYTES
 
         // text and encrypted media both need a GET + (maybe) decrypt before
         // rendering, so they share fetchPasteBody. Plain media can be rendered
@@ -172,14 +226,14 @@ export function DisplayPaste({ config }: { config: Env }) {
         }
         if (isMedia && !isEncrypted) {
           setMediaInfo({
-            sizeBytes: Number.isFinite(contentLength) ? contentLength : 0,
+            sizeBytes,
             rawUrl: pasteUrl,
             contentType: effectiveContentType!,
           })
           return
         }
         setPendingInfo({
-          sizeBytes: Number.isFinite(contentLength) ? contentLength : 0,
+          sizeBytes,
           rawUrl: pasteUrl,
           contentType: effectiveContentType,
         })

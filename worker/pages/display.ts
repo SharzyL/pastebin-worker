@@ -41,6 +41,7 @@ export async function renderDisplayPage(
   name: string,
   urlFilename: string | undefined,
   urlExt: string | undefined,
+  urlLang: string | undefined,
   paste: ArrayBuffer | ReadableStream<Uint8Array>,
   metadata: PasteMetadata,
 ): Promise<string | null> {
@@ -90,7 +91,7 @@ export async function renderDisplayPage(
     React.createElement(DisplayPasteView, {
       pasteFile,
       pasteContentBuffer: new Uint8Array(content),
-      pasteLang: metadata.highlightLanguage,
+      pasteLang: urlLang || metadata.highlightLanguage,
       isFileBinary: isBinary,
       guessedEncoding: encoding,
       isDecrypted: "not encrypted",
@@ -102,6 +103,7 @@ export async function renderDisplayPage(
       name,
       ext: urlExt,
       filename: urlFilename,
+      metaFilename: metadata.filename,
       config,
     }),
   )
