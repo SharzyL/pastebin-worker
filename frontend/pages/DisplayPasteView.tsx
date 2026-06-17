@@ -103,6 +103,7 @@ interface DisplayPasteViewProps {
   metaFilename?: string
   originalFiles?: OriginalFileInfo[]
   onLoadAnyway?: () => void
+  onDownloadPaste?: () => void
 }
 
 export function DisplayPasteView(props: DisplayPasteViewProps) {
@@ -125,6 +126,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     metaFilename,
     originalFiles,
     onLoadAnyway,
+    onDownloadPaste,
   } = props
 
   const indexPageTitle = config.INDEX_PAGE_TITLE || "Pastebin"
@@ -161,14 +163,14 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
         {isZipArchive ? (
           <>
             Not a renderable file (application/zip).{" "}
-            <a href={downloadUrl} download={pasteFile.name} className="text-primary-500 inline">
+            <a href={downloadUrl} download={pasteFile.name} className="text-primary inline">
               Download raw
             </a>
           </>
         ) : (
           <>
             This file seems to be binary or not in UTF-8{guessedEncoding ? ` (${guessedEncoding} guessed). ` : ". "}
-            <button className="text-primary-500 inline" onClick={() => setForceShowBinary(true)}>
+            <button className="text-primary inline" onClick={() => setForceShowBinary(true)}>
               (Click to show)
             </button>
           </>
@@ -178,8 +180,11 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   )
 
   const contentDisplayFilename = hasOriginalFiles ? `${originalFiles.length} files` : filename || metaFilename
-  const titleDisplayFilename = hasOriginalFiles ? `${originalFiles.length} files` : filenameForTitle(filename || metaFilename)
+  const titleDisplayFilename = hasOriginalFiles
+    ? `${originalFiles.length} files`
+    : filenameForTitle(filename || metaFilename)
   const placeholderName = contentDisplayFilename || (ext ? name + ext : name)
+  const rawDownloadUrl = pendingInfo || mediaInfo ? `${(pendingInfo ?? mediaInfo)!.rawUrl}?a` : "#"
   const placeholderReason = (() => {
     if (!pendingInfo) return ""
     const ct = pendingInfo.contentType
@@ -199,9 +204,15 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
       {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
       <div className="w-fit text-center">
         {placeholderReason}{" "}
-        <Link href={`${pendingInfo.rawUrl}?a`} className="text-primary-500 inline">
-          Download raw
-        </Link>
+        {onDownloadPaste ? (
+          <button className="text-primary inline cursor-pointer" onClick={() => onDownloadPaste()}>
+            Download decrypted
+          </button>
+        ) : (
+          <Link href={`${pendingInfo.rawUrl}?a`} className="text-primary inline">
+            Download raw
+          </Link>
+        )}
         {onLoadAnyway && (
           <>
             {" or "}
@@ -217,7 +228,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
 
   const lineNumOffset = `${Math.floor(Math.log10(pasteLineCount)) + 3}ch`
   const buttonClasses = `${tst}`
-  const iconLinkClass = `inline-flex items-center justify-center rounded-full p-2 hover:bg-default-100 ${buttonClasses}`
+  const iconLinkClass = `inline-flex items-center justify-center rounded-full p-2 hover:bg-default-100 cursor-pointer ${buttonClasses}`
 
   return (
     <main
@@ -266,14 +277,20 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             ) : (
               (pendingInfo || mediaInfo) && (
                 <Tooltip content={`Download as file`}>
-                  <a
-                    href={(pendingInfo ?? mediaInfo)!.rawUrl}
-                    download={placeholderName}
-                    aria-label="Download"
-                    className={iconLinkClass}
-                  >
-                    <DownloadIcon className="size-6 inline" />
-                  </a>
+                  {onDownloadPaste ? (
+                    <button
+                      type="button"
+                      onClick={() => onDownloadPaste()}
+                      aria-label="Download"
+                      className={iconLinkClass}
+                    >
+                      <DownloadIcon className="size-6 inline" />
+                    </button>
+                  ) : (
+                    <a href={rawDownloadUrl} download={placeholderName} aria-label="Download" className={iconLinkClass}>
+                      <DownloadIcon className="size-6 inline" />
+                    </a>
+                  )}
                 </Tooltip>
               )
             )}
@@ -313,7 +330,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                         <span>{contentDisplayFilename || pasteFile?.name}</span>
                         <span>{`(${formatSize(pasteFile.size)})`}</span>
                         {forceShowBinary && (
-                          <button className="ml-2 text-primary-500" onClick={() => setForceShowBinary(false)}>
+                          <button className="ml-2 text-primary" onClick={() => setForceShowBinary(false)}>
                             (Click to hide)
                           </button>
                         )}

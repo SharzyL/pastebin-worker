@@ -23,6 +23,15 @@ interface InitialPasteState {
   originalFiles?: OriginalFileInfo[]
 }
 
+interface FetchedPasteFile {
+  file: File
+  content: Uint8Array
+  filenameFromDisp?: string
+  lang?: string
+  scheme: EncryptionScheme | null
+  didDecrypt: boolean
+}
+
 function getInitialPasteState(url: URL, name: string, ext: string | undefined, filename: string | undefined) {
   const initialData = window.__PASTE_DATA__
   if (!initialData) {
@@ -52,6 +61,10 @@ function getInitialPasteState(url: URL, name: string, ext: string | undefined, f
 
 function isMetaResponse(value: unknown): value is MetaResponse {
   return typeof value === "object" && value !== null && typeof (value as MetaResponse).sizeBytes === "number"
+}
+
+function stripEncryptedSuffix(filename: string | undefined): string | undefined {
+  return filename?.replace(/\.encrypted$/, "")
 }
 
 export function DisplayPaste({ config }: { config: Env }) {
@@ -111,74 +124,108 @@ export function DisplayPaste({ config }: { config: Env }) {
     if (metadata.filenames) setOriginalFiles(metadata.filenames)
   }
 
-  const fetchPasteBody = useCallback(async () => {
-    setIsLoading(true)
-    setPendingInfo(null)
-    setMediaInfo(null)
+  function triggerDownload(file: File) {
+    const downloadBlob =
+      file.type === "application/octet-stream" ? file : new Blob([file], { type: "application/octet-stream" })
+    const url = URL.createObjectURL(downloadBlob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = file.name
+    link.style.display = "none"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => {
+      if (URL.revokeObjectURL) URL.revokeObjectURL(url)
+    }, 0)
+  }
+
+  const fetchPasteFile = useCallback(async (): Promise<FetchedPasteFile | null> => {
     try {
       const resp = await fetch(pasteUrl)
       if (!resp.ok) {
         await handleFailedResp("Failed to Fetch Paste", resp)
-        return
+        return null
       }
       const scheme: EncryptionScheme | null = resp.headers.get("X-PB-Encryption-Scheme") as EncryptionScheme | null
       let filenameFromDisp = resp.headers.has("Content-Disposition")
         ? parseFilenameFromContentDisposition(resp.headers.get("Content-Disposition")!) || undefined
         : undefined
       if (filenameFromDisp && scheme !== null) {
-        filenameFromDisp = filenameFromDisp.replace(/\.encrypted$/, "")
+        filenameFromDisp = stripEncryptedSuffix(filenameFromDisp)
       }
       const lang = url.searchParams.get("lang") || resp.headers.get("X-PB-Highlight-Language")
-      const inferredFilename = filename || (ext && name + ext) || filenameFromDisp
+      let metadataFilename = metaFilename
+      if (!filename && !ext && !filenameFromDisp && !metadataFilename) {
+        metadataFilename = stripEncryptedSuffix((await fetchMetadata())?.filename)
+      }
+      const inferredFilename = filename || (ext && name + ext) || filenameFromDisp || metadataFilename
       const decryptedContentType = resp.headers.get("X-PB-Decrypted-Content-Type")
       const blobMime = (scheme ? decryptedContentType : resp.headers.get("Content-Type"))?.split(";")[0]?.trim() || ""
       const respBytes = await resp.bytes()
-      setPasteLang(lang || undefined)
-      if (filenameFromDisp) setMetaFilename(filenameFromDisp)
 
       const keyString = url.hash.slice(1)
       if (scheme === null || keyString.length === 0) {
-        setPasteFile(new File([respBytes as BlobPart], inferredFilename || name, { type: blobMime }))
-        setPasteContentBuffer(respBytes)
-        if (scheme) {
-          setDecrypted("encrypted")
-          setFileBinary(true)
-        } else {
-          const encoding = detectUtf8(respBytes)
-          setFileBinary(encoding === null)
-          setGuessedEncoding(encoding)
-        }
-      } else {
-        let key: CryptoKey
-        try {
-          key = await decodeKey(scheme, keyString)
-        } catch (err) {
-          showModal("Invalid decryption key", (err as Error).message)
-          return
-        }
-        const decrypted = await decrypt(scheme, key, respBytes)
-        if (!decrypted) {
-          showModal(
-            "Decryption failed",
-            "Could not decrypt the paste with the provided key. The URL fragment may be wrong, " +
-              "or the paste has been replaced or corrupted.",
-          )
-          return
-        }
-        setPasteFile(new File([decrypted as BlobPart], inferredFilename || name, { type: blobMime }))
-        setPasteContentBuffer(decrypted)
-        const encoding = detectUtf8(decrypted)
-        setFileBinary(encoding === null)
-        setDecrypted("decrypted")
-        setGuessedEncoding(encoding)
+        const file = new File([respBytes as BlobPart], inferredFilename || name, { type: blobMime })
+        return { file, content: respBytes, filenameFromDisp, lang: lang || undefined, scheme, didDecrypt: false }
       }
+
+      let key: CryptoKey
+      try {
+        key = await decodeKey(scheme, keyString)
+      } catch (err) {
+        showModal("Invalid decryption key", (err as Error).message)
+        return null
+      }
+      const decrypted = await decrypt(scheme, key, respBytes)
+      if (!decrypted) {
+        showModal(
+          "Decryption failed",
+          "Could not decrypt the paste with the provided key. The URL fragment may be wrong, " +
+            "or the paste has been replaced or corrupted.",
+        )
+        return null
+      }
+      const file = new File([decrypted as BlobPart], inferredFilename || name, { type: blobMime })
+      return { file, content: decrypted, filenameFromDisp, lang: lang || undefined, scheme, didDecrypt: true }
     } catch (e) {
       showModal(`Error on fetching ${pasteUrl}`, (e as Error).toString())
       console.error(e)
+      return null
+    }
+  }, [pasteUrl, name, ext, filename, metaFilename])
+
+  const fetchPasteBody = useCallback(async () => {
+    setIsLoading(true)
+    setPendingInfo(null)
+    setMediaInfo(null)
+    try {
+      const paste = await fetchPasteFile()
+      if (!paste) return
+
+      setPasteLang(paste.lang)
+      if (paste.filenameFromDisp) setMetaFilename(paste.filenameFromDisp)
+      setPasteFile(paste.file)
+      setPasteContentBuffer(paste.content)
+      if (paste.scheme) {
+        setDecrypted(paste.didDecrypt ? "decrypted" : "encrypted")
+      }
+      if (paste.scheme && !paste.didDecrypt) {
+        setFileBinary(true)
+      } else {
+        const encoding = detectUtf8(paste.content)
+        setFileBinary(encoding === null)
+        setGuessedEncoding(encoding)
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [pasteUrl, name, ext, filename])
+  }, [fetchPasteFile])
+
+  const downloadPasteBody = useCallback(async () => {
+    const paste = await fetchPasteFile()
+    if (paste) triggerDownload(paste.file)
+  }, [fetchPasteFile])
 
   useEffect(() => {
     if (window.__PASTE_DATA__) {
@@ -201,12 +248,13 @@ export function DisplayPaste({ config }: { config: Env }) {
         const contentDisp = headResp.headers.get("Content-Disposition")
         const isEncrypted = scheme !== null
         const effectiveContentType = isEncrypted ? decryptedContentType : contentType
+        setDecrypted(isEncrypted ? "encrypted" : "not encrypted")
 
         let metaFilenameFromHead = contentDisp
           ? parseFilenameFromContentDisposition(contentDisp) || undefined
           : undefined
         if (metaFilenameFromHead && isEncrypted) {
-          metaFilenameFromHead = metaFilenameFromHead.replace(/\.encrypted$/, "")
+          metaFilenameFromHead = stripEncryptedSuffix(metaFilenameFromHead)
         }
         if (metaFilenameFromHead) setMetaFilename(metaFilenameFromHead)
 
@@ -215,7 +263,7 @@ export function DisplayPaste({ config }: { config: Env }) {
         const metadata = shouldAwaitMetadata ? await metadataPromise : null
         applyMetadata(metadata, !!metaFilenameFromHead)
         if (!shouldAwaitMetadata) {
-          void metadataPromise.then((metadata) => applyMetadata(metadata, true))
+          void metadataPromise.then((metadata) => applyMetadata(metadata, !!metaFilenameFromHead))
         }
 
         const sizeBytes = contentLength ?? metadata?.sizeBytes ?? null
@@ -282,6 +330,9 @@ export function DisplayPaste({ config }: { config: Env }) {
         metaFilename={metaFilename}
         originalFiles={originalFiles}
         onLoadAnyway={() => void fetchPasteBody()}
+        onDownloadPaste={
+          isDecrypted === "encrypted" && url.hash.slice(1).length > 0 ? () => void downloadPasteBody() : undefined
+        }
       />
       <ErrorModal />
     </>

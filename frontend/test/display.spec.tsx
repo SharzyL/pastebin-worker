@@ -316,9 +316,7 @@ describe("DisplayPaste", () => {
     const heading = await screen.findByRole("heading")
     expect(heading.textContent).not.toContain(DEFAULT_EDIT_FILENAME)
     expect(screen.getByText(DEFAULT_EDIT_FILENAME)).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Download" }).getAttribute("download")).toStrictEqual(
-      DEFAULT_EDIT_FILENAME,
-    )
+    expect(screen.getByRole("link", { name: "Download" }).getAttribute("download")).toStrictEqual(DEFAULT_EDIT_FILENAME)
   })
 
   it("shows SSR-injected zip content as a non-renderable archive", async () => {
@@ -437,5 +435,141 @@ describe("DisplayPaste", () => {
 
     expect(await screen.findByText(/Not a renderable file/)).toBeInTheDocument()
     expect(screen.getByText("Download raw")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Download" }).getAttribute("href")).toStrictEqual("/abcd?a")
+  })
+
+  it("downloads pending plain media through attachment URL without paste data", async () => {
+    let getCalled = false
+    server.use(
+      http.head("/abcd", () => {
+        return new HttpResponse(null, {
+          headers: {
+            "Content-Type": "video/mp4",
+            "Content-Length": "9999999",
+            "Content-Disposition": "inline; filename*=UTF-8''clip.mp4",
+          },
+        })
+      }),
+      http.get("/abcd", () => {
+        getCalled = true
+        return new HttpResponse(null, { status: 500 })
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    await screen.findByLabelText("clip.mp4")
+    const downloadLink = screen.getByRole("link", { name: "Download" })
+    expect(downloadLink.getAttribute("href")).toStrictEqual("/abcd?a")
+    expect(downloadLink.getAttribute("download")).toStrictEqual("clip.mp4")
+    expect(getCalled).toStrictEqual(false)
+  })
+
+  it("decrypts pending encrypted zip before download", async () => {
+    const scheme = "AES-GCM"
+    const key = await genKey(scheme)
+    const zipBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])
+    const encryptedBytes = await encrypt(scheme, key, zipBytes)
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined)
+    const createObjectUrlSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock")
+    server.use(
+      ...mockPaste("abcd", {
+        body: encryptedBytes.buffer as ArrayBuffer,
+        headers: {
+          "X-PB-Encryption-Scheme": "AES-GCM",
+          "X-PB-Decrypted-Content-Type": "application/zip",
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": "inline; filename*=UTF-8''files.zip.encrypted",
+        },
+      }),
+      http.get("/m/abcd", () => {
+        return HttpResponse.json({
+          lastModifiedAt: "",
+          createdAt: "",
+          expireAt: "",
+          sizeBytes: encryptedBytes.byteLength,
+          location: "KV",
+          filename: "files.zip",
+        })
+      }),
+    )
+    vi.stubGlobal("location", new URL(`https://example.com/d/abcd#${await encodeKey(key)}`))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    try {
+      const downloadButton = await screen.findByRole("button", { name: "Download" })
+      await userEvent.click(downloadButton)
+
+      await waitFor(() => {
+        expect(createObjectUrlSpy).toHaveBeenCalled()
+      })
+      expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument()
+      expect(screen.getByText("Download decrypted")).toBeInTheDocument()
+      expect(screen.queryByRole("link", { name: "Download" })).not.toBeInTheDocument()
+    } finally {
+      clickSpy.mockRestore()
+      createObjectUrlSpy.mockRestore()
+    }
+  })
+
+  it("uses metadata filename for decrypted pending downloads when raw response has no filename", async () => {
+    const scheme = "AES-GCM"
+    const key = await genKey(scheme)
+    const encryptedBytes = await encrypt(scheme, key, new TextEncoder().encode("secret text"))
+    let downloadAnchor: HTMLAnchorElement | undefined
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined)
+    server.use(
+      http.head("/abcd", () => {
+        return new HttpResponse(null, {
+          headers: {
+            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+            "Content-Type": "application/octet-stream",
+            "Content-Length": String(MAX_AUTO_FETCH_BYTES + 1),
+          },
+        })
+      }),
+      http.get("/abcd", () => {
+        return HttpResponse.arrayBuffer(encryptedBytes.buffer as ArrayBuffer, {
+          headers: {
+            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+            "Content-Type": "application/octet-stream",
+            "Content-Length": String(encryptedBytes.byteLength),
+          },
+        })
+      }),
+      http.get("/m/abcd", () => {
+        return HttpResponse.json({
+          lastModifiedAt: "",
+          createdAt: "",
+          expireAt: "",
+          sizeBytes: encryptedBytes.byteLength,
+          location: "KV",
+          filename: "original-name",
+        })
+      }),
+    )
+    vi.stubGlobal("location", new URL(`https://example.com/d/abcd#${await encodeKey(key)}`))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    const appendSpy = vi.spyOn(document.body, "appendChild").mockImplementation((node: Node) => {
+      downloadAnchor = node as HTMLAnchorElement
+      return node
+    })
+
+    try {
+      await userEvent.click(await screen.findByRole("button", { name: "Download" }))
+
+      await waitFor(() => {
+        expect(downloadAnchor?.download).toStrictEqual("original-name")
+      })
+    } finally {
+      clickSpy.mockRestore()
+      appendSpy.mockRestore()
+    }
   })
 })
