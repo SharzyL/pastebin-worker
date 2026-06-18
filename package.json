@@ -24,7 +24,7 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.14",
+    "@cloudflare/vitest-pool-workers": "^0.16.16",
     "@craftamap/esbuild-plugin-html": "^0.9.0",
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.1",
@@ -33,17 +33,17 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25.9.3",
     "@vitejs/plugin-react": "^6.0.2",
-    "@vitest/coverage-istanbul": "4.1.8",
-    "eslint": "^10.4.1",
+    "@vitest/coverage-istanbul": "4.1.9",
+    "eslint": "^10.5.0",
     "jsdom": "^29.1.1",
     "msw": "^2.14.6",
     "prettier": "^3.8.4",
     "toml": "^4.1.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.0",
+    "typescript-eslint": "^8.61.1",
     "vite": "^8.0.16",
-    "vitest": "4.1.8",
-    "wrangler": "^4.99.0"
+    "vitest": "4.1.9",
+    "wrangler": "^4.101.0"
   },
   "prettier": {
     "singleQuote": false,
@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@mjackson/multipart-parser": "^0.10.1",
-    "@tailwindcss/vite": "^4.3.0",
+    "@tailwindcss/vite": "^4.3.1",
     "@types/bcrypt": "^6.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -65,7 +65,7 @@
     "mime": "^4.1.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tailwindcss": "^4.3.0",
+    "tailwindcss": "^4.3.1",
     "xss": "^1.0.15"
   },
   "resolutions": {
