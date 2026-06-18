@@ -124,7 +124,7 @@ export function PanelSettingsPanel({
               base: "basis-40",
               ...inputOverrides,
             }}
-            defaultValue="7d"
+            defaultValue={config.DEFAULT_EXPIRATION}
             value={setting.expiration}
             isRequired
             onValueChange={(e) => onSettingChange({ ...setting, expiration: e })}

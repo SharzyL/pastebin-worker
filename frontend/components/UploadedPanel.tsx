@@ -16,6 +16,7 @@ import {
 
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { tst } from "../utils/overrides.js"
+import { makeDisplayUrl, withPathPrefix } from "../utils/pasteUrls.js"
 import type { UploadProgress } from "../utils/uploader.js"
 import { formatSize } from "../utils/utils.js"
 import { CopyWidget } from "./CopyWidget.js"
@@ -29,17 +30,6 @@ interface UploadedPanelProps extends CardProps {
   encryptionKey?: string
   highlightLang?: string
   isUrlPaste?: boolean
-}
-
-function withPathPrefix(url: string, prefix: string): string {
-  const u = new URL(url)
-  u.pathname = prefix + u.pathname
-  return u.toString()
-}
-
-function makeDecryptionUrl(url: string, key?: string): string {
-  const base = withPathPrefix(url, "/d")
-  return key ? `${base}#${key}` : base
 }
 
 const RAW_URL_FLAGS: { syntax: string; desc: string }[] = [
@@ -110,14 +100,31 @@ export function UploadedPanel({
   const isEncrypted = Boolean(encryptionKey)
   const isMarkdown = highlightLang === "markdown"
 
-  const urlInput = (label: string, value: string, labelExtra?: React.ReactNode) => (
-    <Input
-      {...inputProps}
-      label={label}
-      labelExtra={labelExtra}
-      value={value}
-      endContent={<CopyWidget className={copyWidgetClassNames} getCopyContent={() => value} />}
+  const copyLinkButton = (value: string, className = "") => (
+    <CopyWidget
+      label="Copy link"
+      className={`${copyWidgetClassNames} h-[38px] bg-default-100 ${className}`}
+      getCopyContent={() => value}
     />
+  )
+
+  const urlInput = (
+    label: string,
+    value: string,
+    labelExtra?: React.ReactNode,
+    options?: { color?: "default" | "success"; copyClassName?: string },
+  ) => (
+    <div className="mb-2 flex items-end gap-2">
+      <Input
+        {...inputProps}
+        className="mb-0 min-w-0 flex-1"
+        label={label}
+        labelExtra={labelExtra}
+        color={options?.color}
+        value={value}
+      />
+      {copyLinkButton(value, options?.copyClassName)}
+    </div>
   )
 
   const markdownUrlField = (pasteResponse: PasteResponse) =>
@@ -152,36 +159,29 @@ export function UploadedPanel({
         ) : (
           pasteResponse && (
             <>
-              <Input
-                {...inputProps}
-                label={"Display URL"}
-                labelExtra={
-                  <UrlTooltip
-                    desc={
-                      <>
-                        Browser-friendly view with syntax highlighting.
-                        {encryptionKey && (
-                          <>
-                            {" "}
-                            The decryption key sits after the <code className="font-mono">#</code> in the URL and is
-                            never sent to the server — it stays in the browser for client-side decryption.
-                          </>
-                        )}
-                      </>
-                    }
-                    flags={DISPLAY_URL_FLAGS}
-                  />
-                }
-                color={encryptionKey ? "success" : "default"}
-                className="mb-2"
-                value={makeDecryptionUrl(pasteResponse.url, encryptionKey)}
-                endContent={
-                  <CopyWidget
-                    className={encryptionKey ? `${copyWidgetClassNames} hover:bg-success-100` : copyWidgetClassNames}
-                    getCopyContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
-                  />
-                }
-              />
+              {urlInput(
+                "Display URL",
+                makeDisplayUrl(pasteResponse.url, encryptionKey),
+                <UrlTooltip
+                  desc={
+                    <>
+                      Browser-friendly view with syntax highlighting.
+                      {encryptionKey && (
+                        <>
+                          {" "}
+                          The decryption key sits after the <code className="font-mono">#</code> in the URL and is
+                          never sent to the server — it stays in the browser for client-side decryption.
+                        </>
+                      )}
+                    </>
+                  }
+                  flags={DISPLAY_URL_FLAGS}
+                />,
+                {
+                  color: encryptionKey ? "success" : "default",
+                  copyClassName: encryptionKey ? "bg-success-50 hover:bg-success-100" : "",
+                },
+              )}
               {isMarkdown && !isEncrypted && markdownUrlField(pasteResponse)}
               {urlInput(
                 "Raw URL",

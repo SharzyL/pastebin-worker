@@ -5,9 +5,10 @@ import { CopyIcon, CheckIcon } from "./icons.js"
 
 interface CopyIconProps extends ButtonProps {
   getCopyContent: () => string
+  label?: string
 }
 
-export function CopyWidget({ className, getCopyContent, ...rest }: CopyIconProps) {
+export function CopyWidget({ className = "", getCopyContent, label, ...rest }: CopyIconProps) {
   const numOfIssuedCopies = useRef(0)
   const [hasIssuedCopies, setHasIssuedCopies] = useState<boolean>(false)
   const onCopy = () => {
@@ -28,15 +29,16 @@ export function CopyWidget({ className, getCopyContent, ...rest }: CopyIconProps
 
   return (
     <Button
-      isIconOnly
+      isIconOnly={label === undefined}
       size="sm"
       variant="light"
-      aria-label="Copy"
-      className={`focus:ring-0 hover:bg-default-200 ${className}`}
+      aria-label={label || "Copy"}
+      className={`cursor-pointer focus:ring-0 hover:bg-default-200 ${label ? "gap-1.5 whitespace-nowrap px-2" : ""} ${className}`}
       onPress={onCopy}
       {...rest}
     >
       {hasIssuedCopies ? <CheckIcon className="size-6" /> : <CopyIcon className="size-6" />}
+      {label && <span>{label}</span>}
     </Button>
   )
 }

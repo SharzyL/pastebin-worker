@@ -20,7 +20,6 @@ const encryptionScheme: EncryptionScheme = "AES-GCM"
 
 const mpuChunkSize = 5 * 1024 * 1024
 const mpuThreshold = 5 * 1024 * 1024
-const zipMtime = new Date(2026, 0, 1, 0, 0, 0)
 
 export interface UploadProgress {
   doneBytes: number
@@ -53,8 +52,8 @@ async function zipFiles(files: File[]): Promise<File> {
   for (const file of files) {
     entries[zipEntryName(file, names)] = await file.bytes()
   }
-  const zipped = zipSync(entries, { mtime: zipMtime })
-  return new File([zipped], `paste-files-${zipFilenameDate()}.zip`, { type: "application/zip" })
+  const zipped = zipSync(entries)
+  return new File([zipped], `${files.length}-files-${zipFilenameDate()}.zip`, { type: "application/zip" })
 }
 
 function zipFilenameDate(): string {

@@ -177,14 +177,14 @@ test("filenames metadata", async () => {
   ]
 
   const uploadResp = await upload(ctx, {
-    c: { content: genRandomBlob(8), filename: "paste-files-abc123.zip" },
+    c: { content: genRandomBlob(8), filename: "2-files-abc123.zip" },
     filenames: JSON.stringify(filenames),
   })
 
   const metaResp: MetaResponse = await (await workerFetch(ctx, addRole(uploadResp.url, "m"))).json()
-  expect(uploadResp.filename).toStrictEqual("paste-files-abc123.zip")
+  expect(uploadResp.filename).toStrictEqual("2-files-abc123.zip")
   expect(uploadResp.filenames).toStrictEqual(filenames)
-  expect(metaResp.filename).toStrictEqual("paste-files-abc123.zip")
+  expect(metaResp.filename).toStrictEqual("2-files-abc123.zip")
   expect(metaResp.filenames).toStrictEqual(filenames)
 })
 
@@ -193,7 +193,7 @@ test("invalid filenames metadata", async () => {
   await uploadExpectStatus(
     ctx,
     {
-      c: { content: genRandomBlob(8), filename: "paste-files-abc123.zip" },
+      c: { content: genRandomBlob(8), filename: "2-files-abc123.zip" },
       filenames: JSON.stringify([{ name: "a.txt", sizeBytes: -1 }]),
     },
     400,

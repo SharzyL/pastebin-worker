@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useTransition } from "react"
+import type { CSSProperties } from "react"
 
 import { Link } from "../components/ui/index.js"
 
@@ -9,8 +10,9 @@ import { PanelSettingsPanel } from "../components/PasteSettingPanel.js"
 import { UploadedPanel } from "../components/UploadedPanel.js"
 import type { PasteEditState } from "../components/PasteInputPanel.js"
 import { PasteInputPanel } from "../components/PasteInputPanel.js"
+import { LocalUploadsSidebar } from "../components/LocalUploadsSidebar.js"
 
-import type { PasteResponse } from "../../shared/interfaces.js"
+import type { MetaResponse, PasteResponse } from "../../shared/interfaces.js"
 import { parsePath, parseFilenameFromContentDisposition } from "../../shared/parsers.js"
 import { PASSWD_SEP, MAX_URL_REDIRECT_LEN, MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 
@@ -19,9 +21,27 @@ import { verifyName, verifyPassword, isLegalUrl } from "../../shared/verify.js"
 import { useNameAvailability } from "../utils/useNameAvailability.js"
 import type { UploadProgress } from "../utils/uploader.js"
 import { uploadPaste } from "../utils/uploader.js"
+import type { LocalUploadRecord } from "../utils/localUploads.js"
+import { pasteKeyFromUrl } from "../utils/pasteUrls.js"
+import { useLocalUploads } from "../utils/useLocalUploads.js"
 import { tst } from "../utils/overrides.js"
+import type { EncryptionScheme } from "../utils/encryption.js"
+import { decodeKey, decrypt } from "../utils/encryption.js"
 
 import "../style.css"
+
+function isMetaResponse(value: unknown): value is MetaResponse {
+  return typeof value === "object" && value !== null && typeof (value as MetaResponse).sizeBytes === "number"
+}
+
+function parseContentLength(value: string | null): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : Number.NaN
+}
+
+function stripEncryptedSuffix(filename: string | undefined): string | undefined {
+  return filename?.replace(/\.encrypted$/, "")
+}
 
 export function PasteBin({ config }: { config: Env }) {
   const [editorState, setEditorState] = useState<PasteEditState>({
@@ -47,7 +67,11 @@ export function PasteBin({ config }: { config: Env }) {
   const [isDeletePending, startDelete] = useTransition()
   const [loadingProgress, setLoadingProgress] = useState<UploadProgress | undefined>(undefined)
   const uploadAbortRef = useRef<AbortController | null>(null)
+  const mainUploadAreaRef = useRef<HTMLDivElement | null>(null)
   const [isInitPasteLoading, startFetchingInitPaste] = useTransition()
+  const { localUploads, rememberLocalUpload, removeLocalUploadByKey } = useLocalUploads()
+  const [latestLocalUploadKey, setLatestLocalUploadKey] = useState<string | undefined>(undefined)
+  const [mainUploadAreaHeight, setMainUploadAreaHeight] = useState<number | undefined>(undefined)
 
   const [_, modeSelection, setModeSelection] = useDarkModeSelection()
 
@@ -59,6 +83,20 @@ export function PasteBin({ config }: { config: Env }) {
     pasteSetting.uploadKind === "custom",
   )
 
+  useEffect(() => {
+    const element = mainUploadAreaRef.current
+    if (!element || typeof ResizeObserver === "undefined") return
+
+    const updateHeight = () => {
+      setMainUploadAreaHeight(Math.ceil(element.getBoundingClientRect().height))
+    }
+
+    updateHeight()
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
   // handle admin URL
   useEffect(() => {
     // SSR environment check
@@ -69,30 +107,58 @@ export function PasteBin({ config }: { config: Env }) {
     const { name, password, filename, ext } = parsePath(pathname)
 
     if (password !== undefined && pasteSetting.manageUrl === "") {
-      setPasteSetting({
-        ...pasteSetting,
+      setPasteSetting((prev) => ({
+        ...prev,
         uploadKind: "manage",
         manageUrl: `${config.DEPLOY_URL}/${name}:${password}`,
-      })
+      }))
 
       let pasteUrl = `${config.DEPLOY_URL}/${name}`
       if (filename) pasteUrl = `${pasteUrl}/${filename}`
       if (ext) pasteUrl = `${pasteUrl}${ext}`
+      const metadataUrl = `${config.DEPLOY_URL}/m/${name}`
 
       startFetchingInitPaste(async () => {
         try {
+          const metaResp = await fetch(metadataUrl)
+          if (!metaResp.ok) {
+            await handleFailedResp(`Error on Fetching ${metadataUrl}`, metaResp)
+            return
+          }
+          const metadata: unknown = await metaResp.json()
+          if (!isMetaResponse(metadata)) {
+            showModal("Error on Fetching Paste Metadata", "The metadata response is invalid.")
+            return
+          }
+          const encryptionScheme = metadata.encryptionScheme as EncryptionScheme | undefined
+          const isEncrypted = encryptionScheme !== undefined
+          if (isEncrypted) {
+            setPasteSetting((prev) => ({ ...prev, doEncrypt: true }))
+          }
+
           const headResp = await fetch(pasteUrl, { method: "HEAD" })
           if (!headResp.ok) {
             await handleFailedResp(`Error on Fetching ${pasteUrl}`, headResp)
             return
           }
           const contentType = headResp.headers.get("Content-Type")
-          const contentLength = Number(headResp.headers.get("Content-Length"))
-          const contentLang = headResp.headers.get("X-PB-Highlight-Language")
+          const decryptedContentType = headResp.headers.get("X-PB-Decrypted-Content-Type")
+          const effectiveContentType = isEncrypted ? decryptedContentType : contentType
+          const contentLength = parseContentLength(headResp.headers.get("Content-Length"))
+          const contentLang = headResp.headers.get("X-PB-Highlight-Language") || metadata.highlightLanguage
           const contentDisp = headResp.headers.get("Content-Disposition")
 
-          const isText = contentType?.startsWith("text/") || !!contentLang
+          const isText = effectiveContentType?.startsWith("text/") || !!contentLang
           if (!isText || !Number.isFinite(contentLength) || contentLength >= MAX_AUTO_FETCH_BYTES) {
+            return
+          }
+
+          const keyString = location.hash.slice(1)
+          if (isEncrypted && keyString.length === 0) {
+            showModal(
+              "Decryption key required",
+              "This paste is encrypted. Open the manage URL with the decryption key after # to edit the plaintext.",
+            )
             return
           }
 
@@ -106,10 +172,36 @@ export function PasteBin({ config }: { config: Env }) {
           if (pasteFilename === undefined && contentDisp !== null) {
             pasteFilename = parseFilenameFromContentDisposition(contentDisp)
           }
+          if (isEncrypted) pasteFilename = stripEncryptedSuffix(pasteFilename)
+          pasteFilename ||= metadata.filename
+
+          let editContent: string
+          if (isEncrypted) {
+            let key: CryptoKey
+            try {
+              key = await decodeKey(encryptionScheme, keyString)
+            } catch (err) {
+              showModal("Invalid decryption key", (err as Error).message)
+              return
+            }
+            const encryptedBytes = new Uint8Array(await resp.arrayBuffer())
+            const decrypted = await decrypt(encryptionScheme, key, encryptedBytes)
+            if (!decrypted) {
+              showModal(
+                "Decryption failed",
+                "Could not decrypt the paste with the provided key. The URL fragment may be wrong, " +
+                  "or the paste has been replaced or corrupted.",
+              )
+              return
+            }
+            editContent = new TextDecoder().decode(decrypted)
+          } else {
+            editContent = await resp.text()
+          }
 
           setEditorState({
             editKind: "edit",
-            editContent: await resp.text(),
+            editContent,
             files: [],
             editHighlightLang: contentLang || undefined,
             editFilename: pasteFilename,
@@ -129,15 +221,21 @@ export function PasteBin({ config }: { config: Env }) {
     setUploadedEncryptionKey(undefined)
     startUpload(async () => {
       try {
+        let nextEncryptionKey: string | undefined
         const uploaded = await uploadPaste(
           pasteSetting,
           editorState,
-          setUploadedEncryptionKey,
+          (key) => {
+            nextEncryptionKey = key
+            setUploadedEncryptionKey(key)
+          },
           config,
           setLoadingProgress,
           controller.signal,
         )
         setPasteResponse(uploaded)
+        rememberLocalUpload(uploaded, nextEncryptionKey)
+        setLatestLocalUploadKey(pasteKeyFromUrl(uploaded.url))
         setPasteSetting({ ...pasteSetting, uploadKind: "manage", manageUrl: uploaded.manageUrl })
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
@@ -159,6 +257,7 @@ export function PasteBin({ config }: { config: Env }) {
         const resp = await fetch(pasteSetting.manageUrl, { method: "DELETE" })
         if (resp.ok) {
           showModal("Deleted Successfully", "It may takes 60 seconds for the deletion to propagate to the world")
+          removeLocalUploadByKey(pasteKeyFromUrl(pasteSetting.manageUrl))
           setPasteResponse(undefined)
           setPasteSetting({ ...pasteSetting, uploadKind: "short", manageUrl: "" })
         } else {
@@ -200,6 +299,29 @@ export function PasteBin({ config }: { config: Env }) {
 
   function canDelete(): boolean {
     return verifyManageUrl(pasteSetting.manageUrl, config)[0]
+  }
+
+  function removeLocalUploadFromState(upload: LocalUploadRecord) {
+    removeLocalUploadByKey(upload.key)
+    if (verifyManageUrl(pasteSetting.manageUrl, config)[0] && pasteKeyFromUrl(pasteSetting.manageUrl) === upload.key) {
+      setPasteResponse(undefined)
+      setPasteSetting({ ...pasteSetting, uploadKind: "short", manageUrl: "" })
+    }
+  }
+
+  async function onDeleteLocalUpload(upload: LocalUploadRecord) {
+    try {
+      const resp = await fetch(upload.manageUrl, { method: "DELETE" })
+      if (resp.ok) {
+        removeLocalUploadFromState(upload)
+      } else if (resp.status === 404 || resp.status === 410) {
+        removeLocalUploadFromState(upload)
+      } else {
+        await handleFailedResp("Error on Delete Paste", resp)
+      }
+    } catch (e) {
+      handleError("Error on Delete Paste", e as Error)
+    }
   }
 
   const info = (
@@ -272,42 +394,56 @@ export function PasteBin({ config }: { config: Env }) {
 
   return (
     <main className={`flex flex-col items-center min-h-screen font-sans ${tst} bg-background text-foreground`}>
-      <div className="grow w-full max-w-[64rem]">
+      <div className="grow w-full max-w-[88rem] px-2 lg:px-4 xl:px-0">
         {info}
-        <PasteInputPanel
-          isPasteLoading={isInitPasteLoading}
-          state={editorState}
-          onStateChange={setEditorState}
-          config={config}
-          showModal={showModal}
-          className="mt-6 mb-4 mx-2 lg:mx-0"
-        />
-        <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
-          <PanelSettingsPanel
-            config={config}
-            className={"transition-width lg:w-1/2 w-full"}
-            setting={pasteSetting}
-            onSettingChange={setPasteSetting}
-            nameAvailability={nameAvailability}
-            footer={submitter}
-          />
-          {(pasteResponse || isUploadPending) && (
-            <UploadedPanel
-              isLoading={isUploadPending}
-              loadingProgress={loadingProgress}
-              onCancel={onCancelUpload}
-              pasteResponse={pasteResponse}
-              encryptionKey={uploadedEncryptionKey}
-              highlightLang={editorState.editKind === "edit" ? editorState.editHighlightLang : undefined}
-              isUrlPaste={
-                editorState.editKind === "edit" &&
-                editorState.editContent.length > 0 &&
-                editorState.editContent.length <= MAX_URL_REDIRECT_LEN &&
-                isLegalUrl(editorState.editContent)
-              }
-              className="w-full lg:w-1/2"
+        <div className="flex w-full flex-col gap-6 xl:flex-row xl:items-start">
+          <div ref={mainUploadAreaRef} className="min-w-0 flex-1">
+            <PasteInputPanel
+              isPasteLoading={isInitPasteLoading}
+              state={editorState}
+              onStateChange={setEditorState}
+              config={config}
+              showModal={showModal}
+              className="mt-6 mb-4 mx-0"
             />
-          )}
+            <div className="flex flex-col items-start lg:flex-row gap-4 mx-0">
+              <PanelSettingsPanel
+                config={config}
+                className={"transition-width lg:w-1/2 w-full"}
+                setting={pasteSetting}
+                onSettingChange={setPasteSetting}
+                nameAvailability={nameAvailability}
+                footer={submitter}
+              />
+              {(pasteResponse || isUploadPending) && (
+                <UploadedPanel
+                  isLoading={isUploadPending}
+                  loadingProgress={loadingProgress}
+                  onCancel={onCancelUpload}
+                  pasteResponse={pasteResponse}
+                  encryptionKey={uploadedEncryptionKey}
+                  highlightLang={editorState.editKind === "edit" ? editorState.editHighlightLang : undefined}
+                  isUrlPaste={
+                    editorState.editKind === "edit" &&
+                    editorState.editContent.length > 0 &&
+                    editorState.editContent.length <= MAX_URL_REDIRECT_LEN &&
+                    isLegalUrl(editorState.editContent)
+                  }
+                  className="w-full lg:w-1/2"
+                />
+              )}
+            </div>
+          </div>
+          <LocalUploadsSidebar
+            uploads={localUploads}
+            onDeleteUpload={onDeleteLocalUpload}
+            scrollToKey={latestLocalUploadKey}
+            style={
+              mainUploadAreaHeight === undefined
+                ? undefined
+                : ({ "--local-uploads-height": `${mainUploadAreaHeight}px` } as CSSProperties)
+            }
+          />
         </div>
       </div>
       {footer}

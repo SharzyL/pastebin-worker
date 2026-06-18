@@ -11,9 +11,10 @@ interface TriggerProps {
 export interface TooltipProps {
   content: React.ReactNode
   children: React.ReactElement<TriggerProps>
+  placement?: "auto" | "top" | "bottom"
 }
 
-export function Tooltip({ content, children }: TooltipProps) {
+export function Tooltip({ content, children, placement = "auto" }: TooltipProps) {
   const [show, setShow] = useState(false)
   const [position, setPosition] = useState<"top" | "bottom">("top")
   const [align, setAlign] = useState<"center" | "left" | "right">("center")
@@ -27,7 +28,9 @@ export function Tooltip({ content, children }: TooltipProps) {
       const containerRect = containerRef.current.getBoundingClientRect()
 
       // Check vertical position
-      if (containerRect.top - tooltipRect.height - 8 < 0) {
+      if (placement !== "auto") {
+        setPosition(placement)
+      } else if (containerRect.top - tooltipRect.height - 8 < 0) {
         setPosition("bottom")
       } else {
         setPosition("top")
@@ -45,7 +48,7 @@ export function Tooltip({ content, children }: TooltipProps) {
         setAlign("center")
       }
     }
-  }, [show])
+  }, [placement, show])
 
   // Compose aria-describedby with whatever the child already had so we don't clobber.
   const existingDescribedBy = children.props["aria-describedby"]

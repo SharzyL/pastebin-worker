@@ -1,5 +1,5 @@
 import { describe, it, vi, expect, beforeAll, afterEach, afterAll } from "vitest"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import { PasteBin } from "../pages/PasteBin.js"
 
 export const mockedPasteUpload: PasteResponse = {
@@ -14,6 +14,13 @@ export const mockedPasteUpload: PasteResponse = {
 }
 
 export const mockedPasteContent = "something"
+export const mockedPasteMeta = {
+  lastModifiedAt: mockedPasteUpload.lastModifiedAt,
+  createdAt: mockedPasteUpload.createdAt,
+  expireAt: mockedPasteUpload.expireAt,
+  sizeBytes: mockedPasteUpload.sizeBytes,
+  location: mockedPasteUpload.location,
+}
 
 export const server = setupServer(
   http.post(`${__WRANGLER_CONFIG__.DEPLOY_URL}/`, () => {
@@ -29,6 +36,9 @@ export const server = setupServer(
   }),
   http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
     return HttpResponse.text(mockedPasteContent)
+  }),
+  http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/m/abcd`, () => {
+    return HttpResponse.json(mockedPasteMeta)
   }),
 )
 
@@ -53,6 +63,7 @@ import type { PasteResponse } from "../../shared/interfaces.js"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
+import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
 
 describe("Pastebin", () => {
   it("can upload", async () => {
@@ -97,8 +108,84 @@ describe("Pastebin admin page", () => {
     render(<PasteBin config={__WRANGLER_CONFIG__} />)
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
-    await userEvent.click(editor) // meaningless click, just ensure useEffect is done
     expect(editor).toBeInTheDocument()
-    expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent)
+    await waitFor(() => expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent))
+  })
+
+  it("decrypts encrypted admin text when the URL hash has the key", async () => {
+    const key = await genKey("AES-GCM")
+    const encodedKey = await encodeKey(key)
+    const ciphertext = await encrypt("AES-GCM", key, new TextEncoder().encode(mockedPasteContent))
+    vi.stubGlobal("location", new URL(`https://example.com/abcd:xxxxxxxxx#${encodedKey}`))
+    server.use(
+      http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/m/abcd`, () => {
+        return HttpResponse.json({
+          ...mockedPasteMeta,
+          sizeBytes: ciphertext.length,
+          highlightLanguage: "plaintext",
+          encryptionScheme: "AES-GCM",
+        })
+      }),
+      http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
+        return new HttpResponse(null, {
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": String(ciphertext.length),
+            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+            "X-PB-Highlight-Language": "plaintext",
+          },
+        })
+      }),
+      http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
+        return new HttpResponse(ciphertext, {
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+          },
+        })
+      }),
+    )
+
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    await waitFor(() => expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent))
+    expect(screen.getByRole("checkbox", { name: "Client-side encryption" })).toBeChecked()
+  })
+
+  it("does not render encrypted admin text without the URL hash key", async () => {
+    const key = await genKey("AES-GCM")
+    const ciphertext = await encrypt("AES-GCM", key, new TextEncoder().encode(mockedPasteContent))
+    vi.stubGlobal("location", new URL("https://example.com/abcd:xxxxxxxxx"))
+    server.use(
+      http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/m/abcd`, () => {
+        return HttpResponse.json({
+          ...mockedPasteMeta,
+          sizeBytes: ciphertext.length,
+          highlightLanguage: "plaintext",
+          encryptionScheme: "AES-GCM",
+        })
+      }),
+      http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
+        return new HttpResponse(null, {
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": String(ciphertext.length),
+            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+            "X-PB-Highlight-Language": "plaintext",
+          },
+        })
+      }),
+    )
+
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    await screen.findByText("Decryption key required")
+    expect((editor as HTMLTextAreaElement).value).toStrictEqual("")
+    expect(screen.getByRole("checkbox", { name: "Client-side encryption" })).toBeChecked()
   })
 })
