@@ -23,7 +23,7 @@ jobs:
           node-version: "22"
 
       - name: "Install pnpm"
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           version: 10
 
@@ -56,7 +56,7 @@ jobs:
           node-version: "22"
 
       - name: "Install pnpm"
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           version: 10
 
@@ -107,6 +107,6 @@ jobs:
           path: coverage-goshujin
 
       - name: "Report Coverage"
-        uses: davelosert/vitest-coverage-report-action@02f3c2e641286b7fa308cd3e430783103ce6103b # v2.12.0
+        uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2.12.1
         with:
           json-summary-compare-path: coverage-goshujin/coverage-summary.json
