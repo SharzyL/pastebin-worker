@@ -61,6 +61,7 @@
     "fflate": "^0.8.3",
     "github-slugger": "^2.0.0",
     "highlight.js": "^11.11.1",
+    "lean-qr": "^2.7.1",
     "marked": "^18.0.5",
     "mime": "^4.1.0",
     "react": "^19.2.7",

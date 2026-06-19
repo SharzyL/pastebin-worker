@@ -20,6 +20,7 @@ import { makeDisplayUrl, withPathPrefix } from "../utils/pasteUrls.js"
 import type { UploadProgress } from "../utils/uploader.js"
 import { formatSize } from "../utils/utils.js"
 import { CopyWidget } from "./CopyWidget.js"
+import { QrCodeTooltip } from "./QrCodeTooltip.js"
 import { ChevronDownIcon, InfoIcon } from "./icons.js"
 
 interface UploadedPanelProps extends CardProps {
@@ -112,20 +113,23 @@ export function UploadedPanel({
     label: string,
     value: string,
     labelExtra?: React.ReactNode,
-    options?: { color?: "default" | "success"; copyClassName?: string },
-  ) => (
-    <div className="mb-2 flex items-end gap-2">
-      <Input
-        {...inputProps}
-        className="mb-0 min-w-0 flex-1"
-        label={label}
-        labelExtra={labelExtra}
-        color={options?.color}
-        value={value}
-      />
-      {copyLinkButton(value, options?.copyClassName)}
-    </div>
-  )
+    options?: { color?: "default" | "success"; copyClassName?: string; qrClassName?: string },
+  ) => {
+    return (
+      <div className="mb-2 flex items-end gap-2">
+        <Input
+          {...inputProps}
+          className="mb-0 min-w-0 flex-1"
+          label={label}
+          labelExtra={labelExtra}
+          color={options?.color}
+          value={value}
+          endContent={<QrCodeTooltip value={value} className={options?.qrClassName ?? "hover:bg-default-200"} />}
+        />
+        {copyLinkButton(value, options?.copyClassName)}
+      </div>
+    )
+  }
 
   const markdownUrlField = (pasteResponse: PasteResponse) =>
     urlInput(
@@ -133,6 +137,25 @@ export function UploadedPanel({
       withPathPrefix(pasteResponse.url, "/a"),
       <InfoTooltip>Render the paste as GitHub-flavored markdown (with code highlighting and LaTeX).</InfoTooltip>,
     )
+
+  const displayUrlLabelExtra = (
+    <UrlTooltip
+      desc={
+        <>
+          Browser-friendly view with syntax highlighting.
+          {encryptionKey && (
+            <>
+              {" "}
+              The decryption key sits after the <code className="font-mono">#</code> in the URL and is never sent to the
+              server — it stays in the browser for client-side decryption.
+            </>
+          )}
+        </>
+      }
+      flags={DISPLAY_URL_FLAGS}
+    />
+  )
+  const displayUrl = pasteResponse ? makeDisplayUrl(pasteResponse.url, encryptionKey) : ""
 
   return (
     <Card classNames={mergeClasses({ base: tst }, { base: className })} {...rest}>
@@ -159,29 +182,11 @@ export function UploadedPanel({
         ) : (
           pasteResponse && (
             <>
-              {urlInput(
-                "Display URL",
-                makeDisplayUrl(pasteResponse.url, encryptionKey),
-                <UrlTooltip
-                  desc={
-                    <>
-                      Browser-friendly view with syntax highlighting.
-                      {encryptionKey && (
-                        <>
-                          {" "}
-                          The decryption key sits after the <code className="font-mono">#</code> in the URL and is
-                          never sent to the server — it stays in the browser for client-side decryption.
-                        </>
-                      )}
-                    </>
-                  }
-                  flags={DISPLAY_URL_FLAGS}
-                />,
-                {
-                  color: encryptionKey ? "success" : "default",
-                  copyClassName: encryptionKey ? "bg-success-50 hover:bg-success-100" : "",
-                },
-              )}
+              {urlInput("Display URL", displayUrl, displayUrlLabelExtra, {
+                color: encryptionKey ? "success" : "default",
+                copyClassName: encryptionKey ? "bg-success-50 hover:bg-success-100" : "",
+                qrClassName: encryptionKey ? "hover:bg-success-100" : "hover:bg-default-200",
+              })}
               {isMarkdown && !isEncrypted && markdownUrlField(pasteResponse)}
               {urlInput(
                 "Raw URL",

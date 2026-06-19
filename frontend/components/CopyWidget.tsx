@@ -37,7 +37,11 @@ export function CopyWidget({ className = "", getCopyContent, label, ...rest }: C
       onPress={onCopy}
       {...rest}
     >
-      {hasIssuedCopies ? <CheckIcon className="size-6" /> : <CopyIcon className="size-6" />}
+      {hasIssuedCopies ? (
+        <CheckIcon className="size-6 text-default-600" />
+      ) : (
+        <CopyIcon className="size-6 text-default-600" />
+      )}
       {label && <span>{label}</span>}
     </Button>
   )

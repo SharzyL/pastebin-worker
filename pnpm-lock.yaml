@@ -32,6 +32,9 @@ importers:
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
+      lean-qr:
+        specifier: ^2.7.1
+        version: 2.7.1
       marked:
         specifier: ^18.0.5
         version: 18.0.5
@@ -1653,6 +1656,10 @@ packages:
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  lean-qr@2.7.1:
+    resolution: {integrity: sha512-4WfYs9t1jpiF6nDRxe9LFlWzRhvVeiV3tpsjAkrijHx5dtrF0E4dupvjJX3SUoS18CAaU6QF2gSZILO10z8utA==}
+    hasBin: true
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -3730,6 +3737,8 @@ snapshots:
       json-buffer: 3.0.1
 
   kleur@4.1.5: {}
+
+  lean-qr@2.7.1: {}
 
   levn@0.4.1:
     dependencies:

@@ -75,21 +75,21 @@ export function Input({
   return (
     <div className={`flex flex-col gap-1.5 min-w-0 ${className} ${classNames.base || ""}`}>
       {label && (
-        <label className={`pl-1 text-sm text-default-500 ${classNames.label || ""}`}>
+        <label className={`inline-flex w-fit items-center pl-1 text-sm text-default-500 ${classNames.label || ""}`}>
           {label}
-          {isRequired && <span className="text-red-500 ml-1">*</span>}
+          {isRequired && <span className="ml-1 text-red-500">*</span>}
           {labelExtra}
         </label>
       )}
       <div
-        className={`flex items-center ${boxBg} border rounded-xl color-tst ${borderColor} ${startContent || endContent || showClearButton ? "px-3" : ""} ${classNames.box || ""}`}
+        className={`flex items-center ${boxBg} border rounded-xl color-tst ${borderColor} ${startContent || endContent || showClearButton ? "pl-3 pr-1" : ""} ${classNames.box || ""}`}
       >
         {startContent && <div className="flex-shrink-0">{startContent}</div>}
         <input
           ref={inputRef}
           aria-label={label}
           aria-invalid={isInvalid}
-          className={`flex-1 py-2 bg-transparent text-sm text-foreground focus:outline-none color-tst ${startContent || endContent || showClearButton ? "" : "px-3"} ${classNames.input || ""}`}
+          className={`min-w-0 flex-1 py-2 bg-transparent text-sm text-foreground focus:outline-none color-tst ${startContent || endContent || showClearButton ? "" : "px-3"} ${classNames.input || ""}`}
           onChange={handleChange}
           value={value}
           {...rest}
@@ -106,7 +106,7 @@ export function Input({
             <XIcon className="w-4 h-4" />
           </button>
         )}
-        {endContent && <div className="flex-shrink-0">{endContent}</div>}
+        {endContent && <div className="inline-flex flex-shrink-0 items-center">{endContent}</div>}
       </div>
       {(description || errorMessage || warningMessage || successMessage) && (
         <div

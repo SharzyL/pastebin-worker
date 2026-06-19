@@ -3,6 +3,7 @@ import { CircularProgress, Link, Tooltip } from "../components/ui/index.js"
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { DownloadIcon, HomeIcon } from "../components/icons.js"
 import { CopyWidget } from "../components/CopyWidget.js"
+import { QrCodeTooltip } from "../components/QrCodeTooltip.js"
 import { tst } from "../utils/overrides.js"
 import { highlightHTML, useHljsForLang } from "../utils/highlight.js"
 import { formatSize } from "../utils/utils.js"
@@ -134,6 +135,13 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const [, modeSelection, setModeSelection] = useDarkModeSelection()
   const hljs = useHljsForLang(pasteLang)
   const [downloadUrl, setDownloadUrl] = useState<string>("#")
+  const [displayUrl, setDisplayUrl] = useState<string>("")
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setDisplayUrl(window.location.href)
+    }
+  }, [])
 
   // Create and cleanup blob URL
   useEffect(() => {
@@ -228,7 +236,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
 
   const lineNumOffset = `${Math.floor(Math.log10(pasteLineCount)) + 3}ch`
   const buttonClasses = `${tst}`
-  const iconLinkClass = `inline-flex items-center justify-center rounded-full p-2 hover:bg-default-100 cursor-pointer ${buttonClasses}`
+  const iconLinkClass = `inline-flex items-center justify-center rounded-full p-1.5 text-default-600 hover:bg-default-100 cursor-pointer ${buttonClasses}`
 
   return (
     <main
@@ -240,7 +248,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             <a
               href="/"
               aria-label={indexPageTitle}
-              className={`${iconLinkClass} text-foreground-500 md:hidden shrink-0`}
+              className={`${iconLinkClass} md:hidden shrink-0`}
             >
               <HomeIcon className="size-6" />
             </a>
@@ -263,10 +271,13 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
           </h1>
           <div className="flex flex-row gap-2 items-center">
             <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
-            {showFileContent && (
-              <Tooltip content={`Copy to clipboard`}>
-                <CopyWidget variant="light" className={buttonClasses} getCopyContent={() => pasteStringContent!} />
-              </Tooltip>
+            {displayUrl && (
+              <QrCodeTooltip
+                value={displayUrl}
+                placement="bottom"
+                className={`${buttonClasses}`}
+                tooltip="Show QR code"
+              />
             )}
             {pasteFile ? (
               <Tooltip content={`Download as file`}>
@@ -293,6 +304,11 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                   )}
                 </Tooltip>
               )
+            )}
+            {showFileContent && (
+              <Tooltip content={`Copy to clipboard`}>
+                <CopyWidget variant="light" className={buttonClasses} getCopyContent={() => pasteStringContent!} />
+              </Tooltip>
             )}
           </div>
         </div>

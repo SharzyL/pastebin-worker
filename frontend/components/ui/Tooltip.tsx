@@ -12,9 +12,10 @@ export interface TooltipProps {
   content: React.ReactNode
   children: React.ReactElement<TriggerProps>
   placement?: "auto" | "top" | "bottom"
+  contentClassName?: string
 }
 
-export function Tooltip({ content, children, placement = "auto" }: TooltipProps) {
+export function Tooltip({ content, children, placement = "auto", contentClassName }: TooltipProps) {
   const [show, setShow] = useState(false)
   const [position, setPosition] = useState<"top" | "bottom">("top")
   const [align, setAlign] = useState<"center" | "left" | "right">("center")
@@ -68,7 +69,7 @@ export function Tooltip({ content, children, placement = "auto" }: TooltipProps)
   return (
     <div
       ref={containerRef}
-      className={`relative inline-flex translate-y-[0.05em] ${show ? "z-50" : ""}`}
+      className={`relative inline-flex ${show ? "z-50" : ""}`}
       onKeyDown={(e) => {
         if (e.key === "Escape" && show) {
           setShow(false)
@@ -81,7 +82,9 @@ export function Tooltip({ content, children, placement = "auto" }: TooltipProps)
           ref={tooltipRef}
           id={tooltipId}
           role="tooltip"
-          className={`absolute z-50 px-2 py-1 text-sm bg-gray-800 text-white rounded shadow-lg w-max pointer-events-none ${
+          className={`absolute z-50 w-max pointer-events-none ${
+            contentClassName ?? "px-2 py-1 text-sm bg-gray-800 text-white rounded shadow-lg"
+          } ${
             position === "top" ? "bottom-full mb-2" : "top-full mt-2"
           } ${align === "center" ? "left-1/2 -translate-x-1/2" : align === "left" ? "left-0" : "right-0"}`}
         >

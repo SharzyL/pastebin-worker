@@ -3,13 +3,13 @@ import React, { useEffect, useState, useSyncExternalStore } from "react"
 import type { ButtonProps } from "./ui/index.js"
 import { Button, Tooltip } from "./ui/index.js"
 
-import { ComputerIcon, MoonIcon, SunIcon } from "./icons.js"
+import { AutoThemeIcon, MoonIcon, SunIcon } from "./icons.js"
 import { tst } from "../utils/overrides.js"
 
 const modeSelections = ["system", "light", "dark"]
 type ModeSelection = (typeof modeSelections)[number]
 const icons: Record<ModeSelection, JSX.Element> = {
-  system: <ComputerIcon className="size-6 inline" />,
+  system: <AutoThemeIcon className="size-6 inline" />,
   light: <SunIcon className="size-6 inline" />,
   dark: <MoonIcon className="size-6 inline" />,
 }
@@ -66,7 +66,7 @@ interface MyComponentProps extends ButtonProps {
   setModeSelection: React.Dispatch<React.SetStateAction<ModeSelection | undefined>>
 }
 
-export function DarkModeToggle({ modeSelection, setModeSelection, className, ...rest }: MyComponentProps) {
+export function DarkModeToggle({ modeSelection, setModeSelection, className = "", ...rest }: MyComponentProps) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -81,8 +81,8 @@ export function DarkModeToggle({ modeSelection, setModeSelection, className, ...
         isIconOnly
         size="sm"
         variant="light"
-        className={`${tst}` + " " + className}
-        aria-label="Toggle dark mode"
+        className={`cursor-pointer text-default-600 ${tst} ${className}`}
+        aria-label="Theme"
         style={{ visibility: "hidden" }}
         {...rest}
       >
@@ -92,13 +92,13 @@ export function DarkModeToggle({ modeSelection, setModeSelection, className, ...
   }
 
   return (
-    <Tooltip content={`Toggle dark mode (currently ${currentMode} mode)`}>
+    <Tooltip content={`Using ${currentMode} theme`}>
       <Button
         isIconOnly
         size="sm"
         variant="light"
-        className={`${tst}` + " " + className}
-        aria-label="Toggle dark mode"
+        className={`cursor-pointer text-default-600 ${tst} ${className}`}
+        aria-label="Theme"
         onPress={() => {
           const newSelected = modeSelections[(modeSelections.indexOf(currentMode) + 1) % modeSelections.length]
           setModeSelection(newSelected)

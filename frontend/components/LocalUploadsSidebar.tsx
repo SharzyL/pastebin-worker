@@ -50,8 +50,8 @@ export function LocalUploadsSidebar({
   const [deletingKey, setDeletingKey] = useState<string | undefined>(undefined)
   const [now, setNow] = useState(() => Date.now())
   const actionClass =
-    `inline-flex h-[38px] cursor-pointer items-center gap-1.5 rounded-xl bg-default-100 px-2 ` +
-    `text-sm text-foreground hover:bg-default-200 ${tst}`
+    `inline-flex h-[30px] cursor-pointer items-center gap-1.5 rounded-xl bg-default-100 px-2 ` +
+    `text-xs text-foreground hover:bg-default-200 ${tst}`
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60000)
@@ -95,17 +95,17 @@ export function LocalUploadsSidebar({
 
             return (
               <Card key={upload.key} className="rounded-lg border border-default-200" style={{ boxShadow: "none" }}>
-                <CardBody className="px-3 py-2.5">
+                <CardBody className="px-3 pt-2 pb-1.5">
                   <div className="flex items-start gap-2">
-                    <div className="mt-1 flex shrink-0 items-center justify-center text-foreground">
+                    <div className="mt-1 flex shrink-0 items-center justify-center text-default-600">
                       <FileIcon className="size-6" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-base font-medium" title={displayName}>
+                      <div className="truncate text-sm font-medium" title={displayName}>
                         {displayName}
                       </div>
-                      <div className="mt-0.5 text-sm text-default-500">{formatSize(upload.sizeBytes)}</div>
-                      <div className="mt-1 text-sm text-default-700">{formatTimeLeft(upload.expireAt, now)}</div>
+                      <div className="mt-0.5 text-xs text-default-500">{formatSize(upload.sizeBytes)}</div>
+                      <div className="mt-1 text-[13px] text-default-700">{formatTimeLeft(upload.expireAt, now)}</div>
 
                       {hasFilenames && (
                         <>
@@ -162,7 +162,7 @@ export function LocalUploadsSidebar({
                     </Tooltip>
                   </div>
 
-                  <div className="my-2 border-t border-divider" />
+                  <div className="mt-1 mb-1.5 border-t border-divider" />
 
                   <div className="flex items-center justify-between">
                     <a
@@ -171,7 +171,7 @@ export function LocalUploadsSidebar({
                       rel="noreferrer"
                       className={actionClass}
                     >
-                      <ExternalLinkIcon className="size-5" />
+                      <ExternalLinkIcon className="size-6 text-default-600" />
                       <span>Open</span>
                     </a>
                     <CopyWidget
