@@ -11,6 +11,7 @@ import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 import { filenameForTitle } from "../../shared/filename.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
+import { itemCountLabel } from "../../shared/format.js"
 
 type Headers = Record<string, string>
 
@@ -299,7 +300,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     pageUrl.search = ""
     pageUrl.pathname = "/display.html"
     const displayName = item.metadata.filenames?.length
-      ? `${item.metadata.filenames.length} files`
+      ? itemCountLabel(item.metadata.filenames.length)
       : filenameForTitle(item.metadata.filename)
     const titleFilename = filenameForTitle(filename)
     const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace(

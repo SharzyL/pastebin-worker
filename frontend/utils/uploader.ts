@@ -7,6 +7,7 @@ import { encodeKey, encrypt, genKey } from "./encryption.js"
 import type { UploadOptions } from "../../shared/uploadPaste.js"
 import { UploadError, uploadMPU, uploadNormal } from "../../shared/uploadPaste.js"
 import { DEFAULT_EDIT_FILENAME } from "../../shared/constants.js"
+import { itemNoun } from "../../shared/format.js"
 import { zipSync } from "fflate"
 
 async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Array) {
@@ -53,7 +54,13 @@ async function zipFiles(files: File[]): Promise<File> {
     entries[zipEntryName(file, names)] = await file.bytes()
   }
   const zipped = zipSync(entries)
-  return new File([zipped], `${files.length}-files-${zipFilenameDate()}.zip`, { type: "application/zip" })
+  return new File([zipped], `${files.length}-${itemNoun(files.length)}-${zipFilenameDate()}.zip`, {
+    type: "application/zip",
+  })
+}
+
+function shouldZipFiles(files: File[]): boolean {
+  return files.length > 1 || files.some((file) => file.name.includes("/"))
 }
 
 function zipFilenameDate(): string {
@@ -79,11 +86,11 @@ export async function uploadPaste(
       if (editorState.files.length === 0) {
         throw new ErrorWithTitle("Error on Preparing Upload", "No file selected")
       }
-      originalFiles =
-        editorState.files.length > 1
-          ? editorState.files.map((file) => ({ name: file.name, sizeBytes: file.size }))
-          : undefined
-      const contentFile = editorState.files.length === 1 ? editorState.files[0] : await zipFiles(editorState.files)
+      const shouldZip = shouldZipFiles(editorState.files)
+      originalFiles = shouldZip
+        ? editorState.files.map((file) => ({ name: file.name, sizeBytes: file.size }))
+        : undefined
+      const contentFile = shouldZip ? await zipFiles(editorState.files) : editorState.files[0]
       if (pasteSetting.doEncrypt) {
         const { key, ciphertext } = await genAndEncrypt(encryptionScheme, await contentFile.bytes())
         const file = new File([ciphertext as BlobPart], contentFile.name)

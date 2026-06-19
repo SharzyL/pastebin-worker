@@ -76,7 +76,6 @@ export const CopyIcon = (props: HTMLAttributes<SVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path d="M0 0h24v24H0z" fill="none" />
     <path d="M20 2H10c-1 0-2 1-2 2v10c0 1 1 2 2 2h10c1 0 2-1 2-2V4c0-1-1-2-2-2zm0 12H10V4h10v10z" />
     <path d="M14 20H4V10h2V8H4c-1 0-2 1-2 2v10c0 1 1 2 2 2h10c1 0 2-1 2-2v-2h-2v2z" />
   </svg>
@@ -95,6 +94,17 @@ export const FileIcon = (props: HTMLAttributes<SVGElement>) => (
       <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
       <path d="M14 2v5a1 1 0 0 0 1 1h5" />
     </g>
+  </svg>
+)
+
+export const FolderIcon = (props: HTMLAttributes<SVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="currentColor"
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z" />
   </svg>
 )
 
@@ -216,14 +226,8 @@ export const HomeIcon = (props: HTMLAttributes<SVGElement>) => (
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
     viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
     {...props}
   >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
-    />
+    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 12L12 1l11 11m-2-2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V10m6 12v-8h6v8" />
   </svg>
 )

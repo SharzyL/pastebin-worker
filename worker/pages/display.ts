@@ -9,6 +9,7 @@ import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { detectUtf8 } from "../../shared/encoding.js"
 import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
 import { filenameForTitle } from "../../shared/filename.js"
+import { itemCountLabel } from "../../shared/format.js"
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -75,7 +76,7 @@ export async function renderDisplayPage(
 
   const inferredFilename = urlFilename || (urlExt && name + urlExt) || metadata.filename || name
   const pasteFile = new File([content], inferredFilename)
-  const displayName = metadata.filenames?.length ? `${metadata.filenames.length} files` : filenameForTitle(metadata.filename)
+  const displayName = metadata.filenames?.length ? itemCountLabel(metadata.filenames.length) : filenameForTitle(metadata.filename)
   const titleUrlFilename = filenameForTitle(urlFilename)
   const titleName =
     name + (titleUrlFilename ? " / " + titleUrlFilename : urlExt ? urlExt : displayName ? " / " + displayName : "")
@@ -103,6 +104,7 @@ export async function renderDisplayPage(
         // SSR: no-op
       },
       isLoading: false,
+      isDownloading: false,
       name,
       ext: urlExt,
       filename: urlFilename,

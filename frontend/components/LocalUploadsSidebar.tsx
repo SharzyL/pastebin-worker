@@ -7,6 +7,8 @@ import { Button, Card, CardBody, Tooltip } from "./ui/index.js"
 import { ChevronDownIcon, ExternalLinkIcon, FileIcon, TrashIcon } from "./icons.js"
 import { CopyWidget } from "./CopyWidget.js"
 import { tst } from "../utils/overrides.js"
+import { FileTree } from "./FileTree.js"
+import { itemCountLabel } from "../../shared/format.js"
 
 interface LocalUploadsSidebarProps {
   uploads: LocalUploadRecord[]
@@ -123,21 +125,11 @@ export function LocalUploadsSidebar({
                             }}
                           >
                             <ChevronDownIcon className={`size-4 ${isExpanded ? "" : "-rotate-90"}`} />
-                            <span>{upload.filenames!.length} files</span>
+                            <span>{itemCountLabel(upload.filenames!.length)}</span>
                           </button>
                           {isExpanded && (
-                            <div className="mt-2 max-h-40 overflow-auto rounded-md bg-default-100 px-2 py-1">
-                              {upload.filenames!.map((file, index) => (
-                                <div
-                                  key={`${file.name}-${index}`}
-                                  className="flex items-baseline justify-between gap-3 py-1 text-sm"
-                                >
-                                  <span className="min-w-0 truncate" title={file.name}>
-                                    {file.name}
-                                  </span>
-                                  <span className="shrink-0 text-xs text-default-500">{formatSize(file.sizeBytes)}</span>
-                                </div>
-                              ))}
+                            <div className="mt-2 max-h-48 overflow-auto rounded-md bg-default-100">
+                              <FileTree files={upload.filenames!} compact />
                             </div>
                           )}
                         </>
@@ -165,20 +157,11 @@ export function LocalUploadsSidebar({
                   <div className="mt-1 mb-1.5 border-t border-divider" />
 
                   <div className="flex items-center justify-between">
-                    <a
-                      href={upload.displayUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={actionClass}
-                    >
+                    <a href={upload.displayUrl} target="_blank" rel="noreferrer" className={actionClass}>
                       <ExternalLinkIcon className="size-6 text-default-600" />
                       <span>Open</span>
                     </a>
-                    <CopyWidget
-                      label="Copy link"
-                      className={actionClass}
-                      getCopyContent={() => upload.displayUrl}
-                    />
+                    <CopyWidget label="Copy link" className={actionClass} getCopyContent={() => upload.displayUrl} />
                   </div>
                 </CardBody>
               </Card>

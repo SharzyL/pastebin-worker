@@ -6,6 +6,8 @@ import { formatSize, verifyFileSize } from "../utils/utils.js"
 import { XIcon } from "./icons.js"
 import { cardOverrides, tst } from "../utils/overrides.js"
 import { CodeEditor } from "./CodeEditor.js"
+import { FileTree } from "./FileTree.js"
+import { itemCountLabel } from "../../shared/format.js"
 
 export type EditKind = "edit" | "file"
 
@@ -17,17 +19,125 @@ export interface PasteEditState {
   files: File[]
 }
 
-function filesFromDataTransferItems(items: DataTransferItemList | undefined): File[] {
+interface FileSystemEntryLike {
+  isFile: boolean
+  isDirectory: boolean
+  name: string
+}
+
+interface FileSystemFileEntryLike extends FileSystemEntryLike {
+  isFile: true
+  isDirectory: false
+  file: (success: (file: File) => void, error?: (error: DOMException) => void) => void
+}
+
+interface FileSystemDirectoryReaderLike {
+  readEntries: (success: (entries: FileSystemEntryLike[]) => void, error?: (error: DOMException) => void) => void
+}
+
+interface FileSystemDirectoryEntryLike extends FileSystemEntryLike {
+  isFile: false
+  isDirectory: true
+  createReader: () => FileSystemDirectoryReaderLike
+}
+
+type TransferFileRecord = { kind: "entry"; entry: FileSystemEntryLike } | { kind: "file"; file: File }
+
+function fileWithPath(file: File, path: string): File {
+  if (file.name === path) return file
+  return new File([file], path, { type: file.type, lastModified: file.lastModified })
+}
+
+function emptyFolderFile(path: string): File {
+  return new File([new Uint8Array(0)], path)
+}
+
+function pathJoin(parentPath: string, name: string): string {
+  return `${parentPath}${name}`
+}
+
+function readFileEntry(entry: FileSystemFileEntryLike): Promise<File> {
+  return new Promise((resolve, reject) => entry.file(resolve, reject))
+}
+
+function readDirectoryBatch(reader: FileSystemDirectoryReaderLike): Promise<FileSystemEntryLike[]> {
+  return new Promise((resolve, reject) => reader.readEntries(resolve, reject))
+}
+
+async function readAllDirectoryEntries(entry: FileSystemDirectoryEntryLike): Promise<FileSystemEntryLike[]> {
+  const reader = entry.createReader()
+  const entries: FileSystemEntryLike[] = []
+
+  while (true) {
+    const batch = await readDirectoryBatch(reader)
+    if (batch.length === 0) break
+    entries.push(...batch)
+  }
+
+  return entries
+}
+
+async function filesFromEntry(entry: FileSystemEntryLike, parentPath = ""): Promise<File[]> {
+  if (entry.isFile) {
+    const file = await readFileEntry(entry as FileSystemFileEntryLike)
+    return [fileWithPath(file, pathJoin(parentPath, file.name))]
+  }
+
+  if (entry.isDirectory) {
+    const directoryPath = `${pathJoin(parentPath, entry.name)}/`
+    const children = await readAllDirectoryEntries(entry as FileSystemDirectoryEntryLike)
+    if (children.length === 0) return [emptyFolderFile(directoryPath)]
+
+    const nestedFiles = await Promise.all(children.map((child) => filesFromEntry(child, directoryPath)))
+    return nestedFiles.flat()
+  }
+
+  return []
+}
+
+function transferRecordsFromDataTransferItems(items: DataTransferItemList | undefined): TransferFileRecord[] {
   if (!items) return []
-  return Array.from(items)
-    .filter((item) => item.kind === "file")
-    .map((item) => item.getAsFile())
-    .filter((file): file is File => file !== null)
+  const records: TransferFileRecord[] = []
+
+  for (const item of Array.from(items)) {
+    if (item.kind !== "file") continue
+
+    const entry = (
+      item as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntryLike | null }
+    ).webkitGetAsEntry?.()
+    if (entry) {
+      records.push({ kind: "entry", entry })
+      continue
+    }
+
+    const file = item.getAsFile()
+    if (file) records.push({ kind: "file", file })
+  }
+
+  return records
+}
+
+async function filesFromTransferRecords(records: TransferFileRecord[]): Promise<File[]> {
+  const files = await Promise.all(
+    records.map((record) => (record.kind === "entry" ? filesFromEntry(record.entry) : Promise.resolve([record.file]))),
+  )
+  return files.flat()
+}
+
+function filesFromFileList(files: FileList | null | undefined): File[] {
+  if (!files) return []
+  return Array.from(files).map((file) => {
+    const path = file.webkitRelativePath || file.name
+    return fileWithPath(file, path)
+  })
 }
 
 function isPasteEditorFocused(): boolean {
   const activeElement = document.activeElement
-  return activeElement instanceof HTMLTextAreaElement || (activeElement instanceof HTMLInputElement && !activeElement.readOnly)
+  return (
+    activeElement instanceof HTMLTextAreaElement ||
+    (activeElement instanceof HTMLInputElement && !activeElement.readOnly)
+  )
 }
 
 function totalFileSize(files: File[]): number {
@@ -53,45 +163,75 @@ export function PasteInputPanel({
   const fileInput = useRef<HTMLInputElement>(null)
   const [isDragged, setDragged] = useState<boolean>(false)
   const [isEditDragged, setEditDragged] = useState<boolean>(false)
+  const [isCollectingFiles, setIsCollectingFiles] = useState<boolean>(false)
 
   const resetFileInput = useCallback(() => {
     if (fileInput.current) fileInput.current.value = ""
   }, [])
 
-  const setFiles = useCallback((files: File[]) => {
-    const totalSize = totalFileSize(files)
-    const [totalOk, totalMsg] = verifyFileSize(totalSize, config)
-    if (!totalOk) {
-      showModal(files.length > 1 ? "Files too large" : "File too large", totalMsg)
-      resetFileInput()
-      return
-    }
+  const setFiles = useCallback(
+    (files: File[]) => {
+      const totalSize = totalFileSize(files)
+      const [totalOk, totalMsg] = verifyFileSize(totalSize, config)
+      if (!totalOk) {
+        showModal(files.length > 1 ? "Pastes too large" : "Paste too large", totalMsg)
+        resetFileInput()
+        return
+      }
 
-    onStateChange({ ...state, editKind: "file", files })
-  }, [config, onStateChange, resetFileInput, showModal, state])
+      onStateChange({ ...state, editKind: "file", files })
+    },
+    [config, onStateChange, resetFileInput, showModal, state],
+  )
+
+  const collectAndSetFiles = useCallback(
+    async (records: TransferFileRecord[]) => {
+      if (records.length === 0) return
+
+      setIsCollectingFiles(true)
+      try {
+        const files = await filesFromTransferRecords(records)
+        if (files.length > 0) setFiles(files)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "The selected files could not be read."
+        showModal("Could not read files", message)
+        resetFileInput()
+      } finally {
+        setIsCollectingFiles(false)
+      }
+    },
+    [resetFileInput, setFiles, showModal],
+  )
 
   useEffect(() => {
     function onPaste(e: ClipboardEvent) {
       if (isPasteEditorFocused()) return
 
-      const files = filesFromDataTransferItems(e.clipboardData?.items)
-      if (files.length === 0) return
+      const records = transferRecordsFromDataTransferItems(e.clipboardData?.items)
+      if (records.length === 0) return
 
       e.preventDefault()
-      setFiles(files)
+      void collectAndSetFiles(records)
     }
 
     document.addEventListener("paste", onPaste)
     return () => document.removeEventListener("paste", onPaste)
-  }, [setFiles])
+  }, [collectAndSetFiles])
 
   function onDrop(e: DragEvent) {
     e.preventDefault()
-    const files = filesFromDataTransferItems(e.dataTransfer?.items)
-    if (files.length > 0) setFiles(files)
+    const records = transferRecordsFromDataTransferItems(e.dataTransfer?.items)
+    if (records.length > 0) {
+      void collectAndSetFiles(records)
+    } else {
+      const files = filesFromFileList(e.dataTransfer?.files)
+      if (files.length > 0) setFiles(files)
+    }
     setDragged(false)
     setEditDragged(false)
   }
+
+  const shouldShowFileTree = state.files.length > 1 || state.files.some((file) => file.name.includes("/"))
 
   return (
     <Card aria-label="Pastebin editor panel" classNames={cardOverrides} {...rest}>
@@ -101,10 +241,8 @@ export function PasteInputPanel({
           ref={fileInput}
           className="hidden"
           onChange={(e) => {
-            const files = e.target.files
-            if (files?.length) {
-              setFiles(Array.from(files))
-            }
+            const files = filesFromFileList(e.target.files)
+            if (files.length > 0) setFiles(files)
           }}
           multiple
         />
@@ -158,7 +296,7 @@ export function PasteInputPanel({
                   }
                   aria-hidden="true"
                 >
-                  <div className="text-2xl my-2 font-bold">Drop file here</div>
+                  <div className="text-2xl my-2 font-bold">Drop files or folders here</div>
                   <p className="text-1xl text-foreground-500">Release to upload as file</p>
                 </div>
               )}
@@ -182,11 +320,15 @@ export function PasteInputPanel({
               onClick={() => fileInput.current?.click()}
             >
               <div className="text-2xl my-2 font-bold px-4 text-center break-all">
-                {state.files.length === 0
-                  ? "Select Files"
-                  : state.files.length === 1
-                    ? state.files[0].name
-                    : `${state.files.length} files selected`}
+                {isCollectingFiles
+                  ? "Reading files..."
+                  : state.files.length === 0
+                    ? "Select Files"
+                    : state.files.length === 1
+                      ? state.files[0].name.includes("/")
+                        ? `${itemCountLabel(state.files.length)} selected`
+                        : state.files[0].name
+                      : `${itemCountLabel(state.files.length)} selected`}
               </div>
               <p className={`text-1xl text-foreground-500 ${tst} relative`}>
                 <span>
@@ -195,14 +337,12 @@ export function PasteInputPanel({
                     : "Click or drag & drop or paste files here"}
                 </span>
               </p>
-              {state.files.length > 1 && (
-                <div className="mt-3 max-h-32 overflow-auto text-sm text-foreground-600 w-full max-w-[32rem] px-4">
-                  {state.files.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="flex justify-between gap-4">
-                      <span className="truncate">{file.name}</span>
-                      <span className="shrink-0">{formatSize(file.size)}</span>
-                    </div>
-                  ))}
+              {shouldShowFileTree && (
+                <div
+                  className="mt-3 max-h-48 overflow-auto text-sm text-foreground-600 w-full max-w-[32rem] px-4"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <FileTree files={state.files.map((file) => ({ name: file.name, sizeBytes: file.size }))} />
                 </div>
               )}
               {state.files.length > 0 && (

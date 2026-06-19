@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CircularProgress, Link, Tooltip } from "../components/ui/index.js"
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { DownloadIcon, HomeIcon } from "../components/icons.js"
@@ -9,6 +9,8 @@ import { highlightHTML, useHljsForLang } from "../utils/highlight.js"
 import { formatSize } from "../utils/utils.js"
 import type { OriginalFileInfo } from "../../shared/interfaces.js"
 import { filenameForTitle } from "../../shared/filename.js"
+import { FileTree } from "../components/FileTree.js"
+import { itemCountLabel } from "../../shared/format.js"
 
 interface PendingInfo {
   sizeBytes: number | null
@@ -61,15 +63,16 @@ function sizeSuffix(sizeBytes: number | null): string {
   return sizeBytes === null ? "" : ` (${formatSize(sizeBytes)})`
 }
 
-function OriginalFileList({ files }: { files: OriginalFileInfo[] }) {
+function OriginalFileList({
+  files,
+  className = "mt-2 mb-2 max-h-48 w-full max-w-[32rem] overflow-auto text-left",
+}: {
+  files: OriginalFileInfo[]
+  className?: string
+}) {
   return (
-    <div className="mt-2 w-full max-w-[32rem] text-sm">
-      {files.map((file, index) => (
-        <div key={`${file.name}-${index}`} className="flex justify-between gap-4 text-left">
-          <span className="truncate">{file.name}</span>
-          <span className="shrink-0 text-foreground-500">{formatSize(file.sizeBytes)}</span>
-        </div>
-      ))}
+    <div className={className}>
+      <FileTree files={files} />
     </div>
   )
 }
@@ -95,6 +98,7 @@ interface DisplayPasteViewProps {
   forceShowBinary: boolean
   setForceShowBinary: (v: boolean) => void
   isLoading: boolean
+  isDownloading: boolean
   name: string
   ext?: string
   filename?: string
@@ -118,6 +122,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     forceShowBinary,
     setForceShowBinary,
     isLoading,
+    isDownloading,
     name,
     ext,
     filename,
@@ -136,10 +141,21 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const hljs = useHljsForLang(pasteLang)
   const [downloadUrl, setDownloadUrl] = useState<string>("#")
   const [displayUrl, setDisplayUrl] = useState<string>("")
+  const [isNativeDownloadDebounced, setNativeDownloadDebounced] = useState(false)
+  const nativeDownloadDebouncedRef = useRef(false)
+  const nativeDownloadDebounceTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setDisplayUrl(window.location.href)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (nativeDownloadDebounceTimer.current !== undefined) {
+        window.clearTimeout(nativeDownloadDebounceTimer.current)
+      }
     }
   }, [])
 
@@ -162,16 +178,40 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const pasteLineCount = (highlightedHTML?.match(/\n/g)?.length || 0) + 1
   const hasOriginalFiles = originalFiles !== undefined && originalFiles.length > 0
   const isZipArchive = isZipBuffer(pasteContentBuffer)
+  const isDownloadActionDisabled = isLoading || isDownloading
+
+  function onNativeDownloadClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (nativeDownloadDebouncedRef.current) {
+      e.preventDefault()
+      return
+    }
+    nativeDownloadDebouncedRef.current = true
+    setNativeDownloadDebounced(true)
+    if (nativeDownloadDebounceTimer.current !== undefined) {
+      window.clearTimeout(nativeDownloadDebounceTimer.current)
+    }
+    nativeDownloadDebounceTimer.current = window.setTimeout(() => {
+      nativeDownloadDebouncedRef.current = false
+      setNativeDownloadDebounced(false)
+      nativeDownloadDebounceTimer.current = undefined
+    }, 1000)
+  }
 
   const binaryFileIndicator = pasteFile && (
-    <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full">
-      <div className="text-foreground-600 mb-2">{`${hasOriginalFiles ? `${originalFiles.length} files` : pasteFile?.name} (${formatSize(pasteFile.size)})`}</div>
+    <div className="flex min-h-[10em] w-full flex-col items-center justify-center px-4">
+      <div className="text-foreground-600 mb-2">{`${hasOriginalFiles ? itemCountLabel(originalFiles.length) : pasteFile?.name} (${formatSize(pasteFile.size)})`}</div>
       {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
       <div className="w-fit text-center">
         {isZipArchive ? (
           <>
             Not a renderable file (application/zip).{" "}
-            <a href={downloadUrl} download={pasteFile.name} className="text-primary inline">
+            <a
+              href={downloadUrl}
+              download={pasteFile.name}
+              className={`text-primary inline ${isNativeDownloadDebounced ? "pointer-events-none opacity-50" : ""}`}
+              aria-disabled={isNativeDownloadDebounced}
+              onClick={onNativeDownloadClick}
+            >
               Download raw
             </a>
           </>
@@ -187,9 +227,9 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     </div>
   )
 
-  const contentDisplayFilename = hasOriginalFiles ? `${originalFiles.length} files` : filename || metaFilename
+  const contentDisplayFilename = hasOriginalFiles ? itemCountLabel(originalFiles.length) : filename || metaFilename
   const titleDisplayFilename = hasOriginalFiles
-    ? `${originalFiles.length} files`
+    ? itemCountLabel(originalFiles.length)
     : filenameForTitle(filename || metaFilename)
   const placeholderName = contentDisplayFilename || (ext ? name + ext : name)
   const rawDownloadUrl = pendingInfo || mediaInfo ? `${(pendingInfo ?? mediaInfo)!.rawUrl}?a` : "#"
@@ -207,25 +247,38 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     return "Paste is too large to load automatically."
   })()
   const pendingFileIndicator = pendingInfo && !pasteFile && (
-    <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full px-4">
+    <div className="flex min-h-[10em] w-full flex-col items-center justify-center px-4">
       <div className="text-foreground-600 mb-2">{`${placeholderName}${sizeSuffix(pendingInfo.sizeBytes)}`}</div>
       {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
       <div className="w-fit text-center">
         {placeholderReason}{" "}
         {onDownloadPaste ? (
-          <button className="text-primary inline cursor-pointer" onClick={() => onDownloadPaste()}>
-            Download decrypted
+          <button
+            className="text-primary inline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isDownloadActionDisabled}
+            onClick={() => onDownloadPaste()}
+          >
+            {isDownloading ? "Downloading..." : "Download decrypted"}
           </button>
         ) : (
-          <Link href={`${pendingInfo.rawUrl}?a`} className="text-primary inline">
+          <Link
+            href={`${pendingInfo.rawUrl}?a`}
+            className={`text-primary inline ${isNativeDownloadDebounced ? "pointer-events-none opacity-50" : ""}`}
+            aria-disabled={isNativeDownloadDebounced}
+            onClick={onNativeDownloadClick}
+          >
             Download raw
           </Link>
         )}
         {onLoadAnyway && (
           <>
             {" or "}
-            <button className="text-primary inline cursor-pointer" onClick={() => onLoadAnyway()}>
-              load anyway
+            <button
+              className="text-primary inline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isLoading}
+              onClick={() => onLoadAnyway()}
+            >
+              {isLoading ? "loading..." : "load anyway"}
             </button>
             .
           </>
@@ -237,6 +290,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const lineNumOffset = `${Math.floor(Math.log10(pasteLineCount)) + 3}ch`
   const buttonClasses = `${tst}`
   const iconLinkClass = `inline-flex items-center justify-center rounded-full p-1.5 text-default-600 hover:bg-default-100 cursor-pointer ${buttonClasses}`
+  const disabledIconClass = "disabled:cursor-not-allowed disabled:opacity-50"
 
   return (
     <main
@@ -244,12 +298,8 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     >
       <div className="w-full max-w-[64rem]">
         <div className="flex flex-row my-4 items-center justify-between">
-          <h1 className="text-xl md:text-2xl grow inline-flex items-baseline min-w-0">
-            <a
-              href="/"
-              aria-label={indexPageTitle}
-              className={`${iconLinkClass} md:hidden shrink-0`}
-            >
+          <h1 className="text-xl md:text-2xl grow inline-flex items-center md:items-baseline min-w-0">
+            <a href="/" aria-label={indexPageTitle} className={`${iconLinkClass} md:hidden shrink-0`}>
               <HomeIcon className="size-6" />
             </a>
             <Link href="/" className="text-foreground-500 text-[length:inherited] shrink-0 hidden md:inline">
@@ -281,7 +331,14 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             )}
             {pasteFile ? (
               <Tooltip content={`Download as file`}>
-                <a href={downloadUrl} download={pasteFile.name} aria-label="Download" className={iconLinkClass}>
+                <a
+                  href={downloadUrl}
+                  download={pasteFile.name}
+                  aria-label="Download"
+                  className={`${iconLinkClass} ${isNativeDownloadDebounced ? "pointer-events-none opacity-50" : ""}`}
+                  aria-disabled={isNativeDownloadDebounced}
+                  onClick={onNativeDownloadClick}
+                >
                   <DownloadIcon className="size-6 inline" />
                 </a>
               </Tooltip>
@@ -293,12 +350,20 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                       type="button"
                       onClick={() => onDownloadPaste()}
                       aria-label="Download"
-                      className={iconLinkClass}
+                      disabled={isDownloadActionDisabled}
+                      className={`${iconLinkClass} ${disabledIconClass}`}
                     >
                       <DownloadIcon className="size-6 inline" />
                     </button>
                   ) : (
-                    <a href={rawDownloadUrl} download={placeholderName} aria-label="Download" className={iconLinkClass}>
+                    <a
+                      href={rawDownloadUrl}
+                      download={placeholderName}
+                      aria-label="Download"
+                      className={`${iconLinkClass} ${isNativeDownloadDebounced ? "pointer-events-none opacity-50" : ""}`}
+                      aria-disabled={isNativeDownloadDebounced}
+                      onClick={onNativeDownloadClick}
+                    >
                       <DownloadIcon className="size-6 inline" />
                     </a>
                   )}
@@ -336,10 +401,10 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                 <MediaElement kind={pasteMediaKind} src={downloadUrl} name={pasteFile.name} />
               </div>
             ) : pendingInfo && !pasteFile ? (
-              <div className={"h-[10em]"}>{pendingFileIndicator}</div>
+              pendingFileIndicator
             ) : (
               pasteFile && (
-                <div className={showFileContent ? "" : "h-[10em]"}>
+                <div>
                   {showFileContent ? (
                     <>
                       <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">

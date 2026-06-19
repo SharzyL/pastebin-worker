@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useErrorModal } from "../components/ErrorModal.js"
 import { DisplayPasteView } from "./DisplayPasteView.js"
 import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
@@ -85,6 +85,9 @@ export function DisplayPaste({ config }: { config: Env }) {
   )
   const [forceShowBinary, setForceShowBinary] = useState(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isDownloading, setIsDownloading] = useState<boolean>(false)
+  const isFetchingBodyRef = useRef(false)
+  const isDownloadingRef = useRef(false)
   const [pendingInfo, setPendingInfo] = useState<{
     sizeBytes: number | null
     rawUrl: string
@@ -196,6 +199,8 @@ export function DisplayPaste({ config }: { config: Env }) {
   }, [pasteUrl, name, ext, filename, metaFilename])
 
   const fetchPasteBody = useCallback(async () => {
+    if (isFetchingBodyRef.current) return
+    isFetchingBodyRef.current = true
     setIsLoading(true)
     setPendingInfo(null)
     setMediaInfo(null)
@@ -218,13 +223,22 @@ export function DisplayPaste({ config }: { config: Env }) {
         setGuessedEncoding(encoding)
       }
     } finally {
+      isFetchingBodyRef.current = false
       setIsLoading(false)
     }
   }, [fetchPasteFile])
 
   const downloadPasteBody = useCallback(async () => {
-    const paste = await fetchPasteFile()
-    if (paste) triggerDownload(paste.file)
+    if (isDownloadingRef.current) return
+    isDownloadingRef.current = true
+    setIsDownloading(true)
+    try {
+      const paste = await fetchPasteFile()
+      if (paste) triggerDownload(paste.file)
+    } finally {
+      isDownloadingRef.current = false
+      setIsDownloading(false)
+    }
   }, [fetchPasteFile])
 
   useEffect(() => {
@@ -321,6 +335,7 @@ export function DisplayPaste({ config }: { config: Env }) {
         forceShowBinary={forceShowBinary}
         setForceShowBinary={setForceShowBinary}
         isLoading={isLoading}
+        isDownloading={isDownloading}
         name={name}
         ext={ext}
         filename={filename}
