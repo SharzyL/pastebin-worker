@@ -2,6 +2,7 @@
 
 import type { MPUCreateResponse, OriginalFileInfo, PasteResponse } from "./interfaces.js"
 import type { EncryptionScheme } from "../frontend/utils/encryption.js"
+import { BINARY_MIME_TYPE, TEXT_MIME_TYPE } from "./constants.js"
 import { parsePath } from "./parsers.js"
 
 export class UploadError extends Error {
@@ -26,11 +27,13 @@ export interface UploadOptions {
 
   highlightLanguage?: string
   encryptionScheme?: EncryptionScheme
+  inferMimeType?: boolean
   expire?: string
   manageUrl?: string
 }
 
 export const DEFAULT_MPU_CONCURRENCY = 8
+const MIME_TYPE_SNIFF_BYTES = 256
 
 interface XhrSendOptions {
   method: "POST" | "PUT"
@@ -121,6 +124,31 @@ async function runWithConcurrency<T>(
   return results
 }
 
+function filenameHasExtension(filename: string): boolean {
+  const lastSlash = Math.max(filename.lastIndexOf("/"), filename.lastIndexOf("\\"))
+  const basename = filename.slice(lastSlash + 1)
+  return basename.lastIndexOf(".") > 0
+}
+
+async function inferMimeTypeFromContent(content: File): Promise<string | undefined> {
+  if (filenameHasExtension(content.name)) return undefined
+  const bytes = new Uint8Array(await content.slice(0, MIME_TYPE_SNIFF_BYTES).arrayBuffer())
+  return bytes.includes(0) ? BINARY_MIME_TYPE : TEXT_MIME_TYPE
+}
+
+async function maybeAddMimeType(
+  fd: FormData,
+  content: File,
+  encryptionScheme: EncryptionScheme | undefined,
+  inferMimeType: boolean | undefined,
+): Promise<void> {
+  if (inferMimeType !== true) return
+  if (encryptionScheme !== undefined) return
+
+  const mimeType = await inferMimeTypeFromContent(content)
+  if (mimeType !== undefined) fd.set("mimeType", mimeType)
+}
+
 // note that apiUrl should be manageUrl when isUpload
 export async function uploadNormal(
   apiUrl: string,
@@ -133,6 +161,7 @@ export async function uploadNormal(
     name,
     highlightLanguage,
     encryptionScheme,
+    inferMimeType,
     expire,
     manageUrl,
   }: UploadOptions,
@@ -143,6 +172,7 @@ export async function uploadNormal(
 
   // typescript cannot handle overload on union types
   fd.set("c", content)
+  await maybeAddMimeType(fd, content, encryptionScheme, inferMimeType)
   if (filenames !== undefined) fd.set("filenames", JSON.stringify(filenames))
 
   if (isUpdate && manageUrl === undefined) {
@@ -184,6 +214,7 @@ export async function uploadMPU(
     name,
     highlightLanguage,
     encryptionScheme,
+    inferMimeType,
     expire,
     manageUrl,
   }: UploadOptions,
@@ -293,6 +324,7 @@ export async function uploadMPU(
     completeUrl.searchParams.set("key", createKey)
     completeUrl.searchParams.set("uploadId", createUploadId)
     completeFormData.set("c", new File([JSON.stringify(uploadedParts)], content.name))
+    await maybeAddMimeType(completeFormData, content, encryptionScheme, inferMimeType)
     if (filenames !== undefined) {
       completeFormData.set("filenames", JSON.stringify(filenames))
     }

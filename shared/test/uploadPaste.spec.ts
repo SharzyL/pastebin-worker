@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { UploadError, uploadMPU, uploadNormal } from "../uploadPaste.js"
+import { BINARY_MIME_TYPE, TEXT_MIME_TYPE } from "../constants.js"
 
 const API_URL = "https://example.com"
 
@@ -119,7 +120,70 @@ describe("uploadNormal", () => {
     expect(fd.get("lang")).toStrictEqual("ts")
     expect(fd.get("p")).toStrictEqual("1")
     expect(fd.get("filenames")).toStrictEqual(JSON.stringify([{ name: "a.txt", sizeBytes: 4 }]))
+    expect(fd.get("mimeType")).toBeNull()
     expect(fd.get("c")).toBeInstanceOf(File)
+  })
+
+  it("adds mimeType for extensionless normal uploads without lang or encryption", async () => {
+    const calls = setupXhr(() => ({
+      status: 200,
+      body: JSON.stringify({ url: "https://example.com/abcd", manageUrl: "https://example.com/abcd:pw" }),
+    }))
+
+    await uploadNormal(API_URL, {
+      content: new File([new Uint8Array([1, 2, 0, 3])], "blob"),
+      inferMimeType: true,
+      isUpdate: false,
+    })
+
+    expect((calls[0].body as FormData).get("mimeType")).toStrictEqual(BINARY_MIME_TYPE)
+  })
+
+  it("checks the first 256 bytes when inferring mimeType", async () => {
+    const calls = setupXhr(() => ({
+      status: 200,
+      body: JSON.stringify({ url: "https://example.com/abcd", manageUrl: "https://example.com/abcd:pw" }),
+    }))
+    const content = new Uint8Array(300).fill(1)
+    content[200] = 0
+
+    await uploadNormal(API_URL, {
+      content: new File([content], "blob"),
+      inferMimeType: true,
+      isUpdate: false,
+    })
+
+    expect((calls[0].body as FormData).get("mimeType")).toStrictEqual(BINARY_MIME_TYPE)
+  })
+
+  it("adds text mimeType for extensionless normal text uploads", async () => {
+    const calls = setupXhr(() => ({
+      status: 200,
+      body: JSON.stringify({ url: "https://example.com/abcd", manageUrl: "https://example.com/abcd:pw" }),
+    }))
+
+    await uploadNormal(API_URL, {
+      content: new File(["hello"], "blob"),
+      inferMimeType: true,
+      isUpdate: false,
+    })
+
+    expect((calls[0].body as FormData).get("mimeType")).toStrictEqual(TEXT_MIME_TYPE)
+  })
+
+  it("skips mimeType when inference is disabled", async () => {
+    const calls = setupXhr(() => ({
+      status: 200,
+      body: JSON.stringify({ url: "https://example.com/abcd", manageUrl: "https://example.com/abcd:pw" }),
+    }))
+
+    await uploadNormal(API_URL, {
+      content: new File([new Uint8Array([1, 2, 0, 3])], "blob"),
+      inferMimeType: false,
+      isUpdate: false,
+    })
+
+    expect((calls[0].body as FormData).get("mimeType")).toBeNull()
   })
 
   it("PUTs to manageUrl on update and skips name field", async () => {
@@ -243,6 +307,20 @@ describe("uploadMPU", () => {
     expect(fd.get("lang")).toStrictEqual("rust")
     expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM")
     expect(fd.get("filenames")).toStrictEqual(JSON.stringify([{ name: "a.bin", sizeBytes: 6 }]))
+    expect(fd.get("mimeType")).toBeNull()
+  })
+
+  it("adds mimeType on MPU complete for extensionless uploads without lang or encryption", async () => {
+    const { fetchCalls } = setupHappyPath(1)
+
+    await uploadMPU(API_URL, 16, {
+      content: new File([new Uint8Array([1, 2, 0, 3])], "blob"),
+      inferMimeType: true,
+      isUpdate: false,
+    })
+
+    const completeReq = fetchCalls.find((c) => c.url.includes("/mpu/complete"))!
+    expect((completeReq.body as FormData).get("mimeType")).toStrictEqual(BINARY_MIME_TYPE)
   })
 
   it("uses create-update endpoint and PUT on update with manageUrl password", async () => {

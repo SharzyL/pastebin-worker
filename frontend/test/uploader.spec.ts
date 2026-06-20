@@ -53,6 +53,15 @@ function fileEditorState(files: File[]): PasteEditState {
   }
 }
 
+function textEditorState(content: string): PasteEditState {
+  return {
+    editKind: "edit",
+    editContent: content,
+    files: [],
+    editHighlightLang: "plaintext",
+  }
+}
+
 function firstUploadOptions(): UploadOptions {
   const calls = uploadMocks.uploadNormal.mock.calls as unknown as [string, UploadOptions][]
   return calls[0][1]
@@ -72,6 +81,7 @@ describe("uploadPaste", () => {
 
     expect(uploadMocks.uploadNormal).toHaveBeenCalledTimes(1)
     const options = firstUploadOptions()
+    expect(options.inferMimeType).toStrictEqual(true)
     expect(options.filenames).toStrictEqual([{ name: "normal-folder/file.txt", sizeBytes: 5 }])
     expect(options.content).toBeInstanceOf(File)
     expect(options.content.name).toMatch(/^1-item-\d{4}-\d{2}-\d{2}\.zip$/)
@@ -90,5 +100,12 @@ describe("uploadPaste", () => {
 
     const unzipped = unzipSync(new Uint8Array(await options.content.arrayBuffer()))
     expect(unzipped["parent-dir/sub-dir/another-empty/"]).toHaveLength(0)
+  })
+
+  it("does not infer mimeType for edit tab uploads", async () => {
+    await uploadPaste(pasteSetting, textEditorState("hello"), vi.fn(), config)
+
+    const options = firstUploadOptions()
+    expect(options.inferMimeType).toStrictEqual(false)
   })
 })

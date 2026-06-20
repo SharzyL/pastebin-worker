@@ -29,7 +29,7 @@ export const server = setupServer(
   http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
     return new HttpResponse(null, {
       headers: {
-        "Content-Type": "text/plain;charset=UTF-8",
+        "Content-Type": TEXT_MIME_TYPE,
         "Content-Length": String(new TextEncoder().encode(mockedPasteContent).length),
       },
     })
@@ -60,6 +60,7 @@ afterAll(() => {
 import "@testing-library/jest-dom/vitest"
 import { userEvent } from "@testing-library/user-event"
 import type { PasteResponse } from "../../shared/interfaces.js"
+import { BINARY_MIME_TYPE, TEXT_MIME_TYPE } from "../../shared/constants.js"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
@@ -129,10 +130,10 @@ describe("Pastebin admin page", () => {
       http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
         return new HttpResponse(null, {
           headers: {
-            "Content-Type": "application/octet-stream",
+            "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(ciphertext.length),
             "X-PB-Encryption-Scheme": "AES-GCM",
-            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+            "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
             "X-PB-Highlight-Language": "plaintext",
           },
         })
@@ -140,9 +141,9 @@ describe("Pastebin admin page", () => {
       http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
         return new HttpResponse(ciphertext, {
           headers: {
-            "Content-Type": "application/octet-stream",
+            "Content-Type": BINARY_MIME_TYPE,
             "X-PB-Encryption-Scheme": "AES-GCM",
-            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+            "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
           },
         })
       }),
@@ -171,10 +172,10 @@ describe("Pastebin admin page", () => {
       http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
         return new HttpResponse(null, {
           headers: {
-            "Content-Type": "application/octet-stream",
+            "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(ciphertext.length),
             "X-PB-Encryption-Scheme": "AES-GCM",
-            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
+            "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
             "X-PB-Highlight-Language": "plaintext",
           },
         })

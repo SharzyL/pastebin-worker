@@ -1,20 +1,31 @@
 import { createExecutionContext, env } from "cloudflare:test"
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
-import { BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils.js"
+import { addRole, BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils.js"
+import type { MetaResponse } from "../../shared/interfaces.js"
+import { BINARY_MIME_TYPE, TEXT_MIME_TYPE } from "../../shared/constants.js"
 
 test("mime type", async () => {
   const ctx = createExecutionContext()
-  const url = (await upload(ctx, { c: genRandomBlob(1024) })).url
+  const url = (await upload(ctx, { c: "hello" })).url
 
   const url_pic = (await upload(ctx, { c: { content: genRandomBlob(1024), filename: "xx.jpg" } })).url
+  const binaryUpload = await upload(ctx, {
+    c: { content: new Blob([new Uint8Array([1, 2, 0, 3])]), filename: "binary" },
+    mimeType: BINARY_MIME_TYPE,
+  })
+  const binaryUrl = binaryUpload.url
 
   async function testMime(accessUrl: string, mime: string) {
     const resp = await workerFetch(ctx, accessUrl)
     expect(resp.headers.get("Content-Type")).toStrictEqual(mime)
   }
 
-  await testMime(url, "text/plain;charset=UTF-8")
+  expect(binaryUpload.mimeType).toStrictEqual(BINARY_MIME_TYPE)
+  const binaryMeta: MetaResponse = await (await workerFetch(ctx, addRole(binaryUrl, "m"))).json()
+  expect(binaryMeta.mimeType).toStrictEqual(BINARY_MIME_TYPE)
+
+  await testMime(url, TEXT_MIME_TYPE)
   await testMime(`${url}.jpg`, "image/jpeg")
   await testMime(`${url}/test.jpg`, "image/jpeg")
   await testMime(`${url}?mime=random-mime`, "random-mime")
@@ -23,10 +34,11 @@ test("mime type", async () => {
 
   await testMime(url_pic, "image/jpeg")
   await testMime(`${url_pic}.png`, "image/png")
+  await testMime(binaryUrl, BINARY_MIME_TYPE)
 
   // test disallowed mimetypes
-  await testMime(`${url_pic}.html`, "text/plain;charset=UTF-8")
-  await testMime(`${url_pic}?mime=text/html`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}.html`, TEXT_MIME_TYPE)
+  await testMime(`${url_pic}?mime=text/html`, TEXT_MIME_TYPE)
 })
 
 test("cache control", async () => {

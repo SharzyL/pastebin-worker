@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { createExecutionContext } from "cloudflare:test"
 
 import { BASE_URL, workerFetch } from "./testUtils.js"
+import { TEXT_MIME_TYPE } from "../../shared/constants.js"
 
 const curlHeaders = { "User-Agent": "curl/8.0.0" }
 const browserHeaders = {
@@ -25,7 +26,7 @@ describe("doc pages", () => {
     for (const page of ["/doc/api", "/doc/tos", "/doc/curl", "/doc/skill"]) {
       const resp = await workerFetch(ctx, new Request(`${BASE_URL}${page}`, { headers: curlHeaders }))
       expect(resp.status, `visiting ${page}`).toStrictEqual(200)
-      expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
+      expect(resp.headers.get("Content-Type")).toStrictEqual(TEXT_MIME_TYPE)
       expect(resp.headers.get("Vary")).toStrictEqual("User-Agent")
       const body = await resp.text()
       expect(body.startsWith("<!DOCTYPE html>"), `body of ${page} should be markdown`).toStrictEqual(false)
@@ -44,7 +45,7 @@ describe("doc pages", () => {
     for (const page of ["/doc/api.md", "/doc/tos.md", "/doc/curl.md", "/doc/skill.md"]) {
       const resp = await workerFetch(ctx, new Request(`${BASE_URL}${page}`, { headers: browserHeaders }))
       expect(resp.status, `visiting ${page}`).toStrictEqual(200)
-      expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
+      expect(resp.headers.get("Content-Type")).toStrictEqual(TEXT_MIME_TYPE)
       const body = await resp.text()
       expect(body.startsWith("<!DOCTYPE html>"), `body of ${page} should be markdown`).toStrictEqual(false)
     }
@@ -53,7 +54,7 @@ describe("doc pages", () => {
   it("serves /index.md as markdown to any UA", async () => {
     const resp = await workerFetch(ctx, new Request(`${BASE_URL}/index.md`, { headers: browserHeaders }))
     expect(resp.status).toStrictEqual(200)
-    expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
+    expect(resp.headers.get("Content-Type")).toStrictEqual(TEXT_MIME_TYPE)
     const body = await resp.text()
     expect(body.includes("# Pastebin Worker")).toStrictEqual(true)
     expect(body.includes("{{BASE_URL}}")).toStrictEqual(false)
@@ -69,7 +70,7 @@ describe("doc pages", () => {
   it("serves doc/index.md as markdown to curl on /", async () => {
     const resp = await workerFetch(ctx, new Request(BASE_URL, { headers: curlHeaders }))
     expect(resp.status).toStrictEqual(200)
-    expect(resp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
+    expect(resp.headers.get("Content-Type")).toStrictEqual(TEXT_MIME_TYPE)
     expect(resp.headers.get("Vary")).toStrictEqual("User-Agent")
     const body = await resp.text()
     expect(body.includes("# Pastebin Worker"), "body should contain index heading").toStrictEqual(true)

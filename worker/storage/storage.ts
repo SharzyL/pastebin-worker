@@ -20,6 +20,7 @@ export interface PasteMetadata {
   sizeBytes: number
   filename?: string
   filenames?: OriginalFileInfo[]
+  mimeType?: string
   highlightLanguage?: string
   encryptionScheme?: string
 }
@@ -37,6 +38,7 @@ interface PasteMetadataInStorage {
   sizeBytes?: number
   filename?: string
   filenames?: OriginalFileInfo[]
+  mimeType?: string
   highlightLanguage?: string
   encryptionScheme?: string
 }
@@ -50,6 +52,7 @@ export function metaResponseFromMetadata(metadata: PasteMetadata): MetaResponse 
     location: metadata.location,
     filename: metadata.filename,
     filenames: metadata.filenames,
+    mimeType: metadata.mimeType,
     highlightLanguage: metadata.highlightLanguage,
     encryptionScheme: metadata.encryptionScheme,
   }
@@ -69,6 +72,7 @@ function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
     sizeBytes: original.sizeBytes || 0,
     filename: original.filename,
     filenames: original.filenames,
+    mimeType: original.mimeType,
     highlightLanguage: original.highlightLanguage,
     encryptionScheme: original.encryptionScheme,
   }
@@ -161,6 +165,7 @@ interface WriteOptions {
   passwd: string
   filename?: string
   filenames?: OriginalFileInfo[]
+  mimeType?: string
   highlightLanguage?: string
   encryptionScheme?: string
   isMPUComplete: boolean
@@ -194,6 +199,7 @@ export async function updatePaste(
     location: newLocation,
     filename: options.filename,
     filenames: options.filenames,
+    mimeType: options.mimeType,
     highlightLanguage: options.highlightLanguage,
     passwd: options.passwd,
 
@@ -236,6 +242,7 @@ export async function createPaste(
     location: location,
     filename: options.filename,
     filenames: options.filenames,
+    mimeType: options.mimeType,
     highlightLanguage: options.highlightLanguage,
     passwd: options.passwd,
 

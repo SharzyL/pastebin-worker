@@ -56,6 +56,7 @@ export function useDarkModeSelection(): [
       document.documentElement.classList.remove("dark")
       document.documentElement.classList.add("light")
     }
+    document.documentElement.style.colorScheme = isDark ? "dark" : "light"
   }, [isDark])
 
   return [isDark, modeSelection, setModeSelection]

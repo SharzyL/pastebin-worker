@@ -8,7 +8,7 @@ import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
-import { DEFAULT_EDIT_FILENAME, MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
+import { BINARY_MIME_TYPE, DEFAULT_EDIT_FILENAME, MAX_AUTO_FETCH_BYTES, TEXT_MIME_TYPE } from "../../shared/constants.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { formatSize } from "../utils/utils.js"
 
@@ -50,7 +50,7 @@ describe("DisplayPaste", () => {
     server.use(
       ...mockPaste("abcd", {
         body: new TextEncoder().encode(text).buffer,
-        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        headers: { "Content-Type": TEXT_MIME_TYPE },
       }),
     )
     vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
@@ -152,7 +152,7 @@ describe("DisplayPaste", () => {
         headers: {
           "X-PB-Encryption-Scheme": "AES-GCM",
           "X-PB-Decrypted-Content-Type": "audio/mpeg",
-          "Content-Type": "application/octet-stream",
+          "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''song.mp3.encrypted",
         },
       }),
@@ -177,7 +177,7 @@ describe("DisplayPaste", () => {
         headers: {
           "X-PB-Encryption-Scheme": "AES-GCM",
           "X-PB-Decrypted-Content-Type": "image/png",
-          "Content-Type": "application/octet-stream",
+          "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''photo.png.encrypted",
         },
       }),
@@ -201,8 +201,8 @@ describe("DisplayPaste", () => {
         body: encryptedBytes.buffer as ArrayBuffer,
         headers: {
           "X-PB-Encryption-Scheme": "AES-GCM",
-          "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
-          "Content-Type": "application/octet-stream",
+          "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
+          "Content-Type": BINARY_MIME_TYPE,
         },
       }),
     )
@@ -221,7 +221,7 @@ describe("DisplayPaste", () => {
       http.head("/abcd", () => {
         return new HttpResponse(null, {
           headers: {
-            "Content-Type": "text/plain;charset=UTF-8",
+            "Content-Type": TEXT_MIME_TYPE,
             "Content-Length": String(oversized.byteLength),
           },
         })
@@ -350,7 +350,7 @@ describe("DisplayPaste", () => {
     server.use(
       ...mockPaste("abcd", {
         body: oversized.buffer,
-        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        headers: { "Content-Type": TEXT_MIME_TYPE },
       }),
     )
     vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
@@ -375,7 +375,7 @@ describe("DisplayPaste", () => {
         headers: {
           "X-PB-Encryption-Scheme": "AES-GCM",
           "X-PB-Decrypted-Content-Type": "video/mp4",
-          "Content-Type": "application/octet-stream",
+          "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''clip.mp4.encrypted",
         },
       }),
@@ -396,7 +396,7 @@ describe("DisplayPaste", () => {
       http.head("/abcd", () => {
         // No Content-Length header at all (e.g. chunked response).
         return new HttpResponse(null, {
-          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          headers: { "Content-Type": TEXT_MIME_TYPE },
         })
       }),
       http.get("/m/abcd", () => {
@@ -479,7 +479,7 @@ describe("DisplayPaste", () => {
         headers: {
           "X-PB-Encryption-Scheme": "AES-GCM",
           "X-PB-Decrypted-Content-Type": "application/zip",
-          "Content-Type": "application/octet-stream",
+          "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''files.zip.encrypted",
         },
       }),
@@ -525,8 +525,8 @@ describe("DisplayPaste", () => {
         return new HttpResponse(null, {
           headers: {
             "X-PB-Encryption-Scheme": "AES-GCM",
-            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
-            "Content-Type": "application/octet-stream",
+            "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
+            "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(MAX_AUTO_FETCH_BYTES + 1),
           },
         })
@@ -535,8 +535,8 @@ describe("DisplayPaste", () => {
         return HttpResponse.arrayBuffer(encryptedBytes.buffer as ArrayBuffer, {
           headers: {
             "X-PB-Encryption-Scheme": "AES-GCM",
-            "X-PB-Decrypted-Content-Type": "text/plain;charset=UTF-8",
-            "Content-Type": "application/octet-stream",
+            "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
+            "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(encryptedBytes.byteLength),
           },
         })
