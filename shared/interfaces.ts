@@ -15,6 +15,7 @@ export interface MetaResponse {
   location: PasteLocation
   filename?: string
   filenames?: OriginalFileInfo[]
+  mimeType?: string
   highlightLanguage?: string
   encryptionScheme?: string
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useErrorModal } from "../components/ErrorModal.js"
 import { DisplayPasteView } from "./DisplayPasteView.js"
 import { parseFilenameFromContentDisposition, parsePath } from "../../shared/parsers.js"
-import { MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
+import { BINARY_MIME_TYPE, MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 import { detectUtf8 } from "../../shared/encoding.js"
 import type { MetaResponse, OriginalFileInfo } from "../../shared/interfaces.js"
 import type { EncryptionScheme } from "../utils/encryption.js"
@@ -128,8 +128,7 @@ export function DisplayPaste({ config }: { config: Env }) {
   }
 
   function triggerDownload(file: File) {
-    const downloadBlob =
-      file.type === "application/octet-stream" ? file : new Blob([file], { type: "application/octet-stream" })
+    const downloadBlob = file.type === BINARY_MIME_TYPE ? file : new Blob([file], { type: BINARY_MIME_TYPE })
     const url = URL.createObjectURL(downloadBlob)
     const link = document.createElement("a")
     link.href = url

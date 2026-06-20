@@ -131,6 +131,7 @@ export async function uploadPaste(
     name: pasteSetting.uploadKind === "custom" ? pasteSetting.name : undefined,
     highlightLanguage: editorState.editKind === "edit" ? editorState.editHighlightLang : undefined,
     encryptionScheme: pasteSetting.doEncrypt ? encryptionScheme : undefined,
+    inferMimeType: editorState.editKind === "file",
     manageUrl: pasteSetting.manageUrl,
   }
 

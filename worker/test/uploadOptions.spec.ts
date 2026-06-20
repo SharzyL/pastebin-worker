@@ -11,7 +11,7 @@ import {
 } from "./testUtils.js"
 import { createExecutionContext, env } from "cloudflare:test"
 import type { MetaResponse } from "../../shared/interfaces.js"
-import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
+import { BINARY_MIME_TYPE, MAX_PASSWD_LEN, MIN_PASSWD_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
 import { parseExpiration } from "../../shared/parsers.js"
 
 test("privacy url with option p", async () => {
@@ -128,7 +128,7 @@ test("encryption with option encryption-scheme", async () => {
 
   const fetchPaste = await workerFetch(ctx, url)
   await fetchPaste.bytes()
-  expect(fetchPaste.headers.get("Content-Type")).toStrictEqual("application/octet-stream")
+  expect(fetchPaste.headers.get("Content-Type")).toStrictEqual(BINARY_MIME_TYPE)
   expect(fetchPaste.headers.get("Content-Disposition")).toStrictEqual("inline; filename*=UTF-8''a.pdf.encrypted")
   expect(fetchPaste.headers.get("X-PB-Encryption-Scheme")).toStrictEqual("AES-GCM")
   expect(fetchPaste.headers.get("X-PB-Decrypted-Content-Type")).toStrictEqual("application/pdf")
@@ -162,6 +162,7 @@ test("highlight with option lang", async () => {
   const uploadResp = await upload(ctx, { c: blob1, lang: lang })
   const metaResp: MetaResponse = await (await workerFetch(ctx, addRole(uploadResp.url, "m"))).json()
   expect(metaResp.highlightLanguage).toStrictEqual(lang)
+  expect(metaResp.mimeType).toBeUndefined()
 
   const getResp = await workerFetch(ctx, uploadResp.url)
   expect(getResp.headers.get("X-PB-Highlight-Language")).toStrictEqual(lang)

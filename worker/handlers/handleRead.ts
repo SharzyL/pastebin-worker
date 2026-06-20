@@ -7,7 +7,7 @@ import { makeMarkdown } from "../pages/markdown.js"
 import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
 import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
-import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
+import { BINARY_MIME_TYPE, MAX_URL_REDIRECT_LEN, TEXT_MIME_TYPE } from "../../shared/constants.js"
 import { filenameForTitle } from "../../shared/filename.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
@@ -64,7 +64,7 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
     }
     return new Response(getCurlIndexMarkdown(env), {
       headers: {
-        "Content-Type": "text/plain;charset=UTF-8",
+        "Content-Type": TEXT_MIME_TYPE,
         Vary: "User-Agent",
         ...staticPageCacheHeader(env),
       },
@@ -162,7 +162,7 @@ ${DARK_MODE_SCRIPT}
       const wantsMarkdown = isExplicitMd || isCurl
       return new Response(wantsMarkdown ? docMd : renderDocAsHtml(docMd), {
         headers: {
-          "Content-Type": wantsMarkdown ? "text/plain;charset=UTF-8" : "text/html;charset=UTF-8",
+          "Content-Type": wantsMarkdown ? TEXT_MIME_TYPE : "text/html;charset=UTF-8",
           Vary: "User-Agent",
           ...staticPageCacheHeader(env),
         },
@@ -206,16 +206,17 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   }
 
   const disallowedMimes = env.DISALLOWED_MIME_FOR_PASTE as readonly string[]
-  const sanitize = (m: string) => (disallowedMimes.includes(m) ? "text/plain;charset=UTF-8" : m)
+  const sanitize = (m: string) => (disallowedMimes.includes(m) ? TEXT_MIME_TYPE : m)
 
   const realMime =
     url.searchParams.get("mime") ||
     (ext && mime.getType(ext)) ||
     (item.metadata.filename && mime.getType(item.metadata.filename)) ||
-    "text/plain;charset=UTF-8"
+    item.metadata.mimeType ||
+    TEXT_MIME_TYPE
 
   let inferred_mime = item.metadata.encryptionScheme
-    ? url.searchParams.get("mime") || (ext && mime.getType(ext)) || "application/octet-stream"
+    ? url.searchParams.get("mime") || (ext && mime.getType(ext)) || BINARY_MIME_TYPE
     : realMime
   inferred_mime = sanitize(inferred_mime)
 

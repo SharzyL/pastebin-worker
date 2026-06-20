@@ -1,6 +1,7 @@
 import { expect, test, it, describe } from "vitest"
 import { addRole, genRandomBlob, upload, workerFetch } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
+import { TEXT_MIME_TYPE } from "../../shared/constants.js"
 
 test("HEAD", async () => {
   const blob1 = genRandomBlob(1024)
@@ -17,10 +18,10 @@ test("HEAD", async () => {
     }),
   )
   expect(headResp.status).toStrictEqual(200)
-  expect(headResp.headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
+  expect(headResp.headers.get("Content-Type")).toStrictEqual(TEXT_MIME_TYPE)
   expect(headResp.headers.get("Content-Length")).toStrictEqual(blob1.size.toString())
   expect(headResp.headers.has("Last-Modified")).toStrictEqual(true)
-  expect(headResp.headers.get("Content-Disposition")).toStrictEqual("inline")
+  expect(headResp.headers.get("Content-Disposition")).toStrictEqual("inline; filename*=UTF-8''Untitled")
 
   // test head with filename and big blog
   const blob2 = genRandomBlob(1024 * 1024)
