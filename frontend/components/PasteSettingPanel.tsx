@@ -1,7 +1,7 @@
 import type { CardProps } from "./ui/index.js"
 import { Card, CardBody, CardHeader, Divider, Input, Switch, Tooltip } from "./ui/index.js"
 import { verifyExpiration, verifyManageUrl } from "../utils/utils.js"
-import { verifyName, verifyPassword } from "../../shared/verify.js"
+import { verifyName, verifyPassword, verifyReadLimit } from "../../shared/verify.js"
 import type { NameAvailability } from "../utils/useNameAvailability.js"
 import React from "react"
 import { CheckIcon, InfoIcon, QuestionMarkCircleIcon, SpinnerIcon, XIcon } from "./icons.js"
@@ -13,6 +13,7 @@ export type UploadKind = "short" | "long" | "custom" | "manage"
 export interface PasteSetting {
   uploadKind: UploadKind
   expiration: string
+  readLimit: string
   password: string
   name: string
   manageUrl: string
@@ -111,6 +112,10 @@ export function PanelSettingsPanel({
   footer,
   ...rest
 }: PasteSettingPanelProps) {
+  const [isExpirationValid, expirationMessage] = verifyExpiration(setting.expiration, config)
+  const [isReadLimitValid, readLimitMessage] = verifyReadLimit(setting.readLimit)
+  const [isManageUrlValid, manageUrlMessage] = verifyManageUrl(setting.manageUrl, config)
+
   return (
     <Card aria-label="Pastebin setting panel" classNames={cardOverrides} {...rest}>
       <CardHeader className="text-2xl pl-4 pb-2">Settings</CardHeader>
@@ -121,16 +126,30 @@ export function PanelSettingsPanel({
             type="text"
             label="Expiration"
             classNames={{
-              base: "basis-40",
+              base: "basis-32",
               ...inputOverrides,
             }}
-            defaultValue={config.DEFAULT_EXPIRATION}
             value={setting.expiration}
             isRequired
             onValueChange={(e) => onSettingChange({ ...setting, expiration: e })}
-            isInvalid={!verifyExpiration(setting.expiration, config)[0]}
-            errorMessage={verifyExpiration(setting.expiration, config)[1]}
-            description={verifyExpiration(setting.expiration, config)[1]}
+            isInvalid={!isExpirationValid}
+            errorMessage={expirationMessage}
+            description={expirationMessage}
+          />
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            label="Max reads"
+            value={setting.readLimit}
+            onValueChange={(v) => onSettingChange({ ...setting, readLimit: v })}
+            isInvalid={!isReadLimitValid}
+            errorMessage={readLimitMessage}
+            description={readLimitMessage}
+            classNames={{
+              base: "basis-32",
+              ...inputOverrides,
+            }}
           />
           <Input
             type="password"
@@ -241,8 +260,8 @@ export function PanelSettingsPanel({
               onValueChange={(m) => onSettingChange({ ...setting, manageUrl: m })}
               type="text"
               className="mt-2"
-              isInvalid={!verifyManageUrl(setting.manageUrl, config)[0]}
-              errorMessage={verifyManageUrl(setting.manageUrl, config)[1]}
+              isInvalid={!isManageUrlValid}
+              errorMessage={manageUrlMessage}
               placeholder="Manage URL"
             />
           )}

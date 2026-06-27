@@ -32,7 +32,7 @@ export function formatSize(size: number): string {
 }
 
 export function verifyExpiration(expiration: string, config: Env): [boolean, string] {
-  return verifyExpirationShared(expiration, getMaxExpirationSeconds(config))
+  return verifyExpirationShared(expiration, config.MAX_EXPIRATION)
 }
 
 export function verifyManageUrl(url: string, config: Env): [boolean, string] {

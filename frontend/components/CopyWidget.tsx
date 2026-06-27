@@ -42,7 +42,7 @@ export function CopyWidget({ className = "", getCopyContent, label, ...rest }: C
       ) : (
         <CopyIcon className="size-6 text-default-600" />
       )}
-      {label && <span>{label}</span>}
+      {label && <span>{hasIssuedCopies ? "Copied!" : label}</span>}
     </Button>
   )
 }

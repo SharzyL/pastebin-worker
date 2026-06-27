@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { CircularProgress, Link, Tooltip } from "../components/ui/index.js"
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
-import { DownloadIcon, HomeIcon } from "../components/icons.js"
+import { DownloadIcon, HomeIcon, XIcon } from "../components/icons.js"
 import { CopyWidget } from "../components/CopyWidget.js"
 import { QrCodeTooltip } from "../components/QrCodeTooltip.js"
 import { tst } from "../utils/overrides.js"
@@ -16,6 +16,7 @@ interface PendingInfo {
   sizeBytes: number | null
   rawUrl: string
   contentType: string | null
+  isReadLimited?: boolean
 }
 
 interface MediaInfo {
@@ -105,6 +106,8 @@ interface DisplayPasteViewProps {
   config: Env
   pendingInfo?: PendingInfo | null
   mediaInfo?: MediaInfo | null
+  showExpiredNotice?: boolean
+  onDismissExpiredNotice?: () => void
   metaFilename?: string
   originalFiles?: OriginalFileInfo[]
   onLoadAnyway?: () => void
@@ -129,6 +132,8 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     config,
     pendingInfo,
     mediaInfo,
+    showExpiredNotice,
+    onDismissExpiredNotice,
     metaFilename,
     originalFiles,
     onLoadAnyway,
@@ -244,6 +249,9 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     ) {
       return `Not a renderable file${ct ? ` (${ct})` : ""}.`
     }
+    if (pendingInfo.isReadLimited) {
+      return "Paste has a limited number of reads."
+    }
     return "Paste is too large to load automatically."
   })()
   const pendingFileIndicator = pendingInfo && !pasteFile && (
@@ -258,7 +266,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             disabled={isDownloadActionDisabled}
             onClick={() => onDownloadPaste()}
           >
-            {isDownloading ? "Downloading..." : "Download decrypted"}
+            {isDownloading ? "Downloading..." : isDecrypted === "encrypted" ? "Download decrypted" : "Download raw"}
           </button>
         ) : (
           <Link
@@ -296,6 +304,28 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     <main
       className={`flex flex-col items-center min-h-screen transition-transform-background bg-background ${tst} text-foreground w-full p-2`}
     >
+      {showExpiredNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-3 left-1/2 z-50 flex w-[calc(100%-1rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-lg bg-danger-50 px-4 py-3 text-sm text-danger-700 shadow-sm"
+        >
+          <div className="min-w-0 flex-1 text-center">
+            <div className="font-bold">The file has expired</div>
+            <div>The file has been permanently deleted.</div>
+          </div>
+          {onDismissExpiredNotice && (
+            <button
+              type="button"
+              aria-label="Close expired notice"
+              className="shrink-0 cursor-pointer rounded-full p-0.5 text-danger-600 hover:bg-danger-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-danger-400"
+              onClick={onDismissExpiredNotice}
+            >
+              <XIcon className="size-5" />
+            </button>
+          )}
+        </div>
+      )}
       <div className="w-full max-w-[64rem]">
         <div className="flex flex-row my-4 items-center justify-between">
           <h1 className="text-xl md:text-2xl grow inline-flex items-center md:items-baseline min-w-0">

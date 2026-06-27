@@ -18,6 +18,7 @@ declare namespace Cloudflare {
 		CACHE_PASTE_AGE: number;
 		DEFAULT_EXPIRATION: string;
 		MAX_EXPIRATION: string;
+		DEFAULT_READS: number;
 		BASIC_AUTH: object;
 		R2_THRESHOLD: string;
 		R2_MAX_ALLOWED: string;

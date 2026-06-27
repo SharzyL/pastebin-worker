@@ -5,8 +5,10 @@ import { parseFilenameFromContentDisposition, parsePath } from "../../shared/par
 import { BINARY_MIME_TYPE, MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 import { detectUtf8 } from "../../shared/encoding.js"
 import type { MetaResponse, OriginalFileInfo } from "../../shared/interfaces.js"
+import { parseReadLimit } from "../../shared/verify.js"
 import type { EncryptionScheme } from "../utils/encryption.js"
 import { decodeKey, decrypt } from "../utils/encryption.js"
+import { removeLocalUpload } from "../utils/localUploads.js"
 
 import "../style.css"
 import "../styles/highlight-theme-light.css"
@@ -92,16 +94,27 @@ export function DisplayPaste({ config }: { config: Env }) {
     sizeBytes: number | null
     rawUrl: string
     contentType: string | null
+    isReadLimited?: boolean
   } | null>(null)
   const [mediaInfo, setMediaInfo] = useState<{
     sizeBytes: number | null
     rawUrl: string
     contentType: string
   } | null>(null)
+  const [showExpiredNotice, setShowExpiredNotice] = useState(false)
+  const expiredNoticeTimerRef = useRef<number | undefined>(undefined)
   const [metaFilename, setMetaFilename] = useState<string | undefined>(initialPasteState.metaFilename)
   const [originalFiles, setOriginalFiles] = useState<OriginalFileInfo[] | undefined>(initialPasteState.originalFiles)
 
   const { ErrorModal, showModal, handleFailedResp } = useErrorModal()
+
+  useEffect(() => {
+    return () => {
+      if (expiredNoticeTimerRef.current !== undefined) {
+        window.clearTimeout(expiredNoticeTimerRef.current)
+      }
+    }
+  }, [])
 
   function parseContentLength(value: string | null): number | null {
     if (value === null) return null
@@ -142,6 +155,23 @@ export function DisplayPaste({ config }: { config: Env }) {
     }, 0)
   }
 
+  const removeLocalUploadIfConsumed = useCallback(
+    (remainingReads: string | number | null | undefined) => {
+      const parsed = parseReadLimit(remainingReads)
+      if (parsed !== null && parsed <= 1) {
+        removeLocalUpload(name)
+        if (expiredNoticeTimerRef.current !== undefined) {
+          window.clearTimeout(expiredNoticeTimerRef.current)
+        }
+        expiredNoticeTimerRef.current = window.setTimeout(() => {
+          setShowExpiredNotice(true)
+          expiredNoticeTimerRef.current = undefined
+        }, 3000)
+      }
+    },
+    [name],
+  )
+
   const fetchPasteFile = useCallback(async (): Promise<FetchedPasteFile | null> => {
     try {
       const resp = await fetch(pasteUrl)
@@ -150,6 +180,7 @@ export function DisplayPaste({ config }: { config: Env }) {
         return null
       }
       const scheme: EncryptionScheme | null = resp.headers.get("X-PB-Encryption-Scheme") as EncryptionScheme | null
+      const remainingReads = resp.headers.get("X-PB-Remaining-Reads")
       let filenameFromDisp = resp.headers.has("Content-Disposition")
         ? parseFilenameFromContentDisposition(resp.headers.get("Content-Disposition")!) || undefined
         : undefined
@@ -165,6 +196,7 @@ export function DisplayPaste({ config }: { config: Env }) {
       const decryptedContentType = resp.headers.get("X-PB-Decrypted-Content-Type")
       const blobMime = (scheme ? decryptedContentType : resp.headers.get("Content-Type"))?.split(";")[0]?.trim() || ""
       const respBytes = await resp.bytes()
+      removeLocalUploadIfConsumed(remainingReads)
 
       const keyString = url.hash.slice(1)
       if (scheme === null || keyString.length === 0) {
@@ -195,7 +227,7 @@ export function DisplayPaste({ config }: { config: Env }) {
       console.error(e)
       return null
     }
-  }, [pasteUrl, name, ext, filename, metaFilename])
+  }, [pasteUrl, name, ext, filename, metaFilename, removeLocalUploadIfConsumed])
 
   const fetchPasteBody = useCallback(async () => {
     if (isFetchingBodyRef.current) return
@@ -242,6 +274,7 @@ export function DisplayPaste({ config }: { config: Env }) {
 
   useEffect(() => {
     if (window.__PASTE_DATA__) {
+      removeLocalUploadIfConsumed(window.__PASTE_DATA__.metadata.remainingReads)
       return
     }
 
@@ -259,6 +292,7 @@ export function DisplayPaste({ config }: { config: Env }) {
         const scheme = headResp.headers.get("X-PB-Encryption-Scheme") as EncryptionScheme | null
         const decryptedContentType = headResp.headers.get("X-PB-Decrypted-Content-Type")
         const contentDisp = headResp.headers.get("Content-Disposition")
+        const remainingReadsFromHead = headResp.headers.get("X-PB-Remaining-Reads")
         const isEncrypted = scheme !== null
         const effectiveContentType = isEncrypted ? decryptedContentType : contentType
         setDecrypted(isEncrypted ? "encrypted" : "not encrypted")
@@ -280,6 +314,7 @@ export function DisplayPaste({ config }: { config: Env }) {
         }
 
         const sizeBytes = contentLength ?? metadata?.sizeBytes ?? null
+        const isReadLimited = remainingReadsFromHead !== null || metadata?.remainingReads !== undefined
 
         const isText = effectiveContentType?.startsWith("text/") || !!contentLang
         const isMedia =
@@ -288,6 +323,16 @@ export function DisplayPaste({ config }: { config: Env }) {
           effectiveContentType?.startsWith("video/") ||
           false
         const sizeOk = sizeBytes !== null && sizeBytes < MAX_AUTO_FETCH_BYTES
+
+        if (isReadLimited) {
+          setPendingInfo({
+            sizeBytes,
+            rawUrl: pasteUrl,
+            contentType: effectiveContentType,
+            isReadLimited,
+          })
+          return
+        }
 
         // text and encrypted media both need a GET + (maybe) decrypt before
         // rendering, so they share fetchPasteBody. Plain media can be rendered
@@ -341,11 +386,15 @@ export function DisplayPaste({ config }: { config: Env }) {
         config={config}
         pendingInfo={pendingInfo}
         mediaInfo={mediaInfo}
+        showExpiredNotice={showExpiredNotice}
+        onDismissExpiredNotice={() => setShowExpiredNotice(false)}
         metaFilename={metaFilename}
         originalFiles={originalFiles}
         onLoadAnyway={() => void fetchPasteBody()}
         onDownloadPaste={
-          isDecrypted === "encrypted" && url.hash.slice(1).length > 0 ? () => void downloadPasteBody() : undefined
+          pendingInfo?.isReadLimited || (isDecrypted === "encrypted" && url.hash.slice(1).length > 0)
+            ? () => void downloadPasteBody()
+            : undefined
         }
       />
       <ErrorModal />

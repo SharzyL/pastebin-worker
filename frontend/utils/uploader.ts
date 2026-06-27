@@ -8,6 +8,7 @@ import type { UploadOptions } from "../../shared/uploadPaste.js"
 import { UploadError, uploadMPU, uploadNormal } from "../../shared/uploadPaste.js"
 import { DEFAULT_EDIT_FILENAME } from "../../shared/constants.js"
 import { itemNoun } from "../../shared/format.js"
+import { parseReadLimit } from "../../shared/verify.js"
 import { zipSync } from "fflate"
 
 async function genAndEncrypt(scheme: EncryptionScheme, content: string | Uint8Array) {
@@ -120,6 +121,10 @@ export async function uploadPaste(
   if (!contentSizeOk) {
     throw new ErrorWithTitle("Error on Preparing Upload", contentSizeMsg)
   }
+  const readLimit = parseReadLimit(pasteSetting.readLimit)
+  if (readLimit === null) {
+    throw new ErrorWithTitle("Error on Preparing Upload", "Reads must be a non-negative integer")
+  }
 
   const options: UploadOptions = {
     content,
@@ -128,6 +133,7 @@ export async function uploadPaste(
     isPrivate: pasteSetting.uploadKind === "long",
     password: pasteSetting.password.length ? pasteSetting.password : undefined,
     expire: pasteSetting.expiration,
+    remainingReads: readLimit,
     name: pasteSetting.uploadKind === "custom" ? pasteSetting.name : undefined,
     highlightLanguage: editorState.editKind === "edit" ? editorState.editHighlightLang : undefined,
     encryptionScheme: pasteSetting.doEncrypt ? encryptionScheme : undefined,

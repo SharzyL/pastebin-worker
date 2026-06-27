@@ -67,6 +67,9 @@ DEFAULT_EXPIRATION = "7d"
 # Max expiration
 MAX_EXPIRATION = "90d"
 
+# Default reads
+DEFAULT_READS = 0
+
 # A collection of {username: password} pair
 # Leave empty to disable auth
 BASIC_AUTH = {}

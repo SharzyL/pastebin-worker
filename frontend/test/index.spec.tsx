@@ -49,6 +49,7 @@ beforeAll(() => {
 
 afterEach(() => {
   server.resetHandlers()
+  window.localStorage.clear()
   cleanup()
 })
 
@@ -65,6 +66,7 @@ import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
 import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
+import { LOCAL_UPLOADS_KEY } from "../utils/localUploads.js"
 
 describe("Pastebin", () => {
   it("can upload", async () => {
@@ -93,6 +95,24 @@ describe("Pastebin", () => {
     expect((manageUrlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.manageUrl)
   })
 
+  it("shows remaining reads in the local uploads sidebar", async () => {
+    server.use(
+      http.post(`${__WRANGLER_CONFIG__.DEPLOY_URL}/`, () => {
+        return HttpResponse.json({
+          ...mockedPasteUpload,
+          expireAt: "2099-05-01T00:00:00.000Z",
+          remainingReads: 1,
+        })
+      }),
+    )
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Paste editor" }), "something")
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }))
+
+    expect(await screen.findByText(/or 1 read/)).toBeInTheDocument()
+  })
+
   it("refuse illegal settings", async () => {
     render(<PasteBin config={__WRANGLER_CONFIG__} />)
     // due to bugs https://github.com/adobe/react-spectrum/discussions/8037, we need to use duplicated name here
@@ -100,6 +120,35 @@ describe("Pastebin", () => {
     expect(expire).toBeValid()
     await userEvent.type(expire, "xxx")
     expect(expire).toBeInvalid()
+  })
+
+  it("uses DEFAULT_READS as the initial reads setting", () => {
+    render(<PasteBin config={{ ...__WRANGLER_CONFIG__, DEFAULT_READS: 2 }} />)
+
+    const reads = screen.getByRole("spinbutton", { name: "Reads" })
+    expect(reads).toBeValid()
+    expect(reads).toHaveValue(2)
+  })
+
+  it("clears current manage state when another tab removes the local upload", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    await userEvent.type(editor, "something")
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }))
+
+    await screen.findByRole("textbox", { name: "Raw URL" })
+    expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument()
+
+    window.localStorage.setItem(LOCAL_UPLOADS_KEY, "[]")
+    window.dispatchEvent(new StorageEvent("storage", { key: LOCAL_UPLOADS_KEY, newValue: "[]" }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Upload" })).toBeInTheDocument()
+      expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("textbox", { name: "Manage URL" })).not.toBeInTheDocument()
+    })
   })
 })
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import type { PasteResponse } from "../../shared/interfaces.js"
 import type { LocalUploadRecord } from "./localUploads.js"
@@ -6,15 +6,36 @@ import { LOCAL_UPLOADS_KEY, readLocalUploads, removeLocalUpload, upsertLocalUplo
 
 export function useLocalUploads() {
   const [localUploads, setLocalUploads] = useState<LocalUploadRecord[]>([])
+  const localUploadsRef = useRef<LocalUploadRecord[]>([])
+  const [externalRemoval, setExternalRemoval] = useState<{ keys: string[]; revision: number }>({
+    keys: [],
+    revision: 0,
+  })
 
   useEffect(() => {
-    setLocalUploads(readLocalUploads())
+    const records = readLocalUploads()
+    localUploadsRef.current = records
+    setLocalUploads(records)
   }, [])
+
+  useEffect(() => {
+    localUploadsRef.current = localUploads
+  }, [localUploads])
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key === LOCAL_UPLOADS_KEY) {
-        setLocalUploads(readLocalUploads())
+        const nextLocalUploads = readLocalUploads()
+        const nextKeys = new Set(nextLocalUploads.map((upload) => upload.key))
+        const removedKeys = localUploadsRef.current
+          .map((upload) => upload.key)
+          .filter((key) => !nextKeys.has(key))
+
+        localUploadsRef.current = nextLocalUploads
+        setLocalUploads(nextLocalUploads)
+        if (removedKeys.length > 0) {
+          setExternalRemoval((current) => ({ keys: removedKeys, revision: current.revision + 1 }))
+        }
       }
     }
 
@@ -23,15 +44,20 @@ export function useLocalUploads() {
   }, [])
 
   function rememberLocalUpload(response: PasteResponse, encryptionKey?: string) {
-    setLocalUploads(upsertLocalUpload(response, encryptionKey))
+    const nextLocalUploads = upsertLocalUpload(response, encryptionKey)
+    localUploadsRef.current = nextLocalUploads
+    setLocalUploads(nextLocalUploads)
   }
 
   function removeLocalUploadByKey(key: string) {
-    setLocalUploads(removeLocalUpload(key))
+    const nextLocalUploads = removeLocalUpload(key)
+    localUploadsRef.current = nextLocalUploads
+    setLocalUploads(nextLocalUploads)
   }
 
   return {
     localUploads,
+    externalRemoval,
     rememberLocalUpload,
     removeLocalUploadByKey,
   }

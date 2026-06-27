@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest"
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { DisplayPaste } from "../pages/DisplayPaste.js"
 
 import "@testing-library/jest-dom/vitest"
@@ -11,6 +11,7 @@ import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
 import { BINARY_MIME_TYPE, DEFAULT_EDIT_FILENAME, MAX_AUTO_FETCH_BYTES, TEXT_MIME_TYPE } from "../../shared/constants.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { formatSize } from "../utils/utils.js"
+import { LOCAL_UPLOADS_KEY } from "../utils/localUploads.js"
 
 interface RespInit {
   body: ArrayBuffer
@@ -21,8 +22,32 @@ function mockPaste(pasteName: string, init: RespInit) {
   const headers = { ...init.headers, "Content-Length": String(init.body.byteLength) }
   return [
     http.head(`/${pasteName}`, () => new HttpResponse(null, { headers })),
+    http.get(`/m/${pasteName}`, () =>
+      HttpResponse.json({
+        lastModifiedAt: "",
+        createdAt: "",
+        expireAt: "",
+        sizeBytes: init.body.byteLength,
+        location: "KV",
+      }),
+    ),
     http.get(`/${pasteName}`, () => HttpResponse.arrayBuffer(init.body, { headers })),
   ]
+}
+
+function rememberLocalUpload(key = "abcd") {
+  window.localStorage.setItem(
+    LOCAL_UPLOADS_KEY,
+    JSON.stringify([
+      {
+        key,
+        displayUrl: `https://example.com/d/${key}`,
+        manageUrl: `https://example.com/${key}:pw`,
+        expireAt: "2099-01-01T00:00:00.000Z",
+        sizeBytes: 1,
+      },
+    ]),
+  )
 }
 
 const server = setupServer()
@@ -36,6 +61,7 @@ beforeAll(() => {
 afterEach(() => {
   server.resetHandlers()
   cleanup()
+  window.localStorage.clear()
   delete (window as Window & { __PASTE_DATA__?: SerializedPasteData }).__PASTE_DATA__
 })
 
@@ -205,6 +231,15 @@ describe("DisplayPaste", () => {
           "Content-Type": BINARY_MIME_TYPE,
         },
       }),
+      http.get("/m/abcd", () => {
+        return HttpResponse.json({
+          lastModifiedAt: "",
+          createdAt: "",
+          expireAt: "",
+          sizeBytes: encryptedBytes.byteLength,
+          location: "KV",
+        })
+      }),
     )
     vi.stubGlobal("location", new URL(`https://example.com/d/abcd#${await encodeKey(key)}`))
 
@@ -238,6 +273,117 @@ describe("DisplayPaste", () => {
     expect(await screen.findByText("load anyway")).toBeInTheDocument()
     expect(screen.getByText("Download raw")).toBeInTheDocument()
     expect(getCalled).toStrictEqual(false)
+  })
+
+  it("does not auto-fetch read-limited text until load anyway is clicked", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const text = "limited hello"
+    let getCalled = false
+    rememberLocalUpload()
+    server.use(
+      http.head("/abcd", () => {
+        return new HttpResponse(null, {
+          headers: {
+            "Content-Type": TEXT_MIME_TYPE,
+            "Content-Length": String(text.length),
+            "X-PB-Remaining-Reads": "1",
+          },
+        })
+      }),
+      http.get("/m/abcd", () => {
+        return HttpResponse.json({
+          lastModifiedAt: "",
+          createdAt: "",
+          expireAt: "",
+          sizeBytes: text.length,
+          location: "KV",
+          remainingReads: 1,
+        })
+      }),
+      http.get("/abcd", () => {
+        getCalled = true
+        return HttpResponse.arrayBuffer(new TextEncoder().encode(text).buffer, {
+          headers: {
+            "Content-Type": TEXT_MIME_TYPE,
+            "Content-Length": String(text.length),
+            "X-PB-Remaining-Reads": "1",
+          },
+        })
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    const loadAnyway = await screen.findByText("load anyway")
+    expect(screen.getByText(/limited number of reads/)).toBeInTheDocument()
+    expect(getCalled).toStrictEqual(false)
+
+    await userEvent.click(loadAnyway)
+
+    const article = await screen.findByRole("article")
+    expect(article.textContent).toStrictEqual(text)
+    expect(getCalled).toStrictEqual(true)
+    expect(window.localStorage.getItem(LOCAL_UPLOADS_KEY)).toStrictEqual("[]")
+    expect(screen.queryByText("The file has expired")).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+
+    expect(screen.getByText("The file has expired")).toBeInTheDocument()
+    expect(screen.getByText("The file has been permanently deleted.")).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "Close expired notice" }))
+
+    expect(screen.queryByText("The file has expired")).not.toBeInTheDocument()
+  })
+
+  it("removes local upload when downloading the final read from a read-limited shell", async () => {
+    const text = "limited download"
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined)
+    rememberLocalUpload()
+    server.use(
+      http.head("/abcd", () => {
+        return new HttpResponse(null, {
+          headers: {
+            "Content-Type": TEXT_MIME_TYPE,
+            "Content-Length": String(text.length),
+            "X-PB-Remaining-Reads": "1",
+          },
+        })
+      }),
+      http.get("/m/abcd", () => {
+        return HttpResponse.json({
+          lastModifiedAt: "",
+          createdAt: "",
+          expireAt: "",
+          sizeBytes: text.length,
+          location: "KV",
+          remainingReads: 1,
+        })
+      }),
+      http.get("/abcd", () => {
+        return HttpResponse.arrayBuffer(new TextEncoder().encode(text).buffer, {
+          headers: {
+            "Content-Type": TEXT_MIME_TYPE,
+            "Content-Length": String(text.length),
+            "X-PB-Remaining-Reads": "1",
+          },
+        })
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    await userEvent.click(await screen.findByText("Download raw"))
+
+    await waitFor(() => {
+      expect(clickSpy).toHaveBeenCalled()
+      expect(window.localStorage.getItem(LOCAL_UPLOADS_KEY)).toStrictEqual("[]")
+    })
+    clickSpy.mockRestore()
   })
 
   it("shows filename from Content-Disposition in the title even with a bare URL", async () => {
@@ -287,6 +433,34 @@ describe("DisplayPaste", () => {
     expect(article.textContent).toStrictEqual(text)
     const heading = await screen.findByRole("heading")
     expect(heading.textContent).toContain("ssr.txt")
+  })
+
+  it("removes local upload when SSR data consumes the final read", async () => {
+    const text = "ssr final read"
+    rememberLocalUpload()
+    const injected: SerializedPasteData = {
+      content: btoa(text),
+      name: "abcd",
+      isBinary: false,
+      guessedEncoding: "UTF-8",
+      metadata: {
+        lastModifiedAt: "",
+        createdAt: "",
+        expireAt: "",
+        sizeBytes: text.length,
+        location: "KV",
+        filename: "ssr.txt",
+        remainingReads: 1,
+      },
+    }
+    window.__PASTE_DATA__ = injected
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    const article = await screen.findByRole("article")
+    expect(article.textContent).toStrictEqual(text)
+    expect(window.localStorage.getItem(LOCAL_UPLOADS_KEY)).toStrictEqual("[]")
   })
 
   it("hides the default Untitled filename from the heading but keeps it for content and download", async () => {

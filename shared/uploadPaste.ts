@@ -29,6 +29,7 @@ export interface UploadOptions {
   encryptionScheme?: EncryptionScheme
   inferMimeType?: boolean
   expire?: string
+  remainingReads?: number
   manageUrl?: string
 }
 
@@ -163,6 +164,7 @@ export async function uploadNormal(
     encryptionScheme,
     inferMimeType,
     expire,
+    remainingReads,
     manageUrl,
   }: UploadOptions,
   progressCallback?: (doneBytes: number, allBytes: number) => void,
@@ -180,6 +182,7 @@ export async function uploadNormal(
   }
 
   if (expire !== undefined) fd.set("e", expire)
+  if (remainingReads !== undefined) fd.set("reads", String(remainingReads))
   if (password !== undefined) fd.set("s", password)
   if (!isUpdate && name !== undefined) fd.set("n", name)
   if (encryptionScheme !== undefined) fd.set("encryption-scheme", encryptionScheme)
@@ -216,6 +219,7 @@ export async function uploadMPU(
     encryptionScheme,
     inferMimeType,
     expire,
+    remainingReads,
     manageUrl,
   }: UploadOptions,
   progressCallback?: (doneBytes: number, allBytes: number) => void,
@@ -330,6 +334,9 @@ export async function uploadMPU(
     }
     if (expire !== undefined) {
       completeFormData.set("e", expire)
+    }
+    if (remainingReads !== undefined) {
+      completeFormData.set("reads", String(remainingReads))
     }
     if (password !== undefined) {
       completeFormData.set("s", password)

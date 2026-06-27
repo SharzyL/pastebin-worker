@@ -105,6 +105,7 @@ describe("uploadNormal", () => {
       highlightLanguage: "ts",
       encryptionScheme: "AES-GCM",
       expire: "10m",
+      remainingReads: 3,
     })
 
     expect(resp.url).toStrictEqual("https://example.com/abcd")
@@ -118,6 +119,7 @@ describe("uploadNormal", () => {
     expect(fd.get("n")).toStrictEqual("abcd")
     expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM")
     expect(fd.get("lang")).toStrictEqual("ts")
+    expect(fd.get("reads")).toStrictEqual("3")
     expect(fd.get("p")).toStrictEqual("1")
     expect(fd.get("filenames")).toStrictEqual(JSON.stringify([{ name: "a.txt", sizeBytes: 4 }]))
     expect(fd.get("mimeType")).toBeNull()
@@ -274,6 +276,7 @@ describe("uploadMPU", () => {
         encryptionScheme: "AES-GCM",
         filenames: [{ name: "a.bin", sizeBytes: 6 }],
         expire: "1d",
+        remainingReads: 5,
       },
       progress,
     )
@@ -303,6 +306,7 @@ describe("uploadMPU", () => {
     expect(completeReq.method).toStrictEqual("POST")
     const fd = completeReq.body as FormData
     expect(fd.get("e")).toStrictEqual("1d")
+    expect(fd.get("reads")).toStrictEqual("5")
     expect(fd.get("s")).toStrictEqual("pw")
     expect(fd.get("lang")).toStrictEqual("rust")
     expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM")

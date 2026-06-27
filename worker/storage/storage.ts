@@ -17,6 +17,7 @@ export interface PasteMetadata {
   willExpireAtUnix: number
 
   accessCounter: number // a counter representing how frequent it is accessed, to administration usage
+  remainingReads?: number
   sizeBytes: number
   filename?: string
   filenames?: OriginalFileInfo[]
@@ -35,6 +36,7 @@ interface PasteMetadataInStorage {
   willExpireAtUnix: number
 
   accessCounter?: number
+  remainingReads?: number
   sizeBytes?: number
   filename?: string
   filenames?: OriginalFileInfo[]
@@ -50,6 +52,7 @@ export function metaResponseFromMetadata(metadata: PasteMetadata): MetaResponse 
     expireAt: new Date(metadata.willExpireAtUnix * 1000).toISOString(),
     sizeBytes: metadata.sizeBytes,
     location: metadata.location,
+    remainingReads: metadata.remainingReads,
     filename: metadata.filename,
     filenames: metadata.filenames,
     mimeType: metadata.mimeType,
@@ -69,6 +72,7 @@ function migratePasteMetadata(original: PasteMetadataInStorage): PasteMetadata {
     willExpireAtUnix: original.willExpireAtUnix,
 
     accessCounter: original.accessCounter || 0,
+    remainingReads: original.remainingReads,
     sizeBytes: original.sizeBytes || 0,
     filename: original.filename,
     filenames: original.filenames,
@@ -120,7 +124,9 @@ export async function getPaste(env: Env, short: string, ctx: ExecutionContext): 
           await deletePaste(env, short, metadata)
           return null
         }
-        await updateAccessCounter(env, short, item.value!, metadata)
+        if (metadata.remainingReads === undefined) {
+          await updateAccessCounter(env, short, item.value!, metadata)
+        }
       })(),
     )
 
@@ -168,7 +174,40 @@ interface WriteOptions {
   mimeType?: string
   highlightLanguage?: string
   encryptionScheme?: string
+  remainingReads?: number
   isMPUComplete: boolean
+}
+
+export function hasReadLimit(metadata: PasteMetadata): boolean {
+  return metadata.remainingReads !== undefined
+}
+
+export async function consumeRead(
+  env: Env,
+  pasteName: string,
+  paste: ArrayBuffer | ReadableStream,
+  metadata: PasteMetadata,
+): Promise<void> {
+  if (metadata.remainingReads === undefined) return
+
+  const nextRemainingReads = metadata.remainingReads - 1
+  if (nextRemainingReads <= 0) {
+    await deletePaste(env, pasteName, metadata)
+    return
+  }
+
+  const updatedMetadata: PasteMetadata = {
+    ...metadata,
+    remainingReads: nextRemainingReads,
+  }
+  const expirationUnixSpecified = Math.max(
+    metadata.willExpireAtUnix,
+    dateToUnix(new Date()) + PASTE_EXPIRE_SPECIFIED_MIN,
+  )
+  await env.PB.put(pasteName, metadata.location === "R2" ? "" : paste, {
+    metadata: updatedMetadata,
+    expiration: expirationUnixSpecified,
+  })
 }
 
 export async function updatePaste(
@@ -207,6 +246,7 @@ export async function updatePaste(
     createdAtUnix: originalMetadata.createdAtUnix,
     willExpireAtUnix: expirationUnix,
     accessCounter: originalMetadata.accessCounter,
+    remainingReads: options.remainingReads,
     sizeBytes: options.contentLength,
     encryptionScheme: options.encryptionScheme,
   }
@@ -250,6 +290,7 @@ export async function createPaste(
     createdAtUnix: dateToUnix(options.now),
     willExpireAtUnix: expirationUnix,
     accessCounter: 0,
+    remainingReads: options.remainingReads,
     sizeBytes: options.contentLength,
     encryptionScheme: options.encryptionScheme,
   }

@@ -2,7 +2,7 @@ import { renderToReadableStream } from "react-dom/server.edge"
 import React from "react"
 import { DisplayPasteView } from "../../frontend/pages/DisplayPasteView.js"
 import type { PasteMetadata } from "../storage/storage.js"
-import { metaResponseFromMetadata } from "../storage/storage.js"
+import { hasReadLimit, metaResponseFromMetadata } from "../storage/storage.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
@@ -38,6 +38,10 @@ async function streamToArrayBuffer(stream: ReadableStream<Uint8Array>): Promise<
   return result.buffer
 }
 
+export function canRenderDisplayPage(metadata: PasteMetadata): boolean {
+  return !hasReadLimit(metadata) && !metadata.encryptionScheme && metadata.sizeBytes <= MAX_SSR_FILE_SIZE
+}
+
 export async function renderDisplayPage(
   env: Env,
   name: string,
@@ -47,13 +51,7 @@ export async function renderDisplayPage(
   paste: ArrayBuffer | ReadableStream<Uint8Array>,
   metadata: PasteMetadata,
 ): Promise<string | null> {
-  // Skip SSR for encrypted files (client needs hash key to decrypt)
-  if (metadata.encryptionScheme) {
-    return null
-  }
-
-  // Skip SSR for large files (>1MB) to avoid memory/CPU overhead
-  if (metadata.sizeBytes > MAX_SSR_FILE_SIZE) {
+  if (!canRenderDisplayPage(metadata)) {
     return null
   }
 
@@ -76,7 +74,9 @@ export async function renderDisplayPage(
 
   const inferredFilename = urlFilename || (urlExt && name + urlExt) || metadata.filename || name
   const pasteFile = new File([content], inferredFilename)
-  const displayName = metadata.filenames?.length ? itemCountLabel(metadata.filenames.length) : filenameForTitle(metadata.filename)
+  const displayName = metadata.filenames?.length
+    ? itemCountLabel(metadata.filenames.length)
+    : filenameForTitle(metadata.filename)
   const titleUrlFilename = filenameForTitle(urlFilename)
   const titleName =
     name + (titleUrlFilename ? " / " + titleUrlFilename : urlExt ? urlExt : displayName ? " / " + displayName : "")
@@ -85,6 +85,7 @@ export async function renderDisplayPage(
     DEPLOY_URL: env.DEPLOY_URL,
     REPO: env.REPO,
     MAX_EXPIRATION: env.MAX_EXPIRATION,
+    DEFAULT_READS: env.DEFAULT_READS,
     DEFAULT_EXPIRATION: env.DEFAULT_EXPIRATION,
     INDEX_PAGE_TITLE: env.INDEX_PAGE_TITLE,
   } as Env

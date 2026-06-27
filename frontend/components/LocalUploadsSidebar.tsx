@@ -10,9 +10,12 @@ import { tst } from "../utils/overrides.js"
 import { FileTree } from "./FileTree.js"
 import { itemCountLabel } from "../../shared/format.js"
 
+const LOCAL_UPLOAD_ANIMATION_MS = 180
+type UploadAnimation = Record<string, "enter" | "exit">
+
 interface LocalUploadsSidebarProps {
   uploads: LocalUploadRecord[]
-  onDeleteUpload: (upload: LocalUploadRecord) => Promise<void>
+  onDeleteUpload: (upload: LocalUploadRecord) => Promise<boolean>
   scrollToKey?: string
   className?: string
   style?: CSSProperties
@@ -40,6 +43,15 @@ function formatTimeLeft(expireAt: string, now: number): string {
   return `Expires in ${totalMinutes}m`
 }
 
+function formatReadsLeft(reads: number): string {
+  return `${reads} ${reads === 1 ? "read" : "reads"}`
+}
+
+function formatAvailability(upload: LocalUploadRecord, now: number): string {
+  const timeLeft = formatTimeLeft(upload.expireAt, now)
+  return upload.remainingReads === undefined ? timeLeft : `${timeLeft} or ${formatReadsLeft(upload.remainingReads)}`
+}
+
 export function LocalUploadsSidebar({
   uploads,
   onDeleteUpload,
@@ -48,8 +60,11 @@ export function LocalUploadsSidebar({
   style,
 }: LocalUploadsSidebarProps) {
   const listRef = useRef<HTMLDivElement | null>(null)
+  const knownKeysRef = useRef<Set<string>>(new Set(uploads.map((upload) => upload.key)))
+  const hasObservedUploadsRef = useRef(uploads.length > 0)
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set())
   const [deletingKey, setDeletingKey] = useState<string | undefined>(undefined)
+  const [animations, setAnimations] = useState<UploadAnimation>({})
   const [now, setNow] = useState(() => Date.now())
   const actionClass =
     `inline-flex h-[30px] cursor-pointer items-center gap-1.5 rounded-xl bg-default-100 px-2 ` +
@@ -66,12 +81,39 @@ export function LocalUploadsSidebar({
     }
   }, [scrollToKey])
 
+  useEffect(() => {
+    const previousKeys = knownKeysRef.current
+    const uploadKeys = uploads.map((upload) => upload.key)
+    const currentKeys = new Set(uploadKeys)
+    const nextEnteringKeys = hasObservedUploadsRef.current ? uploadKeys.filter((key) => !previousKeys.has(key)) : []
+
+    knownKeysRef.current = currentKeys
+    if (!hasObservedUploadsRef.current && uploads.length > 0) {
+      hasObservedUploadsRef.current = true
+    }
+    setAnimations((current) => {
+      const next = Object.fromEntries(Object.entries(current).filter(([key]) => currentKeys.has(key)))
+      for (const key of nextEnteringKeys) next[key] = "enter"
+      return next
+    })
+  }, [uploads])
+
   async function deleteUpload(upload: LocalUploadRecord) {
     setDeletingKey(upload.key)
+    setAnimations((current) => ({ ...current, [upload.key]: "exit" }))
+    let isRemoved = false
     try {
-      await onDeleteUpload(upload)
+      await new Promise((resolve) => window.setTimeout(resolve, LOCAL_UPLOAD_ANIMATION_MS))
+      isRemoved = await onDeleteUpload(upload)
     } finally {
       setDeletingKey(undefined)
+      if (!isRemoved) {
+        setAnimations((current) => {
+          const next = { ...current }
+          delete next[upload.key]
+          return next
+        })
+      }
     }
   }
 
@@ -87,84 +129,108 @@ export function LocalUploadsSidebar({
       ) : (
         <div
           ref={listRef}
-          className="flex max-h-[calc(100vh-1rem)] flex-col gap-2 overflow-y-auto px-1 xl:min-h-0 xl:max-h-none xl:flex-1 xl:overscroll-contain"
+          className="local-upload-list flex max-h-[calc(100vh-1rem)] flex-col overflow-y-auto px-1 xl:min-h-0 xl:max-h-none xl:flex-1 xl:overscroll-contain"
         >
           {uploads.map((upload) => {
             const isExpanded = expandedKeys.has(upload.key)
             const hasFilenames = upload.filenames !== undefined && upload.filenames.length > 0
             const isDeleting = deletingKey === upload.key
+            const animation = animations[upload.key]
             const displayName = getDisplayName(upload)
 
             return (
-              <Card key={upload.key} className="rounded-lg border border-default-200" style={{ boxShadow: "none" }}>
-                <CardBody className="px-3 pt-2 pb-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className="mt-1 flex shrink-0 items-center justify-center text-default-600">
-                      <FileIcon className="size-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium" title={displayName}>
-                        {displayName}
-                      </div>
-                      <div className="mt-0.5 text-xs text-default-500">{formatSize(upload.sizeBytes)}</div>
-                      <div className="mt-1 text-[13px] text-default-700">{formatTimeLeft(upload.expireAt, now)}</div>
+              <div
+                key={upload.key}
+                className={
+                  `local-upload-item ` +
+                  (animation ? `local-upload-${animation} ` : "") +
+                  (animation === "exit" ? "pointer-events-none " : "")
+                }
+                onAnimationEnd={() => {
+                  if (animation !== "enter") return
+                  setAnimations((current) => {
+                    const next = { ...current }
+                    delete next[upload.key]
+                    return next
+                  })
+                }}
+              >
+                <div className="local-upload-item-inner">
+                  <Card className="rounded-lg border border-default-200" style={{ boxShadow: "none" }}>
+                    <CardBody className="px-3 pt-2 pb-1.5">
+                      <div className="flex items-start gap-2">
+                        <div className="mt-1 flex shrink-0 items-center justify-center text-default-600">
+                          <FileIcon className="size-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium" title={displayName}>
+                            {displayName}
+                          </div>
+                          <div className="mt-0.5 text-xs text-default-500">{formatSize(upload.sizeBytes)}</div>
+                          <div className="mt-1 text-[13px] text-default-700">{formatAvailability(upload, now)}</div>
 
-                      {hasFilenames && (
-                        <>
-                          <button
+                          {hasFilenames && (
+                            <>
+                              <button
+                                type="button"
+                                className={`mt-1 inline-flex cursor-pointer items-center gap-1 text-sm text-primary hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-default-400 rounded ${tst}`}
+                                aria-expanded={isExpanded}
+                                onClick={() => {
+                                  setExpandedKeys((current) => {
+                                    const next = new Set(current)
+                                    if (next.has(upload.key)) next.delete(upload.key)
+                                    else next.add(upload.key)
+                                    return next
+                                  })
+                                }}
+                              >
+                                <ChevronDownIcon className={`size-4 ${isExpanded ? "" : "-rotate-90"}`} />
+                                <span>{itemCountLabel(upload.filenames!.length)}</span>
+                              </button>
+                              {isExpanded && (
+                                <div className="mt-2 max-h-48 overflow-auto rounded-md bg-default-100">
+                                  <FileTree files={upload.filenames!} compact />
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <Tooltip content="Delete" placement="bottom">
+                          <Button
                             type="button"
-                            className={`mt-1 inline-flex cursor-pointer items-center gap-1 text-sm text-primary hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-default-400 rounded ${tst}`}
-                            aria-expanded={isExpanded}
-                            onClick={() => {
-                              setExpandedKeys((current) => {
-                                const next = new Set(current)
-                                if (next.has(upload.key)) next.delete(upload.key)
-                                else next.add(upload.key)
-                                return next
-                              })
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            color="danger"
+                            aria-label={`Delete ${displayName}`}
+                            disabled={isDeleting}
+                            className="shrink-0 cursor-pointer text-default-500 hover:text-danger disabled:cursor-not-allowed"
+                            onPress={() => {
+                              void deleteUpload(upload)
                             }}
                           >
-                            <ChevronDownIcon className={`size-4 ${isExpanded ? "" : "-rotate-90"}`} />
-                            <span>{itemCountLabel(upload.filenames!.length)}</span>
-                          </button>
-                          {isExpanded && (
-                            <div className="mt-2 max-h-48 overflow-auto rounded-md bg-default-100">
-                              <FileTree files={upload.filenames!} compact />
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <Tooltip content="Delete" placement="bottom">
-                      <Button
-                        type="button"
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        color="danger"
-                        aria-label={`Delete ${displayName}`}
-                        disabled={isDeleting}
-                        className="shrink-0 cursor-pointer text-default-500 hover:text-danger disabled:cursor-not-allowed"
-                        onPress={() => {
-                          void deleteUpload(upload)
-                        }}
-                      >
-                        <TrashIcon className="size-5" />
-                      </Button>
-                    </Tooltip>
-                  </div>
+                            <TrashIcon className="size-5" />
+                          </Button>
+                        </Tooltip>
+                      </div>
 
-                  <div className="mt-1 mb-1.5 border-t border-divider" />
+                      <div className="mt-1 mb-1.5 border-t border-divider" />
 
-                  <div className="flex items-center justify-between">
-                    <a href={upload.displayUrl} target="_blank" rel="noreferrer" className={actionClass}>
-                      <ExternalLinkIcon className="size-6 text-default-600" />
-                      <span>Open</span>
-                    </a>
-                    <CopyWidget label="Copy link" className={actionClass} getCopyContent={() => upload.displayUrl} />
-                  </div>
-                </CardBody>
-              </Card>
+                      <div className="flex items-center justify-between">
+                        <a href={upload.displayUrl} target="_blank" rel="noreferrer" className={actionClass}>
+                          <ExternalLinkIcon className="size-6 text-default-600" />
+                          <span>Open</span>
+                        </a>
+                        <CopyWidget
+                          label="Copy link"
+                          className={actionClass}
+                          getCopyContent={() => upload.displayUrl}
+                        />
+                      </div>
+                    </CardBody>
+                  </Card>
+                </div>
+              </div>
             )
           })}
         </div>

@@ -13,6 +13,7 @@ export interface MetaResponse {
   expireAt: string
   sizeBytes: number
   location: PasteLocation
+  remainingReads?: number
   filename?: string
   filenames?: OriginalFileInfo[]
   mimeType?: string

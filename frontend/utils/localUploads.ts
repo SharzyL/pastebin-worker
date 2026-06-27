@@ -8,6 +8,7 @@ export interface LocalUploadRecord {
   filename?: string
   filenames?: OriginalFileInfo[]
   expireAt: string
+  remainingReads?: number
   sizeBytes: number
 }
 
@@ -33,6 +34,7 @@ function normalizeLocalUploadRecord(value: unknown): LocalUploadRecord | undefin
   const filename = record.filename
   const filenames = record.filenames
   const expireAt = record.expireAt
+  const remainingReads = record.remainingReads
   const sizeBytes = record.sizeBytes
 
   const hasRecordShape =
@@ -42,6 +44,8 @@ function normalizeLocalUploadRecord(value: unknown): LocalUploadRecord | undefin
     typeof sizeBytes === "number" &&
     Number.isFinite(sizeBytes) &&
     sizeBytes >= 0 &&
+    (remainingReads === undefined ||
+      (typeof remainingReads === "number" && Number.isSafeInteger(remainingReads) && remainingReads >= 0)) &&
     (filename === undefined || typeof filename === "string") &&
     (filenames === undefined || (Array.isArray(filenames) && filenames.every(isOriginalFileInfo)))
 
@@ -67,6 +71,7 @@ function normalizeLocalUploadRecord(value: unknown): LocalUploadRecord | undefin
   }
   if (filename !== undefined) normalized.filename = filename
   if (filenames !== undefined) normalized.filenames = filenames
+  if (remainingReads !== undefined) normalized.remainingReads = remainingReads
   return normalized
 }
 
@@ -118,6 +123,7 @@ export function upsertLocalUpload(response: PasteResponse, encryptionKey?: strin
     filename: response.filename,
     filenames: response.filenames,
     expireAt: response.expireAt,
+    remainingReads: response.remainingReads,
     sizeBytes: response.sizeBytes,
   }
 

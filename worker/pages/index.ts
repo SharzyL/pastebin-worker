@@ -17,6 +17,7 @@ export async function renderIndexPage(env: Env, pathname: string): Promise<strin
     DEPLOY_URL: env.DEPLOY_URL,
     REPO: env.REPO,
     MAX_EXPIRATION: env.MAX_EXPIRATION,
+    DEFAULT_READS: env.DEFAULT_READS,
     DEFAULT_EXPIRATION: env.DEFAULT_EXPIRATION,
     INDEX_PAGE_TITLE: env.INDEX_PAGE_TITLE,
   } as Env

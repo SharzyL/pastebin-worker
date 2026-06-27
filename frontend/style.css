@@ -100,3 +100,48 @@
 pre::after {
   content: "\A";
 }
+
+@keyframes local-upload-enter {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    padding-bottom: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    padding-bottom: 0.5rem;
+  }
+}
+
+@keyframes local-upload-exit {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    padding-bottom: 0.5rem;
+  }
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    padding-bottom: 0;
+  }
+}
+
+.local-upload-item {
+  display: grid;
+  grid-template-rows: 1fr;
+  padding-bottom: 0.5rem;
+}
+
+.local-upload-item-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.local-upload-enter {
+  animation: local-upload-enter 180ms ease-out both;
+}
+
+.local-upload-exit {
+  animation: local-upload-exit 180ms ease-in both;
+}

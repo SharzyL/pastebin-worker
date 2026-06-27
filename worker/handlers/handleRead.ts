@@ -5,7 +5,7 @@ import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
 import { makeMarkdown } from "../pages/markdown.js"
 import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
-import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
+import { consumeRead, getPaste, getPasteMetadata, hasReadLimit, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 import { BINARY_MIME_TYPE, MAX_URL_REDIRECT_LEN, TEXT_MIME_TYPE } from "../../shared/constants.js"
 import { filenameForTitle } from "../../shared/filename.js"
@@ -37,7 +37,10 @@ function staticPageCacheHeader(env: Env): Headers {
   return age ? { "Cache-Control": `public, max-age=${age}` } : {}
 }
 
-function pasteCacheHeader(env: Env): Headers {
+function pasteCacheHeader(env: Env, metadata?: PasteMetadata): Headers {
+  if (metadata && hasReadLimit(metadata)) {
+    return { "Cache-Control": "no-store" }
+  }
   const age = env.CACHE_PASTE_AGE
   return age ? { "Cache-Control": `public, max-age=${age}` } : {}
 }
@@ -179,6 +182,25 @@ async function getPasteWithoutContent(env: Env, name: string): Promise<PasteWith
   return metadata && { paste: new ArrayBuffer(), metadata }
 }
 
+function consumeReadAfterResponse(env: Env, ctx: ExecutionContext, name: string, item: PasteWithMetadata): void {
+  if (!hasReadLimit(item.metadata)) return
+  ctx.waitUntil(consumeRead(env, name, item.paste, item.metadata))
+}
+
+function responseWithReadConsumption(
+  response: Response,
+  env: Env,
+  ctx: ExecutionContext,
+  name: string,
+  item: PasteWithMetadata,
+  isHead: boolean,
+): Response {
+  if (!isHead) {
+    consumeReadAfterResponse(env, ctx, name, item)
+  }
+  return response
+}
+
 export async function handleGet(request: Request, env: Env, ctx: ExecutionContext, isHead: boolean): Promise<Response> {
   // TODO: handle etag
   const staticPageResp = await handleStaticPages(request, env, ctx)
@@ -192,11 +214,11 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   const disp = url.searchParams.has("a") ? "attachment" : "inline"
 
-  // when not isHead, always need to get paste unless "m"
+  // when not isHead, always need to get paste unless "m" or display shell
   // when isHead, no need to get paste unless "u"
-  const shouldGetPasteContent = (!isHead && role !== "m") || (isHead && role === "u")
+  const shouldGetPasteContent = (!isHead && role !== "m" && role !== "d") || (isHead && role === "u")
 
-  const item: PasteWithMetadata | null = shouldGetPasteContent
+  let item: PasteWithMetadata | null = shouldGetPasteContent
     ? await getPaste(env, name, ctx)
     : await getPasteWithoutContent(env, name)
 
@@ -248,7 +270,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     }
     const redirectURL = await decodeMaybeStream(item.paste)
     if (isLegalUrl(redirectURL)) {
-      return Response.redirect(redirectURL)
+      return responseWithReadConsumption(Response.redirect(redirectURL), env, ctx, name, item, isHead)
     } else {
       throw new WorkerError(400, "cannot parse paste content as a legal URL")
     }
@@ -256,13 +278,14 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle article (render as markdown)
   if (role === "a") {
-    return new Response(shouldGetPasteContent ? makeMarkdown(await decodeMaybeStream(item.paste)) : null, {
+    const response = new Response(shouldGetPasteContent ? makeMarkdown(await decodeMaybeStream(item.paste)) : null, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
-        ...pasteCacheHeader(env),
+        ...pasteCacheHeader(env, item.metadata),
         ...lastModifiedHeader(item.metadata),
       },
     })
+    return responseWithReadConsumption(response, env, ctx, name, item, isHead)
   }
 
   // handle metadata access
@@ -271,7 +294,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     return new Response(isHead ? null : JSON.stringify(returnedMetadata, null, 2), {
       headers: {
         "Content-Type": `application/json;charset=UTF-8`,
-        ...pasteCacheHeader(env),
+        ...pasteCacheHeader(env, item.metadata),
         ...lastModifiedHeader(item.metadata),
       },
     })
@@ -280,20 +303,29 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   // handle display page with SSR
   if (role === "d") {
     try {
-      const { renderDisplayPage } = await import("../pages/display.js")
+      const { canRenderDisplayPage, renderDisplayPage } = await import("../pages/display.js")
       const urlLang = url.searchParams.get("lang") || undefined
-      const page = await renderDisplayPage(env, name, filename, ext, urlLang, item.paste, item.metadata)
-      if (page) {
-        return new Response(isHead ? null : page, {
-          headers: {
-            "Content-Type": `text/html;charset=UTF-8`,
-            ...pasteCacheHeader(env),
-            ...lastModifiedHeader(item.metadata),
-          },
-        })
+      if (!isHead && canRenderDisplayPage(item.metadata)) {
+        const itemWithContent = await getPaste(env, name, ctx)
+        if (itemWithContent === null) {
+          throw new WorkerError(404, `paste of name '${name}' not found`)
+        }
+        item = itemWithContent
+        const page = await renderDisplayPage(env, name, filename, ext, urlLang, item.paste, item.metadata)
+        if (page) {
+          const response = new Response(page, {
+            headers: {
+              "Content-Type": `text/html;charset=UTF-8`,
+              ...pasteCacheHeader(env, item.metadata),
+              ...lastModifiedHeader(item.metadata),
+            },
+          })
+          return responseWithReadConsumption(response, env, ctx, name, item, isHead)
+        }
       }
-      // SSR skipped (encrypted file), fall through to CSR
+      // SSR skipped, fall through to CSR
     } catch (e) {
+      if (e instanceof WorkerError) throw e
       console.error("SSR failed, falling back to CSR:", e)
     }
     // CSR fallback
@@ -311,7 +343,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     return new Response(isHead ? null : page, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
-        ...pasteCacheHeader(env),
+        ...pasteCacheHeader(env, item.metadata),
         ...lastModifiedHeader(item.metadata),
       },
     })
@@ -320,7 +352,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   // handle default
   const headers: Headers = {
     "Content-Type": `${inferred_mime}`,
-    ...pasteCacheHeader(env),
+    ...pasteCacheHeader(env, item.metadata),
     ...lastModifiedHeader(item.metadata),
   }
   const exposeHeaders = ["Content-Disposition"]
@@ -339,6 +371,11 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     exposeHeaders.push("X-PB-Highlight-Language")
   }
 
+  if (item.metadata.remainingReads !== undefined) {
+    headers["X-PB-Remaining-Reads"] = item.metadata.remainingReads.toString()
+    exposeHeaders.push("X-PB-Remaining-Reads")
+  }
+
   if (item.httpEtag) {
     headers.etag = item.httpEtag
   }
@@ -355,5 +392,6 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   if (!shouldGetPasteContent) {
     headers["Content-Length"] = item.metadata.sizeBytes.toString()
   }
-  return new Response(shouldGetPasteContent ? item.paste : null, { headers })
+  const response = new Response(shouldGetPasteContent ? item.paste : null, { headers })
+  return responseWithReadConsumption(response, env, ctx, name, item, isHead)
 }

@@ -16,7 +16,7 @@ import {
   TEXT_MIME_TYPE,
 } from "../../shared/constants.js"
 import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
-import { verifyName, verifyPassword } from "../../shared/verify.js"
+import { parseReadLimit, verifyName, verifyPassword } from "../../shared/verify.js"
 import type { OriginalFileInfo, PasteResponse } from "../../shared/interfaces.js"
 import {
   handleMPUAbort,
@@ -67,6 +67,14 @@ function parseMimeType(raw: string | undefined): string | undefined {
   if (raw === undefined) return undefined
   if (raw === TEXT_MIME_TYPE || raw === BINARY_MIME_TYPE) return raw
   throw new WorkerError(400, "invalid mimeType metadata")
+}
+
+function parseRemainingReads(raw: string | undefined, defaultReads: number): number | undefined {
+  const remainingReads = parseReadLimit(raw === undefined ? defaultReads : raw)
+  if (remainingReads === null) {
+    throw new WorkerError(400, "invalid reads limit")
+  }
+  return remainingReads === 0 ? undefined : remainingReads
 }
 
 async function multipartToMap(req: Request, sizeLimit: string): Promise<Map<string, ParsedMultipartPart>> {
@@ -162,6 +170,7 @@ export async function handlePostOrPut(
   const highlightLanguage = parts.get("lang")?.contentAsString()
   const filenames = parseOriginalFileInfos(parts.get("filenames")?.contentAsString())
   const mimeType = parseMimeType(parts.get("mimeType")?.contentAsString())
+  const remainingReads = parseRemainingReads(parts.get("reads")?.contentAsString(), env.DEFAULT_READS)
   const expire = expireFromForm ? expireFromForm : env.DEFAULT_EXPIRATION
 
   const uploadedParts = isMPUComplete ? (JSON.parse(contentAsString()) as R2UploadedPart[]) : undefined
@@ -247,6 +256,7 @@ export async function handlePostOrPut(
       mimeType,
       highlightLanguage,
       encryptionScheme,
+      remainingReads,
       isMPUComplete,
     })
     return makeResponse(
@@ -288,6 +298,7 @@ export async function handlePostOrPut(
       highlightLanguage,
       contentLength: r2Object?.size || contentLength,
       encryptionScheme,
+      remainingReads,
       isMPUComplete,
     })
 

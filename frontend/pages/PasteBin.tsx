@@ -17,7 +17,7 @@ import { parsePath, parseFilenameFromContentDisposition } from "../../shared/par
 import { PASSWD_SEP, MAX_URL_REDIRECT_LEN, MAX_AUTO_FETCH_BYTES } from "../../shared/constants.js"
 
 import { verifyExpiration, verifyManageUrl, getMaxExpirationReadable } from "../utils/utils.js"
-import { verifyName, verifyPassword, isLegalUrl } from "../../shared/verify.js"
+import { verifyName, verifyPassword, isLegalUrl, verifyReadLimit } from "../../shared/verify.js"
 import { useNameAvailability } from "../utils/useNameAvailability.js"
 import type { UploadProgress } from "../utils/uploader.js"
 import { uploadPaste } from "../utils/uploader.js"
@@ -43,6 +43,14 @@ function stripEncryptedSuffix(filename: string | undefined): string | undefined 
   return filename?.replace(/\.encrypted$/, "")
 }
 
+function pasteKeyFromMaybeUrl(url: string): string | undefined {
+  try {
+    return pasteKeyFromUrl(url)
+  } catch {
+    return undefined
+  }
+}
+
 export function PasteBin({ config }: { config: Env }) {
   const [editorState, setEditorState] = useState<PasteEditState>({
     editKind: "edit",
@@ -53,6 +61,7 @@ export function PasteBin({ config }: { config: Env }) {
 
   const [pasteSetting, setPasteSetting] = useState<PasteSetting>({
     expiration: config.DEFAULT_EXPIRATION,
+    readLimit: String(config.DEFAULT_READS),
     manageUrl: "",
     name: "",
     password: "",
@@ -69,7 +78,7 @@ export function PasteBin({ config }: { config: Env }) {
   const uploadAbortRef = useRef<AbortController | null>(null)
   const mainUploadAreaRef = useRef<HTMLDivElement | null>(null)
   const [isInitPasteLoading, startFetchingInitPaste] = useTransition()
-  const { localUploads, rememberLocalUpload, removeLocalUploadByKey } = useLocalUploads()
+  const { localUploads, externalRemoval, rememberLocalUpload, removeLocalUploadByKey } = useLocalUploads()
   const [latestLocalUploadKey, setLatestLocalUploadKey] = useState<string | undefined>(undefined)
   const [mainUploadAreaHeight, setMainUploadAreaHeight] = useState<number | undefined>(undefined)
 
@@ -96,6 +105,13 @@ export function PasteBin({ config }: { config: Env }) {
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    if (externalRemoval.revision === 0) return
+    for (const key of externalRemoval.keys) {
+      clearCurrentManagedPasteByKey(key)
+    }
+  }, [externalRemoval])
 
   // handle admin URL
   useEffect(() => {
@@ -135,6 +151,10 @@ export function PasteBin({ config }: { config: Env }) {
           if (isEncrypted) {
             setPasteSetting((prev) => ({ ...prev, doEncrypt: true }))
           }
+          setPasteSetting((prev) => ({
+            ...prev,
+            readLimit: metadata.remainingReads === undefined ? "0" : String(metadata.remainingReads),
+          }))
 
           const headResp = await fetch(pasteUrl, { method: "HEAD" })
           if (!headResp.ok) {
@@ -257,9 +277,7 @@ export function PasteBin({ config }: { config: Env }) {
         const resp = await fetch(pasteSetting.manageUrl, { method: "DELETE" })
         if (resp.ok) {
           showModal("Deleted Successfully", "It may takes 60 seconds for the deletion to propagate to the world")
-          removeLocalUploadByKey(pasteKeyFromUrl(pasteSetting.manageUrl))
-          setPasteResponse(undefined)
-          setPasteSetting({ ...pasteSetting, uploadKind: "short", manageUrl: "" })
+          removeLocalUploadFromState(pasteKeyFromUrl(pasteSetting.manageUrl))
         } else {
           await handleFailedResp("Error on Delete Paste", resp)
         }
@@ -277,6 +295,10 @@ export function PasteBin({ config }: { config: Env }) {
     }
 
     if (!verifyPassword(pasteSetting.password)[0]) {
+      return false
+    }
+
+    if (!verifyReadLimit(pasteSetting.readLimit)[0]) {
       return false
     }
 
@@ -301,26 +323,37 @@ export function PasteBin({ config }: { config: Env }) {
     return verifyManageUrl(pasteSetting.manageUrl, config)[0]
   }
 
-  function removeLocalUploadFromState(upload: LocalUploadRecord) {
-    removeLocalUploadByKey(upload.key)
-    if (verifyManageUrl(pasteSetting.manageUrl, config)[0] && pasteKeyFromUrl(pasteSetting.manageUrl) === upload.key) {
+  function clearCurrentManagedPasteByKey(key: string) {
+    if (pasteKeyFromMaybeUrl(pasteSetting.manageUrl) === key) {
       setPasteResponse(undefined)
-      setPasteSetting({ ...pasteSetting, uploadKind: "short", manageUrl: "" })
+      setPasteSetting((prev) => {
+        if (pasteKeyFromMaybeUrl(prev.manageUrl) !== key) return prev
+        return { ...prev, uploadKind: "short", manageUrl: "" }
+      })
     }
   }
 
-  async function onDeleteLocalUpload(upload: LocalUploadRecord) {
+  function removeLocalUploadFromState(key: string) {
+    removeLocalUploadByKey(key)
+    clearCurrentManagedPasteByKey(key)
+  }
+
+  async function onDeleteLocalUpload(upload: LocalUploadRecord): Promise<boolean> {
     try {
       const resp = await fetch(upload.manageUrl, { method: "DELETE" })
       if (resp.ok) {
-        removeLocalUploadFromState(upload)
+        removeLocalUploadFromState(upload.key)
+        return true
       } else if (resp.status === 404 || resp.status === 410) {
-        removeLocalUploadFromState(upload)
+        removeLocalUploadFromState(upload.key)
+        return true
       } else {
         await handleFailedResp("Error on Delete Paste", resp)
+        return false
       }
     } catch (e) {
       handleError("Error on Delete Paste", e as Error)
+      return false
     }
   }
 

@@ -29,13 +29,34 @@ export function verifyName(name: string): VerifyResult {
   return [true, ""]
 }
 
-export function verifyExpiration(expiration: string, maxExpirationSeconds: number): VerifyResult {
+export function verifyExpiration(expiration: string, maxExpiration: string): VerifyResult {
   const parsed = parseExpiration(expiration)
   if (parsed === null) {
     return [false, `‘${expiration}’ is not a valid expiration specification`]
   }
+  const maxExpirationSeconds = parseExpiration(maxExpiration)!
   if (parsed > maxExpirationSeconds) {
-    return [false, `Exceed max expiration (${parseExpirationReadable(`${maxExpirationSeconds}s`)!})`]
+    return [false, `Exceed max expiration (${parseExpirationReadable(maxExpiration)!})`]
   }
   return [true, `Expires in ${parseExpirationReadable(expiration)!}`]
+}
+
+export function parseReadLimit(readLimit: string | number | null | undefined): number | null {
+  if (readLimit === null || readLimit === undefined) return null
+  const parsed = typeof readLimit === "number" ? readLimit : Number(readLimit)
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null
+}
+
+export function verifyReadLimit(readLimit: string | number): VerifyResult {
+  const parsed = parseReadLimit(readLimit)
+  if (parsed === null) {
+    return [false, "Reads must be a non-negative integer"]
+  }
+  if (parsed === 0) {
+    return [true, "Unlimited reads"]
+  }
+  if (parsed === 1) {
+    return [true, "Burn after read"]
+  }
+  return [true, `${parsed} max reads`]
 }

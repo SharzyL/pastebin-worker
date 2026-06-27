@@ -21,11 +21,13 @@ import { uploadPaste } from "../utils/uploader.js"
 const config = {
   DEPLOY_URL: "https://example.com",
   R2_MAX_ALLOWED: "10M",
+  DEFAULT_READS: 0,
 } as Env
 
 const pasteSetting: PasteSetting = {
   uploadKind: "short",
   expiration: "",
+  readLimit: "0",
   password: "",
   name: "",
   manageUrl: "",
@@ -107,5 +109,11 @@ describe("uploadPaste", () => {
 
     const options = firstUploadOptions()
     expect(options.inferMimeType).toStrictEqual(false)
+  })
+
+  it("passes the current reads setting, including unlimited reads", async () => {
+    await uploadPaste({ ...pasteSetting, readLimit: "0" }, textEditorState("hello"), vi.fn(), config)
+
+    expect(firstUploadOptions().remainingReads).toStrictEqual(0)
   })
 })
