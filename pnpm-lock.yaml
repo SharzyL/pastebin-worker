@@ -27,8 +27,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       bcrypt-ts:
-        specifier: ^8.0.1
-        version: 8.0.1
+        specifier: ^9.0.1
+        version: 9.0.1
       github-slugger:
         specifier: ^2.0.0
         version: 2.0.0
@@ -1233,9 +1233,9 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  bcrypt-ts@8.0.1:
-    resolution: {integrity: sha512-ILrO7U7YieyG+71KVIVVuPCmjN8N9DY3gYs4OiEoJvW8A5HOe4eerRhLD0Rgo2CAyANRKssFGXmLF74zJz094g==}
-    engines: {node: '>=20'}
+  bcrypt-ts@9.0.1:
+    resolution: {integrity: sha512-S38l8sCnXqTAiqswTMRhdiFFqPgDZqTy+WLfIL2KNbBf4EMe1E2v+ednI9M0hzEdBcoyzdB+VqhIRPqxscomnQ==}
+    engines: {node: '>=22'}
 
   bidi-js@1.0.3:
     resolution: {integrity: sha512-RKshQI1R3YQ+n9YJz2QQ147P66ELpa1FQEg20Dk8oW9t2KgLbpDLLp9aGZ7y8WHSshDknG0bknqGw5/tyCs5tw==}
@@ -3300,7 +3300,7 @@ snapshots:
 
   baseline-browser-mapping@2.10.43: {}
 
-  bcrypt-ts@8.0.1: {}
+  bcrypt-ts@9.0.1: {}
 
   bidi-js@1.0.3:
     dependencies:

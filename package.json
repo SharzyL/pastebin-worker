@@ -58,7 +58,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "bcrypt-ts": "^8.0.1",
+    "bcrypt-ts": "^9.0.1",
     "github-slugger": "^2.0.0",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.6",
