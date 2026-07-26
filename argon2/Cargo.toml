@@ -1,0 +1,30 @@
+[package]
+name = "pastebin-argon2"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Argon2id password hashing module for pastebin-worker"
+repository = "https://github.com/SharzyL/pastebin-worker"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = []
+# Password generation is needed by the Node CLI only.
+generate = []
+
+# Rust 1.87+ emits bulk-memory instructions by default, so Binaryen must be
+# told to accept them. -O4 reduces both size and hash time for this module.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-O4", "--enable-bulk-memory", "--strip-debug", "--strip-producers"]
+
+[dependencies]
+argon2 = { version = "0.5.3", default-features = false, features = ["alloc", "password-hash"] }
+wasm-bindgen = "0.2.126"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

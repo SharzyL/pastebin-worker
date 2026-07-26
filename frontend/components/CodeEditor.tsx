@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import type { SelectHandle } from "./ui/index.js"
 import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/index.js"
 
@@ -6,6 +6,7 @@ import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../
 import { highlightHTML, useAvailableLanguages, useHljsForLang } from "../utils/highlight.js"
 import { XIcon } from "./icons.js"
 import { DEFAULT_EDIT_FILENAME } from "../../shared/constants.js"
+import { countTextLines, LineNumbers } from "./LineNumbers.js"
 
 import "../styles/highlight-theme-light.css"
 import "../styles/highlight-theme-dark.css"
@@ -77,14 +78,19 @@ export function CodeEditor({
 }: CodeInputProps) {
   const refHighlighting = useRef<HTMLPreElement | null>(null)
   const refTextarea = useRef<HTMLTextAreaElement | null>(null)
-  const refLineNumbers = useRef<HTMLSpanElement | null>(null)
+  const refLineNumbers = useRef<HTMLDivElement | null>(null)
   const refIndentWith = useRef<SelectHandle | null>(null)
 
-  const lineCount = (content?.match(/\n/g)?.length || 0) + 1
-  const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, idx) => <span key={idx} />), [lineCount])
-  const [heightPx, setHeightPx] = useState<number>(Math.max(lineCount * 24, 100)) // Estimate initial height for SSR
+  const deferredContent = useDeferredValue(content)
   const hljs = useHljsForLang(lang)
   const availableLanguages = useAvailableLanguages()
+  const lineCount = useMemo(() => countTextLines(deferredContent), [deferredContent])
+  const highlightedHTML = useMemo(
+    () => highlightHTML(hljs, lang, handleNewLines(deferredContent)),
+    [deferredContent, hljs, lang],
+  )
+  const languageItems = useMemo(() => availableLanguages.map((language) => ({ key: language })), [availableLanguages])
+  const [heightPx, setHeightPx] = useState<number>(Math.max(countTextLines(content) * 24, 100)) // Estimate initial height for SSR
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
 
   function syncScroll() {
@@ -160,7 +166,7 @@ export function CodeEditor({
           label={"Language"}
           size={"sm"}
           isClearable
-          defaultItems={availableLanguages.map((lang) => ({ key: lang }))}
+          defaultItems={languageItems}
           // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
           selectedKey={lang || ""}
           onSelectionChange={(key) => {
@@ -203,18 +209,17 @@ export function CodeEditor({
               ref={refHighlighting}
               className={`text-foreground ${tst} w-full overflow-x-hidden`}
               style={{ marginLeft: lineNumOffset, width: `calc(100% - ${lineNumOffset})`, height: `${heightPx}px` }}
-              dangerouslySetInnerHTML={{ __html: highlightHTML(hljs, lang, handleNewLines(content)) }}
+              dangerouslySetInnerHTML={{ __html: highlightedHTML }}
             ></pre>
-            <span
+            <LineNumbers
               ref={refLineNumbers}
+              lineCount={lineCount}
               className={
                 "line-number-rows font-mono absolute pointer-events-none text-default-500 top-0 left-1 overflow-hidden " +
                 `border-solid border-default-300 border-r-1 ${tst}`
               }
               style={{ height: `${heightPx}px` }}
-            >
-              {lineNumbers}
-            </span>
+            />
           </div>
           <textarea
             className={`w-full font-mono min-h-[20em] text-transparent placeholder-default-400 

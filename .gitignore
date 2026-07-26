@@ -1,9 +1,9 @@
-/target
+**/target/
 dist
 **/*.rs.bk
-Cargo.lock
 bin/
 pkg/
+argon2/pkg*/
 wasm-pack.log
 node_modules/
 .cargo-ok

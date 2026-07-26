@@ -49,7 +49,7 @@ case "$state" in
             '(-s --passwd)'{-s,--passwd}'[Password]:Password of paste'
             '(-p --private)'{-p,--private}'[Make generated paste name longer for privacy]'
             '(-x --clip)'{-x,--clip}'[Clip the url to the clipboard]'
-            '(-E --encrypt)'{-E,--encrypt}'[Client-side AES-GCM encryption]'
+            '(-E --encrypt)'{-E,--encrypt}'[Client-side chunked AES-GCM encryption]'
             '(-F --filename)'{-F,--filename}'[Filename to store with paste]:filename'
         )
         _arguments -s $args $common_args
@@ -64,7 +64,7 @@ case "$state" in
             '(-e --expire)'{-e,--expire}'[Expiration time]:expiration'
             '(-s --passwd)'{-s,--passwd}'[Password]:Password of paste'
             '(-x --clip)'{-x,--clip}'[Clip the url to the clipboard]'
-            '(-E --encrypt)'{-E,--encrypt}'[Client-side AES-GCM encryption]'
+            '(-E --encrypt)'{-E,--encrypt}'[Client-side chunked AES-GCM encryption]'
             '(-F --filename)'{-F,--filename}'[Filename to store with paste]:filename'
         )
         _arguments -s $args $common_args

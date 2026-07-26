@@ -15,13 +15,6 @@ export const autoCompleteOverrides = {
   base: tstGrandChild,
 }
 
-export const radioOverrides = {
-  control: tst,
-  label: tst,
-  labelWrapper: tst,
-  wrapper: tst,
-}
-
 export const switchOverrides = {
   wrapper: tst,
 }

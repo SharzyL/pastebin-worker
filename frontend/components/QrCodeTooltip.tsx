@@ -109,8 +109,8 @@ export function QrCodeTooltip({
         <div
           role="dialog"
           aria-label="QR code"
-          className={`fixed right-2 z-50 h-fit w-fit max-h-[calc(100dvh-4rem)] max-w-[calc(100vw-1rem)] overflow-auto rounded-lg border border-default-200 bg-content1 p-1 shadow-medium xl:absolute xl:right-auto xl:left-1/2 xl:max-h-none xl:max-w-none xl:-translate-x-1/2 ${
-            actualPlacement === "top" ? "bottom-11 xl:bottom-full xl:mb-2" : "top-17 xl:top-full xl:mt-2"
+          className={`absolute right-0 z-50 h-fit w-fit max-h-[calc(100dvh-1rem)] max-w-[calc(100vw-1rem)] overflow-auto rounded-lg border border-default-200 bg-content1 p-1 shadow-medium ${
+            actualPlacement === "top" ? "bottom-full mb-2" : "top-full mt-2"
           }`}
         >
           <QrCodePreview value={value} />

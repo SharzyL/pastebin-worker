@@ -1,5 +1,12 @@
 import { atob_utf8, btoa_utf8, WorkerError } from "../common.js"
-import { compareSync } from "bcrypt-ts"
+import argon2Module from "../../argon2/pkg/argon2_bg.wasm"
+import { initSync, verify_password_hash } from "../../argon2/pkg/argon2.js"
+
+initSync({ module: argon2Module })
+
+export function verifyPasswordHash(password: string, encodedHash: string): boolean {
+  return verify_password_hash(password, encodedHash)
+}
 
 // Encoding function
 export function encodeBasicAuth(username: string, password: string): string {
@@ -24,7 +31,6 @@ export function decodeBasicAuth(encodedString: string): {
 // return null if auth passes or is not required,
 // return auth page if auth is required
 // throw WorkerError if auth failed
-// TODO: only allow hashed passwd
 export function verifyAuth(request: Request, env: Env): Response | null {
   // pass auth if 'BASIC_AUTH' is not present
   const basic_auth = env.BASIC_AUTH as Record<string, string>
@@ -37,7 +43,8 @@ export function verifyAuth(request: Request, env: Env): Response | null {
 
   if (request.headers.has("Authorization")) {
     const { username, password } = decodeBasicAuth(request.headers.get("Authorization")!)
-    if (!passwdMap.has(username) || !compareSync(password, passwdMap.get(username)!)) {
+    const encodedHash = passwdMap.get(username)
+    if (encodedHash === undefined || !verifyPasswordHash(password, encodedHash)) {
       throw new WorkerError(401, "incorrect passwd for basic auth")
     } else {
       return null
@@ -48,6 +55,7 @@ export function verifyAuth(request: Request, env: Env): Response | null {
       headers: {
         // Prompts the user for credentials.
         "WWW-Authenticate": 'Basic charset="UTF-8"',
+        "Cache-Control": "private, no-store",
       },
     })
   }

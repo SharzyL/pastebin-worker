@@ -22,9 +22,12 @@ If the paste is uploaded with a `lang` parameter, an `X-PB-Highlight-Language` h
 
 Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`.
 
-If error occurs, the worker returns status code different from `200`:
+Raw pastes stored in R2 support a single HTTP byte range. A satisfiable `Range: bytes=...` request returns `206 Partial Content` with `Accept-Ranges`, `Content-Range`, and `Content-Length`; an unsatisfiable range returns `416`. `If-Range` may contain the current strong ETag or an HTTP date. Range requests are ignored for KV-backed pastes and for pastes with a read limit, because a segmented download must not consume multiple reads.
+
+A successful full response uses `200`; a successful range response uses `206`. Error responses include:
 
 - `404`: the paste of given name is not found.
+- `416`: the requested R2 byte range is unsatisfiable.
 - `500`: unexpected exception. You may report this to the author to give it a fix.
 
 ## GET `/<name>:<passwd>`
@@ -54,6 +57,16 @@ If error occurs, the worker returns status code different from `200`:
 - `404`: the paste of given name is not found.
 - `500`: unexpected exception. You may report this to the author to give it a fix.
 
+## GET `/p/<name>`
+
+Return the receiver page for an active P2P room. The page remains renderable when the room has no free slot so that a receiver with a saved checkpoint can reconnect with its existing peer ID; admission is decided by the signaling connection.
+
+When supported by the browser, an in-progress receive is checkpointed to OPFS. Reopening or reloading the receiver page restores the last durable offset in a paused state and requires the receiver to explicitly resume it. Each browser tab also keeps a lightweight receiver peer ID in session storage independently of the checkpoint, so refreshing that tab reconnects as the same signaling peer even before any file data has been checkpointed. A terminal transfer result rotates the stored ID for the next session. Pausing enters a local pending state immediately, continues committing already in-flight ordered data until the sender acknowledges the pause, and then checkpoints the final received offset. If the peer connection is already unavailable, pausing is committed locally and synchronized after reconnection. Terminating immediately presents zero progress, clears the checkpoint and partial receive data, and discards further in-flight data while retaining a lightweight pending stop intent. The existing signaling and WebRTC connections are reused when possible, and a rebuilt peer connection repeats the stop handshake before another download starts in the same receiver session. A temporary signaling disconnect within the same open page does not close a healthy WebRTC data channel, so an active transfer continues without restarting. The signaling socket reconnects independently and then reconciles the existing peer, checkpoint, pairing, and completion state. Returning from a long background suspension replaces a potentially half-open signaling socket before synchronization. The server keeps a disconnected receiver's slot for a 30-second signaling grace period; receiver signaling retries extend beyond that grace period as a fallback when session storage is unavailable. After the grace period, only a checkpointed receiver remains resumable. Completing a transfer retires its peer ID while keeping the successful transfer counted.
+
+P2P checkpoints use the browser's default best-effort storage policy; the application does not request persistent-storage protection. Stale P2P temporary files older than 24 hours are removed the next time a P2P receiver initializes, and the browser may reclaim them earlier under storage pressure.
+
+If WebRTC fails while signaling is connected, the receiver requests a sender-driven peer rebuild after a short grace period. If WebRTC also fails while signaling is offline, recovery waits until both signaling endpoints are available instead of consuming the WebRTC retry window. If signaling becomes unavailable after WebRTC recovery has already started, pending recovery timers are cancelled and the deadline is reset; a complete new recovery window starts after signaling is ready again. Recovery attempts use bounded backoff while retaining the peer ID, selected file version, progress, and receiver storage. A stale negotiation cannot replace a newer one. If recovery cannot be completed within approximately 30 seconds of signaling availability, the transfer becomes paused and the receiver may explicitly resume to start a new recovery window.
+
 ## GET `/m/<name>`
 
 Get the metadata of the paste of name `<name>`.
@@ -74,7 +87,7 @@ The response body is a JSON object, for example:
   "location": "KV",
   "filename": "a.jpg",
   "highlightLanguage": "rust",
-  "encryptionScheme": "AES-GCM"
+  "encryptionScheme": "AES-GCM-CHUNKED"
 }
 ```
 
@@ -87,7 +100,7 @@ Explanation of the fields:
 - `filename`: Optional string. The file name of the paste.
 - `location`: String, either "KV" or "R2". Representing whether the paste content is stored in Cloudflare KV storage or R2 object storage.
 - `highlightLanguage`: Optional string. The syntax highlighting language uploaded with the `lang` form field.
-- `encryptionScheme`: Optional string. Currently only "AES-GCM" is possible. The encryption scheme used to encrypt the paste.
+- `encryptionScheme`: Optional string. The official clients currently use `AES-GCM-CHUNKED`: a 32-byte header followed by independently authenticated 5 MiB AES-GCM chunks. The encryption scheme used to encrypt the paste.
 
 ## GET `/a/<name>`
 
@@ -154,7 +167,7 @@ Upload your paste. It accept parameters in form-data:
 
 - `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used.
 
-- `encryption-scheme`: optional. The encryption scheme used in the uploaded paste. It will be returned as `X-PB-Encryption-Scheme` header on fetching paste. Note that this is not the encryption scheme that the backend will perform.
+- `encryption-scheme`: optional. The encryption scheme used in the uploaded paste. Official clients use `AES-GCM-CHUNKED`. It will be returned as `X-PB-Encryption-Scheme` on fetching the paste. The backend stores the ciphertext as-is and does not perform encryption or decryption.
 
 - `lang`: optional. The language of the uploaded paste for syntax highlighting. Should be a lower-case name of language listed in [highlight.js documentation](https://github.com/highlightjs/highlight.js/blob/main/SUPPORTED_LANGUAGES.md). This will be returned as `X-PB-Highlight-Language` header on fetching paste.
 
@@ -172,7 +185,7 @@ Upload your paste. It accept parameters in form-data:
   "location": "KV",
   "filename": "a.jpg",
   "highlightLanguage": "rust",
-  "encryptionScheme": "AES-GCM"
+  "encryptionScheme": "AES-GCM-CHUNKED"
 }
 ```
 

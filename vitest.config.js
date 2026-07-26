@@ -12,6 +12,11 @@ export default defineConfig({
       defineConfig({
         plugins: [
           cloudflareTest({
+            miniflare: {
+              bindings: {
+                BASIC_AUTH: {},
+              },
+            },
             wrangler: {
               configPath: "./wrangler.toml",
             },
@@ -20,6 +25,9 @@ export default defineConfig({
         test: {
           name: "Workers",
           include: ["worker/test/**/*.spec.ts"],
+          // BASIC_AUTH is mutable test state, and password hashing can block
+          // unrelated Worker files when the pool runs them in parallel.
+          fileParallelism: false,
           coverage: {
             provider: "istanbul", // v8 is not supported due for cf workers
             reporter: ["text", "json-summary", "html", "json"],

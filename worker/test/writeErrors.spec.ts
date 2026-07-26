@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { createExecutionContext, env } from "cloudflare:test"
 import { BASE_URL, upload, uploadExpectStatus, workerFetch } from "./testUtils.js"
 import worker from "../index.js"
+import { DIRECT_UPLOAD_MAX_BYTES } from "../../shared/constants.js"
 
 const ctx = createExecutionContext()
 
@@ -35,12 +36,9 @@ describe("write error paths — content/format validation", () => {
     expect(resp.status).toStrictEqual(400)
   })
 
-  it("POST exceeding R2_MAX_ALLOWED returns 413", async () => {
-    const tightEnv = { ...env, R2_MAX_ALLOWED: "10" }
-    const fd = new FormData()
-    fd.set("c", new Blob(["this payload is definitely longer than 10 bytes"]))
-    const resp = await worker.fetch(new Request(BASE_URL, { method: "POST", body: fd }), tightEnv, ctx)
-    expect(resp.status).toStrictEqual(413)
+  it("POST accepts exactly 5 MiB and rejects one byte more", async () => {
+    await upload(ctx, { c: new Blob([new Uint8Array(DIRECT_UPLOAD_MAX_BYTES)]) })
+    await uploadExpectStatus(ctx, { c: new Blob([new Uint8Array(DIRECT_UPLOAD_MAX_BYTES + 1)]) }, 413)
   })
 
   it("POST accepts multipart body when final CRLF arrives as a separate chunk", async () => {
@@ -105,6 +103,14 @@ describe("write error paths — name and password validation", () => {
 })
 
 describe("write error paths — PUT specifics", () => {
+  it("PUT exceeding 5 MiB returns 413", async () => {
+    const seeded = await upload(ctx, { c: new Blob(["x"]) })
+    await uploadExpectStatus(ctx, { c: new Blob([new Uint8Array(DIRECT_UPLOAD_MAX_BYTES + 1)]) }, 413, {
+      method: "PUT",
+      url: seeded.manageUrl,
+    })
+  })
+
   it("PUT with `n` field returns 400 (cannot rename)", async () => {
     const seeded = await upload(ctx, { c: new Blob(["x"]) })
     await uploadExpectStatus(ctx, { c: new Blob(["y"]), n: "newname" }, 400, {

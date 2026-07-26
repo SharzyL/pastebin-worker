@@ -1,13 +1,29 @@
 export const CHAR_GEN = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
 export const NAME_REGEX = /^[a-zA-Z0-9+_\-[\]*$@,;]{3,}$/
-export const PASTE_NAME_LEN = 4
+export const PASTE_NAME_LEN = 6
 export const PRIVATE_PASTE_NAME_LEN = 24
 export const DEFAULT_PASSWD_LEN = 24
 export const MAX_PASSWD_LEN = 128
 export const MIN_PASSWD_LEN = 8
 export const MAX_URL_REDIRECT_LEN = 2000
 export const PASSWD_SEP = ":"
+export const BINARY_SNIFF_BYTES = 1024
 export const MAX_AUTO_FETCH_BYTES = 256 * 1024
+export const MAX_P2P_AUTO_PREVIEW_BYTES = 1024 * 1024
+export const P2P_RTC_DISCONNECT_GRACE_MS = 3 * 1000
+export const P2P_SIGNAL_RECONNECT_GRACE_MS = 30 * 1000
+export const P2P_SIGNAL_RECONNECT_WINDOW_MS = 30 * 1000
+// The receiver must keep retrying beyond the server-side signaling grace period.
+export const P2P_RECEIVER_SIGNAL_RECONNECT_WINDOW_MS = 45 * 1000
+export const P2P_SIGNAL_BACKGROUND_REFRESH_MS = 60 * 1000
+export const P2P_HEARTBEAT_INTERVAL_MS = 30 * 1000
+export const P2P_HEARTBEAT_TIMEOUT_MS = 90 * 1000
+export const DIRECT_UPLOAD_MAX_BYTES = 5 * 1024 * 1024
+export const ZIP_MEMORY_THRESHOLD_BYTES = 64 * 1024 * 1024
+export const OPFS_LARGE_FILE_THRESHOLD_BYTES = 64 * 1024 * 1024
+export const OPFS_REQUIRED_SPACE_MULTIPLIER = 1.2
 export const DEFAULT_EDIT_FILENAME = "Untitled"
 export const TEXT_MIME_TYPE = "text/plain;charset=UTF-8"
 export const BINARY_MIME_TYPE = "application/octet-stream"
+export const CHUNKED_ENCRYPTION_SCHEME = "AES-GCM-CHUNKED" as const
+export type EncryptionScheme = typeof CHUNKED_ENCRYPTION_SCHEME

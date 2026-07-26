@@ -1,3 +1,4 @@
 worker-configuration.d.ts
 frontend/github.css
 pnpm-lock.yaml
+argon2/pkg*/

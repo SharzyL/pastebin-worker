@@ -1,4 +1,5 @@
 import { CHAR_GEN } from "../shared/constants.js"
+export { escapeHtml } from "../shared/encoding.js"
 
 export function decode(buffer: ArrayBuffer | ArrayBufferView<ArrayBufferLike>): string {
   return new TextDecoder().decode(buffer)
@@ -15,16 +16,22 @@ export function atob_utf8(value: string): string {
   )
 }
 
-export function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m]!)
-}
-
 export class WorkerError extends Error {
   public statusCode: number
   constructor(statusCode: number, msg: string) {
     super(msg)
     this.statusCode = statusCode
   }
+}
+
+export function jsonResponse(value: unknown, init?: ResponseInit): Response {
+  return new Response(JSON.stringify(value), {
+    ...init,
+    headers: {
+      "Content-Type": "application/json;charset=UTF-8",
+      ...init?.headers,
+    },
+  })
 }
 
 export function workerAssert(condition: boolean, msg: string): asserts condition {
@@ -37,19 +44,15 @@ export function dateToUnix(date: Date): number {
   return Math.floor(date.getTime() / 1000)
 }
 
-export function genRandStr(len: number): string {
-  let str = "";
-  const numOfRand = CHAR_GEN.length;
+export function genRandStr(length: number): string {
+  const randomValues = new Uint32Array(length)
+  crypto.getRandomValues(randomValues)
 
-  const randomValues = new Uint32Array(len);
-  crypto.getRandomValues(randomValues);
-
-  for (let i = 0; i < len; i++) {
-    const randomIndex = randomValues[i] % numOfRand;
-    str += CHAR_GEN.charAt(randomIndex);
+  let value = ""
+  for (const randomValue of randomValues) {
+    value += CHAR_GEN.charAt(randomValue % CHAR_GEN.length)
   }
-
-  return str;
+  return value
 }
 
 // Workers extension to SubtleCrypto, mirrored from worker-configuration.d.ts.

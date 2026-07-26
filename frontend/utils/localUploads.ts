@@ -1,4 +1,5 @@
 import type { OriginalFileInfo, PasteResponse } from "../../shared/interfaces.js"
+import { isOriginalFileInfo } from "../../shared/verify.js"
 import { makeDisplayUrl, pasteKeyFromUrl } from "./pasteUrls.js"
 
 export interface LocalUploadRecord {
@@ -14,17 +15,6 @@ export interface LocalUploadRecord {
 
 export const LOCAL_UPLOADS_KEY = "pastebinWorkerLocalUploads"
 const MAX_LOCAL_UPLOADS = 50
-
-function isOriginalFileInfo(value: unknown): value is OriginalFileInfo {
-  if (typeof value !== "object" || value === null) return false
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.name === "string" &&
-    typeof record.sizeBytes === "number" &&
-    Number.isFinite(record.sizeBytes) &&
-    record.sizeBytes >= 0
-  )
-}
 
 function normalizeLocalUploadRecord(value: unknown): LocalUploadRecord | undefined {
   if (typeof value !== "object" || value === null) return undefined

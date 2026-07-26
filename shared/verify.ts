@@ -1,10 +1,29 @@
 import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, NAME_REGEX } from "./constants.js"
+import type { OriginalFileInfo } from "./interfaces.js"
 import { parseExpiration, parseExpirationReadable } from "./parsers.js"
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 export type VerifyResult = [ok: true, message: string] | [ok: false, error: string]
 
+export function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_REGEX.test(value)
+}
+
 export function isLegalUrl(url: string): boolean {
   return URL.canParse(url)
+}
+
+export function isOriginalFileInfo(value: unknown): value is OriginalFileInfo {
+  if (typeof value !== "object" || value === null) return false
+  const candidate = value as Partial<OriginalFileInfo>
+  return (
+    typeof candidate.name === "string" &&
+    candidate.name.length > 0 &&
+    typeof candidate.sizeBytes === "number" &&
+    Number.isSafeInteger(candidate.sizeBytes) &&
+    candidate.sizeBytes >= 0
+  )
 }
 
 export function verifyPassword(password: string): VerifyResult {
@@ -59,4 +78,18 @@ export function verifyReadLimit(readLimit: string | number): VerifyResult {
     return [true, "Burn after read"]
   }
   return [true, `${parsed} max reads`]
+}
+
+export function verifyReceiverLimit(receiverLimit: string | number): VerifyResult {
+  const parsed = parseReadLimit(receiverLimit)
+  if (parsed === null) {
+    return [false, "Transfers must be a non-negative integer"]
+  }
+  if (parsed === 0) {
+    return [true, "Unlimited transfers"]
+  }
+  if (parsed === 1) {
+    return [true, "Stop after transfer"]
+  }
+  return [true, `${parsed} max transfers`]
 }

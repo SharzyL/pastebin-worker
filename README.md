@@ -12,6 +12,7 @@ This is a pastebin running on Cloudflare workers. Try it on [shz.al](https://shz
 1. Share **markdown** file with rendered HTML.
 1. URL shortener.
 1. Smart and tweakable handling for `Content-Type` and `Content-Disposition`.
+1. Direct P2P file transfer with verification, pause/resume, and crash-safe browser checkpoints when OPFS is available.
 
 ## Usage
 
@@ -53,7 +54,7 @@ $ pnpm deploy
 
 ## Cost
 
-The service runs on Cloudflare Workers, Workers KV, and R2. Each has a free tier; beyond it you pay only for what you use. Figures below are accurate as of writing — **prices change, so confirm against the official pricing pages before relying on them**:
+The service runs on Cloudflare Workers, Workers KV, R2, and Durable Objects. Each has a free tier; beyond it you pay only for what you use. Figures below are accurate as of writing — **prices change, so confirm against the official pricing pages before relying on them**:
 
 - **[Workers](https://developers.cloudflare.com/workers/platform/pricing/)** — request routing and execution. Egress is free.
   - Free plan: 100 k requests/day, 10 ms CPU per invocation.
@@ -64,31 +65,92 @@ The service runs on Cloudflare Workers, Workers KV, and R2. Each has a free tier
 - **[R2](https://developers.cloudflare.com/r2/pricing/)** — paste content above `R2_THRESHOLD`. Egress is free. Class A op = upload (`PutObject`); Class B op = fetch (`GetObject`). Cloudflare rounds storage up to the next GB-month.
   - Free: 10 GB-month storage, 1 M Class A ops/month, 10 M Class B ops/month.
   - Standard paid: $0.015/GB-month storage, $4.50/M Class A ops, $0.36/M Class B ops.
+- **[Durable Objects](https://developers.cloudflare.com/durable-objects/platform/pricing/)** — P2P room state and signaling, plus atomic read counters for pastes with a read limit. Ordinary pastes without a read limit do not use them.
+  - Free (daily): 100 k requests, 13 k GB-s duration, 5 M rows read, 100 k rows written, and 5 GB stored data.
+  - Paid (monthly): 1 M requests and 400 k GB-s included, then $0.15/M requests and $12.50/M GB-s. SQLite storage includes 25 B rows read, 50 M rows written, and 5 GB-month, then $0.001/M rows read, $1/M rows written, and $0.20/GB-month.
+  - An incoming WebSocket connection counts as a request; incoming WebSocket messages are billed at a 20:1 ratio, while outgoing messages are not charged.
 - **[Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/)** — optional, off unless enabled in `wrangler.toml`.
   - Free: 200 k events/day, 3-day retention.
   - Paid: 20 M events/month included + $0.60 per additional million, 7-day retention.
 
-Costs scale primarily with: large file traffic (R2 ops + storage), high-volume reads (Workers requests + KV reads), and verbose logging (Workers Logs events).
+Costs scale primarily with: large file traffic (R2 ops + storage), high-volume reads (Workers requests + KV reads), P2P signaling or read-limited paste access (Durable Objects), and verbose logging (Workers Logs events). P2P file bytes travel directly between browsers, or through the configured TURN service, rather than through Durable Objects.
 
 **Bottom line — what each tier comfortably handles**:
 
-- **Free tier — a personal pastebin.** Binding limits are KV writes (**1 k uploads/day**) and KV/Workers reads (**~100 k fetches/day**), with **1 GB** small-paste storage and **10 GB** large-paste storage on R2. Plenty for individual or small-team use.
-- **$5/month Paid — a small public or community service.** Roughly **~33 k uploads/day** and **~333 k fetches/day** stay within the included monthly KV allotment; Workers requests included to ~10 M/month (~333 k/day). R2 storage and ops come out of R2's own free tier first, then a few cents per GB-month and per million ops — adding only a few dollars even at moderate traffic.
+- **Free tier — a personal pastebin.** Binding limits are KV writes (**1 k uploads/day**), Workers requests and KV reads (**100 k each/day**), and Durable Object requests (**100 k/day**), with **1 GB** small-paste storage, **10 GB** large-paste storage on R2, and **5 GB** Durable Object storage. Plenty for individual or small-team use.
+- **$5/month Paid — a small public or community service.** Roughly **~33 k uploads/day** and **~333 k ordinary fetches/day** stay within the included monthly KV and Workers allotments. P2P signaling and read-limited paste access additionally use the Durable Objects allowance of 1 M requests/month before overage. R2 storage and ops come out of R2's own free tier first, then a few cents per GB-month and per million ops — adding only a few dollars even at moderate traffic.
 
 > [!NOTE]
 > Small pastes go to KV (not R2) to keep garbage collection cheap. KV honors per-key expiration natively, so expired pastes vanish on their own. R2 has no built-in expiration, so cleaning up expired objects would require periodically listing and scanning every object in the bucket — costly in Class A/B ops as the bucket grows.
+
+## P2P file transfer
+
+P2P mode transfers files directly between browsers over WebRTC without storing them in KV or R2. Select **P2P
+transfer**, share the generated six-character URL, and keep the sender page open until the transfer finishes. It
+supports transfer verification, pause/resume, receiver limits, and receive checkpoints when OPFS is available.
+
+P2P uses public STUN by default. For more reliable connections across restrictive NATs and firewalls, configure
+Cloudflare Realtime TURN or a self-hosted coturn server.
+
+### Cloudflare Realtime TURN
+
+Set the TURN key ID under `[vars]`:
+
+```toml
+CF_TURN_ID = "your-turn-key-id"
+```
+
+Store the API secret as a Wrangler secret:
+
+```console
+$ pnpm wrangler secret put CF_TURN_API_SECRET
+```
+
+### Self-hosted coturn
+
+Add the below config in coturn conf:
+
+```ini
+use-auth-secret
+static-auth-secret=replace-with-a-long-random-secret
+realm=turn.example.com
+```
+
+Store the same shared auth secret:
+
+```console
+$ pnpm wrangler secret put TURN_SHARED_SECRET
+```
+
+Set the coturn URLs under `[vars]`:
+
+```toml
+TURN_URLS = [
+  "stun:turn.example.com:3478",
+  "turn:turn.example.com:3478?transport=tcp",
+  "turn:turn.example.com:3478?transport=udp",
+]
+```
+
+At least one TURN URL must use `?transport=tcp` for health checks; UDP URLs may still be included for browsers.
+Checks run only on cache misses, and credentials are cached after any TCP endpoint succeeds. The hostname must be
+reachable through [Workers TCP sockets](https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/).
+On failure, the room is created without `iceServers`.
 
 ## Auth
 
 If you want a private deployment (only you can upload paste, but everyone can read the paste), add the following entry to your `wrangler.toml`.
 
 ```toml
-[vars.BASIC_AUTH]
-user1 = "$2b$08$i/yH1TSIGWUNQVsxPrcVUeR0hsGioFNf3.OeHdYzxwjzLH/hzoY.i"
-user2 = "$2b$08$KeVnmXoMuRjNHKQjDHppEeXAf5lTLv9HMJCTlKW5uvRcEG5LOdBpO"
+BASIC_AUTH = {user1 = "$argon2id$v=19$m=8192,t=2,p=1$9z/txTGDTK0XI9Vefm87Eg$+M3UZWmmI8UlHzmeqxPKRt8rPhtN8P7JaSlC7wpBqHg" , user2 = "$argon2id$v=19$m=8192,t=2,p=1$UMRu+cwClTko2t8W5m5sJg$rKb6LN0npE4PTzQPB4dP7Y3HVvV4F36RpPVRpB8xm5Q"}
 ```
 
-Passwords here are hashed by bcrypt2 algorithm. You can generate the hashed password by running `./scripts/bcrypt.js`.
+Passwords are hashed with Argon2id using a unique 16-byte random salt, 8192 KiB of memory, two iterations, and one
+lane. Generate each password hash by running `pnpm password`. Existing bcrypt, scrypt, and PBKDF2 hashes are not
+accepted.
+
+Building the Worker and generating hashes require Rust with the `wasm32-unknown-unknown` target. Install that target
+with `rustup target add wasm32-unknown-unknown`; `pnpm install` installs the pinned `wasm-pack` build tool.
 
 Now every access to POST request, and every access to static pages, requires an HTTP basic auth with the user-password pair listed above. For example:
 

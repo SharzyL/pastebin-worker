@@ -60,7 +60,7 @@ afterAll(() => {
 
 import "@testing-library/jest-dom/vitest"
 import { userEvent } from "@testing-library/user-event"
-import type { PasteResponse } from "../../shared/interfaces.js"
+import type { PasteResponse, PublicEnv } from "../../shared/interfaces.js"
 import { BINARY_MIME_TYPE, TEXT_MIME_TYPE } from "../../shared/constants.js"
 import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
@@ -68,9 +68,14 @@ import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
 import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
 import { LOCAL_UPLOADS_KEY } from "../utils/localUploads.js"
 
+const pasteConfig = {
+  ...__WRANGLER_CONFIG__,
+  DEFAULT_P2P_TRANSFER: false,
+} satisfies PublicEnv
+
 describe("Pastebin", () => {
   it("can upload", async () => {
-    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    render(<PasteBin config={pasteConfig} />)
 
     const title = screen.getByText("Pastebin Worker")
     expect(title).toBeInTheDocument()
@@ -95,6 +100,47 @@ describe("Pastebin", () => {
     expect((manageUrlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.manageUrl)
   })
 
+  it("enables a normal update only after the uploaded content or settings change", async () => {
+    server.use(
+      http.post(`${pasteConfig.DEPLOY_URL}/`, () =>
+        HttpResponse.json({
+          ...mockedPasteUpload,
+          url: `${pasteConfig.DEPLOY_URL}/abcd`,
+          manageUrl: `${pasteConfig.DEPLOY_URL}/abcd:aaaaaaaaaaaaaaaaaa`,
+        }),
+      ),
+      http.put(`${pasteConfig.DEPLOY_URL}/abcd:aaaaaaaaaaaaaaaaaa`, () =>
+        HttpResponse.json({
+          ...mockedPasteUpload,
+          url: `${pasteConfig.DEPLOY_URL}/abcd`,
+          manageUrl: `${pasteConfig.DEPLOY_URL}/abcd:aaaaaaaaaaaaaaaaaa`,
+        }),
+      ),
+    )
+    render(<PasteBin config={pasteConfig} />)
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    await userEvent.type(editor, "something")
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }))
+
+    const update = await screen.findByRole("button", { name: "Update" })
+    expect(update).toBeDisabled()
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    await userEvent.type(editor, " changed")
+    expect(screen.getByRole("textbox", { name: "Paste editor" })).toHaveValue("something changed")
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update" })).toBeEnabled())
+    await userEvent.click(update)
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update" })).toBeDisabled())
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    const expiration = screen
+      .getAllByRole("textbox", { name: "Expiration" })
+      .find((element) => !element.hasAttribute("readonly"))!
+    await userEvent.clear(expiration)
+    await userEvent.type(expiration, "2h")
+    expect(screen.getByRole("button", { name: "Update" })).toBeEnabled()
+  })
+
   it("shows remaining reads in the local uploads sidebar", async () => {
     server.use(
       http.post(`${__WRANGLER_CONFIG__.DEPLOY_URL}/`, () => {
@@ -105,7 +151,7 @@ describe("Pastebin", () => {
         })
       }),
     )
-    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    render(<PasteBin config={pasteConfig} />)
 
     await userEvent.type(screen.getByRole("textbox", { name: "Paste editor" }), "something")
     await userEvent.click(screen.getByRole("button", { name: "Upload" }))
@@ -114,7 +160,7 @@ describe("Pastebin", () => {
   })
 
   it("refuse illegal settings", async () => {
-    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    render(<PasteBin config={pasteConfig} />)
     // due to bugs https://github.com/adobe/react-spectrum/discussions/8037, we need to use duplicated name here
     const expire = screen.getByRole("textbox", { name: "Expiration" })
     expect(expire).toBeValid()
@@ -123,15 +169,38 @@ describe("Pastebin", () => {
   })
 
   it("uses DEFAULT_READS as the initial reads setting", () => {
-    render(<PasteBin config={{ ...__WRANGLER_CONFIG__, DEFAULT_READS: 2 }} />)
+    render(<PasteBin config={{ ...pasteConfig, DEFAULT_READS: 2 }} />)
 
     const reads = screen.getByRole("spinbutton", { name: "Reads" })
     expect(reads).toBeValid()
     expect(reads).toHaveValue(2)
   })
 
+  it.each([
+    ["edit", "Paste editor"],
+    ["file", "Select file"],
+  ] as const)("uses DEFAULT_TAB=%s as the initial input tab", (defaultTab, panelName) => {
+    render(<PasteBin config={{ ...pasteConfig, DEFAULT_TAB: defaultTab }} />)
+
+    expect(screen.getByRole(defaultTab === "edit" ? "textbox" : "button", { name: panelName })).toBeInTheDocument()
+  })
+
+  it("uses DEFAULT_P2P_TRANSFER as the initial P2P setting", () => {
+    render(<PasteBin config={{ ...__WRANGLER_CONFIG__, DEFAULT_P2P_TRANSFER: true }} />)
+
+    expect(screen.getByRole("checkbox", { name: "P2P transfer" })).toBeChecked()
+    expect(screen.getByRole("button", { name: "Start P2P" })).toBeInTheDocument()
+  })
+
+  it("describes a single P2P transfer as stop after transfer", () => {
+    render(<PasteBin config={{ ...__WRANGLER_CONFIG__, DEFAULT_P2P_TRANSFER: true, DEFAULT_P2P_TRANSFERS: 1 }} />)
+
+    expect(screen.getByRole("spinbutton", { name: "Transfers" })).toHaveValue(1)
+    expect(screen.getByText("Stop after transfer")).toBeInTheDocument()
+  })
+
   it("clears current manage state when another tab removes the local upload", async () => {
-    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    render(<PasteBin config={pasteConfig} />)
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
     await userEvent.type(editor, "something")
@@ -155,17 +224,21 @@ describe("Pastebin", () => {
 describe("Pastebin admin page", () => {
   it("renders admin page", async () => {
     vi.stubGlobal("location", new URL("https://example.com/abcd:xxxxxxxxx"))
-    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    render(<PasteBin config={{ ...__WRANGLER_CONFIG__, DEFAULT_P2P_TRANSFER: true }} />)
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
     expect(editor).toBeInTheDocument()
     await waitFor(() => expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent))
+    expect(screen.getByRole("checkbox", { name: "P2P transfer" })).not.toBeChecked()
+    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled()
+    await userEvent.type(editor, " changed")
+    expect(screen.getByRole("button", { name: "Update" })).toBeEnabled()
   })
 
   it("decrypts encrypted admin text when the URL hash has the key", async () => {
-    const key = await genKey("AES-GCM")
+    const key = await genKey("AES-GCM-CHUNKED")
     const encodedKey = await encodeKey(key)
-    const ciphertext = await encrypt("AES-GCM", key, new TextEncoder().encode(mockedPasteContent))
+    const ciphertext = await encrypt("AES-GCM-CHUNKED", key, new TextEncoder().encode(mockedPasteContent))
     vi.stubGlobal("location", new URL(`https://example.com/abcd:xxxxxxxxx#${encodedKey}`))
     server.use(
       http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/m/abcd`, () => {
@@ -173,7 +246,7 @@ describe("Pastebin admin page", () => {
           ...mockedPasteMeta,
           sizeBytes: ciphertext.length,
           highlightLanguage: "plaintext",
-          encryptionScheme: "AES-GCM",
+          encryptionScheme: "AES-GCM-CHUNKED",
         })
       }),
       http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
@@ -181,7 +254,7 @@ describe("Pastebin admin page", () => {
           headers: {
             "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(ciphertext.length),
-            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
             "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
             "X-PB-Highlight-Language": "plaintext",
           },
@@ -191,14 +264,14 @@ describe("Pastebin admin page", () => {
         return new HttpResponse(ciphertext, {
           headers: {
             "Content-Type": BINARY_MIME_TYPE,
-            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
             "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
           },
         })
       }),
     )
 
-    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    render(<PasteBin config={pasteConfig} />)
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
     await waitFor(() => expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent))
@@ -206,8 +279,8 @@ describe("Pastebin admin page", () => {
   })
 
   it("does not render encrypted admin text without the URL hash key", async () => {
-    const key = await genKey("AES-GCM")
-    const ciphertext = await encrypt("AES-GCM", key, new TextEncoder().encode(mockedPasteContent))
+    const key = await genKey("AES-GCM-CHUNKED")
+    const ciphertext = await encrypt("AES-GCM-CHUNKED", key, new TextEncoder().encode(mockedPasteContent))
     vi.stubGlobal("location", new URL("https://example.com/abcd:xxxxxxxxx"))
     server.use(
       http.get(`${__WRANGLER_CONFIG__.DEPLOY_URL}/m/abcd`, () => {
@@ -215,7 +288,7 @@ describe("Pastebin admin page", () => {
           ...mockedPasteMeta,
           sizeBytes: ciphertext.length,
           highlightLanguage: "plaintext",
-          encryptionScheme: "AES-GCM",
+          encryptionScheme: "AES-GCM-CHUNKED",
         })
       }),
       http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
@@ -223,7 +296,7 @@ describe("Pastebin admin page", () => {
           headers: {
             "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(ciphertext.length),
-            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
             "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
             "X-PB-Highlight-Language": "plaintext",
           },
@@ -231,7 +304,7 @@ describe("Pastebin admin page", () => {
       }),
     )
 
-    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    render(<PasteBin config={pasteConfig} />)
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
     await screen.findByText("Decryption key required")

@@ -1,6 +1,6 @@
 import type { ButtonProps } from "./ui/index.js"
 import { Button } from "./ui/index.js"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CopyIcon, CheckIcon } from "./icons.js"
 
 interface CopyIconProps extends ButtonProps {
@@ -10,19 +10,34 @@ interface CopyIconProps extends ButtonProps {
 
 export function CopyWidget({ className = "", getCopyContent, label, ...rest }: CopyIconProps) {
   const numOfIssuedCopies = useRef(0)
+  const mounted = useRef(true)
+  const timeouts = useRef(new Set<ReturnType<typeof setTimeout>>())
   const [hasIssuedCopies, setHasIssuedCopies] = useState<boolean>(false)
+
+  useEffect(() => {
+    return () => {
+      mounted.current = false
+      for (const timeout of timeouts.current) clearTimeout(timeout)
+      timeouts.current.clear()
+    }
+  }, [])
+
   const onCopy = () => {
     const content = getCopyContent()
     navigator.clipboard
       .writeText(content)
       .then(() => {
+        if (!mounted.current) return
         numOfIssuedCopies.current = numOfIssuedCopies.current + 1
         setHasIssuedCopies(numOfIssuedCopies.current > 0)
 
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
+          timeouts.current.delete(timeout)
+          if (!mounted.current) return
           numOfIssuedCopies.current = numOfIssuedCopies.current - 1
           setHasIssuedCopies(numOfIssuedCopies.current > 0)
         }, 1000)
+        timeouts.current.add(timeout)
       })
       .catch(console.error)
   }

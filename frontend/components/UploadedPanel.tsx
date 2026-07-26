@@ -10,7 +10,6 @@ import {
   CircularProgress,
   Divider,
   Input,
-  Tooltip,
   mergeClasses,
 } from "./ui/index.js"
 
@@ -20,8 +19,9 @@ import { makeDisplayUrl, withPathPrefix } from "../utils/pasteUrls.js"
 import type { UploadProgress } from "../utils/uploader.js"
 import { formatSize } from "../utils/utils.js"
 import { CopyWidget } from "./CopyWidget.js"
+import { InfoTooltip } from "./InfoTooltip.js"
 import { QrCodeTooltip } from "./QrCodeTooltip.js"
-import { ChevronDownIcon, InfoIcon } from "./icons.js"
+import { ChevronDownIcon } from "./icons.js"
 
 interface UploadedPanelProps extends CardProps {
   isLoading: boolean
@@ -45,23 +45,15 @@ const DISPLAY_URL_FLAGS: { syntax: string; desc: string }[] = [
   { syntax: "/foo.txt", desc: "Append a filename — shown in the header and used as the download name" },
 ]
 
-function InfoTooltip({ children }: { children: React.ReactNode }) {
+function UrlTooltip({
+  desc,
+  flags,
+}: {
+  desc?: React.ReactNode
+  flags?: { syntax: string; desc: string }[]
+}) {
   return (
-    <Tooltip content={<div className="px-1 py-1 text-small max-w-[22rem]">{children}</div>}>
-      <button
-        type="button"
-        aria-label="More information"
-        className="inline-flex items-center ml-1 text-default-400 hover:text-default-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-default-400 rounded"
-      >
-        <InfoIcon className="size-3" />
-      </button>
-    </Tooltip>
-  )
-}
-
-function UrlTooltip({ desc, flags }: { desc?: React.ReactNode; flags?: { syntax: string; desc: string }[] }) {
-  return (
-    <InfoTooltip>
+    <InfoTooltip label="More information" compact>
       {desc && <div className={flags ? "mb-2" : ""}>{desc}</div>}
       {flags && (
         <>
@@ -135,7 +127,9 @@ export function UploadedPanel({
     urlInput(
       "Markdown URL",
       withPathPrefix(pasteResponse.url, "/a"),
-      <InfoTooltip>Render the paste as GitHub-flavored markdown (with code highlighting and LaTeX).</InfoTooltip>,
+      <InfoTooltip label="More information" compact>
+        Render the paste as GitHub-flavored markdown (with code highlighting and LaTeX).
+      </InfoTooltip>,
     )
 
   const displayUrlLabelExtra = (
@@ -203,7 +197,9 @@ export function UploadedPanel({
               {urlInput(
                 "Manage URL",
                 pasteResponse.manageUrl,
-                <InfoTooltip>Use this URL to update or delete the paste later. Keep it private.</InfoTooltip>,
+                <InfoTooltip label="More information" compact>
+                  Use this URL to update or delete the paste later. Keep it private.
+                </InfoTooltip>,
               )}
               <Input {...inputProps} label={"Expiration"} value={new Date(pasteResponse.expireAt).toLocaleString()} />
 
@@ -229,12 +225,14 @@ export function UploadedPanel({
                     urlInput(
                       "Shortener URL",
                       withPathPrefix(pasteResponse.url, "/u"),
-                      <InfoTooltip>The paste body is a URL — this endpoint redirects (302) to it.</InfoTooltip>,
+                      <InfoTooltip label="More information" compact>
+                        The paste body is a URL — this endpoint redirects (302) to it.
+                      </InfoTooltip>,
                     )}
                   {urlInput(
                     "Metadata URL",
                     withPathPrefix(pasteResponse.url, "/m"),
-                    <InfoTooltip>
+                    <InfoTooltip label="More information" compact>
                       Get paste metadata (size, timestamps, filename, encryption scheme, ...) as JSON.
                     </InfoTooltip>,
                   )}

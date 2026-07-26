@@ -22,9 +22,6 @@ export type { TooltipProps } from "./Tooltip.js"
 export { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "./Modal.js"
 export type { ModalProps } from "./Modal.js"
 
-export { Radio, RadioGroup } from "./Radio.js"
-export type { RadioProps, RadioGroupProps } from "./Radio.js"
-
 export { Switch } from "./Switch.js"
 export type { SwitchProps } from "./Switch.js"
 

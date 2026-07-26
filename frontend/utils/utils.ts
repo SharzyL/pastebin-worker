@@ -1,18 +1,15 @@
 import { PASSWD_SEP } from "../../shared/constants.js"
-import { parseExpiration, parseExpirationReadable, parseSize } from "../../shared/parsers.js"
+import { parseExpirationReadable, parseSize } from "../../shared/parsers.js"
 import { verifyExpiration as verifyExpirationShared } from "../../shared/verify.js"
+import type { PublicEnv } from "../../shared/interfaces.js"
 
-export function getMaxExpirationSeconds(config: Env): number {
-  return parseExpiration(config.MAX_EXPIRATION)!
-}
-
-export function getMaxExpirationReadable(config: Env): string {
+export function getMaxExpirationReadable(config: PublicEnv): string {
   return parseExpirationReadable(config.MAX_EXPIRATION)!
 }
 
 export { ErrorWithTitle } from "./errors.js"
 
-export function verifyFileSize(size: number, config: Env): [boolean, string] {
+export function verifyFileSize(size: number, config: PublicEnv): [boolean, string] {
   const max = parseSize(config.R2_MAX_ALLOWED)
   if (max === null || size <= max) return [true, ""]
   return [false, `File too large (${formatSize(size)} > ${formatSize(max)})`]
@@ -31,11 +28,27 @@ export function formatSize(size: number): string {
   }
 }
 
-export function verifyExpiration(expiration: string, config: Env): [boolean, string] {
+export function formatSpeed(bytesPerSecond: number | undefined): string {
+  const speed = Math.max(0, bytesPerSecond ?? 0)
+  const formatRate = (rate: number) => Number(rate.toFixed(1)).toString()
+  if (speed < 1024 * 1024) {
+    return `${formatRate(speed / 1024)} KB/s`
+  } else if (speed < 1024 * 1024 * 1024) {
+    return `${formatRate(speed / 1024 / 1024)} MB/s`
+  } else {
+    return `${formatRate(speed / 1024 / 1024 / 1024)} GB/s`
+  }
+}
+
+export function verifyExpiration(expiration: string, config: PublicEnv): [boolean, string] {
   return verifyExpirationShared(expiration, config.MAX_EXPIRATION)
 }
 
-export function verifyManageUrl(url: string, config: Env): [boolean, string] {
+export function verifyP2PExpiration(expiration: string, config: PublicEnv): [boolean, string] {
+  return verifyExpirationShared(expiration, config.MAX_P2P_EXPIRATION)
+}
+
+export function verifyManageUrl(url: string, config: PublicEnv): [boolean, string] {
   try {
     const url_parsed = new URL(url)
     if (url_parsed.origin !== config.DEPLOY_URL) {

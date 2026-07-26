@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { CircularProgress, Link, Tooltip } from "../components/ui/index.js"
 import { DarkModeToggle, useDarkModeSelection } from "../components/DarkModeToggle.js"
 import { DownloadIcon, HomeIcon, XIcon } from "../components/icons.js"
@@ -7,10 +7,19 @@ import { QrCodeTooltip } from "../components/QrCodeTooltip.js"
 import { tst } from "../utils/overrides.js"
 import { highlightHTML, useHljsForLang } from "../utils/highlight.js"
 import { formatSize } from "../utils/utils.js"
-import type { OriginalFileInfo } from "../../shared/interfaces.js"
+import type { OriginalFileInfo, PublicEnv } from "../../shared/interfaces.js"
+import type {
+  P2PConnectionRoute,
+  P2PFileMeta,
+  P2PProgress,
+  P2PTransferHistoryItem,
+  P2PTransferStatus,
+} from "../utils/p2pCommon.js"
 import { filenameForTitle } from "../../shared/filename.js"
 import { FileTree } from "../components/FileTree.js"
 import { itemCountLabel } from "../../shared/format.js"
+import { P2PProgressBar } from "../components/P2PProgressBar.js"
+import { countTextLines, LineNumbers } from "../components/LineNumbers.js"
 
 interface PendingInfo {
   sizeBytes: number | null
@@ -24,6 +33,8 @@ interface MediaInfo {
   rawUrl: string
   contentType: string
 }
+
+export type { P2PTransferHistoryItem } from "../utils/p2pCommon.js"
 
 type MediaKind = "image" | "audio" | "video"
 
@@ -58,6 +69,47 @@ function MediaElement({ kind, src, name }: { kind: MediaKind; src: string; name:
     return <audio src={src} controls className="w-full" aria-label={name} />
   }
   return <video src={src} controls className="max-w-full h-auto mx-auto block" aria-label={name} />
+}
+
+function P2PTransferHistoryCard({ transfer }: { transfer: P2PTransferHistoryItem }) {
+  const [downloadUrl, setDownloadUrl] = useState("")
+
+  useEffect(() => {
+    if (!transfer.file || typeof window === "undefined" || !URL.createObjectURL) {
+      setDownloadUrl("")
+      return
+    }
+    const url = URL.createObjectURL(transfer.file)
+    setDownloadUrl(url)
+    return () => {
+      if (URL.revokeObjectURL) URL.revokeObjectURL(url)
+    }
+  }, [transfer.file])
+
+  return (
+    <div className={`w-full bg-default-100 rounded-lg p-3 relative ${tst}`}>
+      <div className="flex min-h-[14em] w-full flex-col items-center justify-center px-4 text-center">
+        <div className="text-lg font-medium">P2P transfer</div>
+        <div className="mt-2 text-sm text-foreground-500">{transfer.status}</div>
+        <div className="mt-4 w-full max-w-2xl">
+          <P2PProgressBar
+            progress={transfer.progress}
+            label={transfer.meta.name}
+            connectionRoute={transfer.connectionRoute}
+            status={transfer.transferStatus}
+            reserveTransferStatsSpace
+          />
+        </div>
+        {transfer.file && downloadUrl && (
+          <div className="mt-2">
+            <a href={downloadUrl} download={transfer.file.name} className="text-primary inline">
+              Save file
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function sizeSuffix(sizeBytes: number | null): string {
@@ -103,13 +155,31 @@ interface DisplayPasteViewProps {
   name: string
   ext?: string
   filename?: string
-  config: Env
+  config: PublicEnv
   pendingInfo?: PendingInfo | null
   mediaInfo?: MediaInfo | null
   showExpiredNotice?: boolean
   onDismissExpiredNotice?: () => void
   metaFilename?: string
   originalFiles?: OriginalFileInfo[]
+  isP2PMode?: boolean
+  p2pStatus?: string
+  p2pConnectionRoute?: P2PConnectionRoute
+  p2pMeta?: P2PFileMeta
+  p2pUpdateMeta?: P2PFileMeta
+  p2pTransferHistory?: P2PTransferHistoryItem[]
+  p2pProgress?: P2PProgress
+  p2pFile?: File
+  isP2PPaused?: boolean
+  isP2PPausing?: boolean
+  isP2PReconnecting?: boolean
+  isP2PAcceptingUpdate?: boolean
+  onP2PDownload?: () => void
+  onP2PPause?: () => void
+  onP2PResume?: () => void
+  onP2PTerminate?: () => void
+  onP2PAcceptUpdate?: () => void
+  onP2PLoadAnyway?: () => void
   onLoadAnyway?: () => void
   onDownloadPaste?: () => void
 }
@@ -136,6 +206,24 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
     onDismissExpiredNotice,
     metaFilename,
     originalFiles,
+    isP2PMode,
+    p2pStatus,
+    p2pConnectionRoute,
+    p2pMeta,
+    p2pUpdateMeta,
+    p2pTransferHistory = [],
+    p2pProgress,
+    p2pFile,
+    isP2PPaused,
+    isP2PPausing,
+    isP2PReconnecting,
+    isP2PAcceptingUpdate,
+    onP2PDownload,
+    onP2PPause,
+    onP2PResume,
+    onP2PTerminate,
+    onP2PAcceptUpdate,
+    onP2PLoadAnyway,
     onLoadAnyway,
     onDownloadPaste,
   } = props
@@ -165,25 +253,51 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   }, [])
 
   // Create and cleanup blob URL
+  const downloadableFile = p2pFile || pasteFile
+
   useEffect(() => {
-    if (pasteFile && typeof window !== "undefined" && URL.createObjectURL) {
-      const url = URL.createObjectURL(pasteFile)
+    if (downloadableFile && typeof window !== "undefined" && URL.createObjectURL) {
+      const url = URL.createObjectURL(downloadableFile)
       setDownloadUrl(url)
       return () => {
         if (URL.revokeObjectURL) URL.revokeObjectURL(url)
       }
     }
-  }, [pasteFile])
+  }, [downloadableFile])
 
   const pasteMediaKind = pasteFile ? mediaKindOf(pasteFile) : null
   const mediaInfoKind = mediaInfo ? mediaKindOfType(mediaInfo.contentType) : null
   const showFileContent = pasteFile !== undefined && pasteMediaKind === null && (!isFileBinary || forceShowBinary)
-  const pasteStringContent = pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
-  const highlightedHTML = pasteStringContent ? highlightHTML(hljs, pasteLang, pasteStringContent) : ""
-  const pasteLineCount = (highlightedHTML?.match(/\n/g)?.length || 0) + 1
+  const pasteStringContent = useMemo(
+    () => (pasteContentBuffer ? new TextDecoder().decode(pasteContentBuffer) : undefined),
+    [pasteContentBuffer],
+  )
+  const highlightedHTML = useMemo(() => {
+    const html = pasteStringContent ? highlightHTML(hljs, pasteLang, pasteStringContent) : ""
+    return html
+  }, [hljs, pasteLang, pasteStringContent])
+  const pasteLineCount = useMemo(() => countTextLines(pasteStringContent ?? ""), [pasteStringContent])
   const hasOriginalFiles = originalFiles !== undefined && originalFiles.length > 0
   const isZipArchive = isZipBuffer(pasteContentBuffer)
   const isDownloadActionDisabled = isLoading || isDownloading
+  const isP2PDownloading = p2pProgress !== undefined && !p2pFile
+  const isP2PRepairing = p2pStatus?.startsWith("Repairing") ?? false
+  const showP2PPanel = isP2PMode && !(p2pFile && showFileContent)
+  const showPrimaryContent =
+    !isP2PMode || p2pTransferHistory.length === 0 || p2pMeta !== undefined || pasteFile !== undefined || isLoading
+  const p2pTransferStatus: P2PTransferStatus = p2pFile
+    ? "DONE"
+    : isP2PPaused
+      ? "PAUSED"
+      : isP2PReconnecting
+        ? "RECONNECTING"
+        : isP2PRepairing
+          ? "REPAIRING"
+          : p2pProgress
+            ? p2pProgress.doneBytes >= p2pProgress.totalBytes
+              ? "VERIFYING"
+              : "DOWNLOADING"
+            : "READY"
 
   function onNativeDownloadClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (nativeDownloadDebouncedRef.current) {
@@ -311,8 +425,10 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
           className="fixed top-3 left-1/2 z-50 flex w-[calc(100%-1rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-lg bg-danger-50 px-4 py-3 text-sm text-danger-700 shadow-sm"
         >
           <div className="min-w-0 flex-1 text-center">
-            <div className="font-bold">The file has expired</div>
-            <div>The file has been permanently deleted.</div>
+            <div className="font-bold">
+              {isP2PMode ? "The transfer limit has been reached" : "The file has expired"}
+            </div>
+            <div>{isP2PMode ? "This P2P link is no longer available." : "The file has been permanently deleted."}</div>
           </div>
           {onDismissExpiredNotice && (
             <button
@@ -327,8 +443,8 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
         </div>
       )}
       <div className="w-full max-w-[64rem]">
-        <div className="flex flex-row my-4 items-center justify-between">
-          <h1 className="text-xl md:text-2xl grow inline-flex items-center md:items-baseline min-w-0">
+        <div className="my-4 flex min-w-0 flex-row items-center justify-between">
+          <h1 className="inline-flex min-w-0 flex-1 items-center overflow-hidden text-xl md:items-baseline md:text-2xl">
             <a href="/" aria-label={indexPageTitle} className={`${iconLinkClass} md:hidden shrink-0`}>
               <HomeIcon className="size-6" />
             </a>
@@ -336,7 +452,9 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
               {indexPageTitle}
             </Link>
             <span className="mx-2 shrink-0">{" / "}</span>
-            <span className="shrink-0">{titleDisplayFilename ? name : name + (ext ?? "")}</span>
+            <span className="min-w-0 truncate" title={titleDisplayFilename ? name : name + (ext ?? "")}>
+              {titleDisplayFilename ? name : name + (ext ?? "")}
+            </span>
             {titleDisplayFilename && (
               <>
                 <span className="mx-2 shrink-0">{" / "}</span>
@@ -346,10 +464,16 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
               </>
             )}
             <span className="ml-1 shrink-0">
-              {isDecrypted === "decrypted" ? " (Decrypted)" : isDecrypted === "encrypted" ? " (Encrypted)" : ""}
+              {isP2PMode
+                ? " (P2P)"
+                : isDecrypted === "decrypted"
+                  ? " (Decrypted)"
+                  : isDecrypted === "encrypted"
+                    ? " (Encrypted)"
+                    : ""}
             </span>
           </h1>
-          <div className="flex flex-row gap-2 items-center">
+          <div className="flex shrink-0 flex-row items-center gap-2">
             <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
             {displayUrl && (
               <QrCodeTooltip
@@ -359,12 +483,12 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                 tooltip="Show QR code"
               />
             )}
-            {pasteFile ? (
-              <Tooltip content={`Download as file`}>
+            {downloadableFile ? (
+              <Tooltip content={isP2PMode ? "Save latest file" : "Download latest file"}>
                 <a
                   href={downloadUrl}
-                  download={pasteFile.name}
-                  aria-label="Download"
+                  download={downloadableFile.name}
+                  aria-label={isP2PMode ? "Save" : "Download"}
                   className={`${iconLinkClass} ${isNativeDownloadDebounced ? "pointer-events-none opacity-50" : ""}`}
                   aria-disabled={isNativeDownloadDebounced}
                   onClick={onNativeDownloadClick}
@@ -374,7 +498,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
               </Tooltip>
             ) : (
               (pendingInfo || mediaInfo) && (
-                <Tooltip content={`Download as file`}>
+                <Tooltip content={`Download latest file`}>
                   {onDownloadPaste ? (
                     <button
                       type="button"
@@ -400,79 +524,180 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                 </Tooltip>
               )
             )}
-            {showFileContent && (
-              <Tooltip content={`Copy to clipboard`}>
-                <CopyWidget variant="light" className={buttonClasses} getCopyContent={() => pasteStringContent!} />
-              </Tooltip>
-            )}
           </div>
         </div>
         <div className="my-4">
-          <div className={`w-full bg-default-100 rounded-lg p-3 relative ${tst}`}>
-            {isLoading ? (
-              <div className="h-[10em] flex items-center justify-center">
-                <CircularProgress label={"Loading..."} />
-              </div>
-            ) : mediaInfo && !pasteFile && mediaInfoKind ? (
-              <div>
-                <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
-                  <span>{placeholderName}</span>
-                  {mediaInfo.sizeBytes !== null && <span>{`(${formatSize(mediaInfo.sizeBytes)})`}</span>}
+          {p2pTransferHistory.map((transfer, index) => (
+            <div key={transfer.id} className={index === 0 ? undefined : "mt-4"}>
+              <P2PTransferHistoryCard transfer={transfer} />
+            </div>
+          ))}
+          {showPrimaryContent && (
+            <div
+              className={`${p2pTransferHistory.length > 0 ? "mt-4 " : ""}w-full bg-default-100 rounded-lg p-3 ${showFileContent ? "pt-1" : ""} relative ${tst}`}
+            >
+              {isLoading ? (
+                <div className="h-[10em] flex items-center justify-center">
+                  <CircularProgress label={"Loading..."} />
                 </div>
-                <MediaElement kind={mediaInfoKind} src={mediaInfo.rawUrl} name={placeholderName} />
-              </div>
-            ) : pasteFile && pasteMediaKind ? (
-              <div>
-                <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
-                  <span>{contentDisplayFilename || pasteFile.name}</span>
-                  <span>{`(${formatSize(pasteFile.size)})`}</span>
-                </div>
-                {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
-                <MediaElement kind={pasteMediaKind} src={downloadUrl} name={pasteFile.name} />
-              </div>
-            ) : pendingInfo && !pasteFile ? (
-              pendingFileIndicator
-            ) : (
-              pasteFile && (
-                <div>
-                  {showFileContent ? (
-                    <>
-                      <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
-                        <span>{contentDisplayFilename || pasteFile?.name}</span>
-                        <span>{`(${formatSize(pasteFile.size)})`}</span>
-                        {forceShowBinary && (
-                          <button className="ml-2 text-primary" onClick={() => setForceShowBinary(false)}>
-                            (Click to hide)
+              ) : showP2PPanel ? (
+                <div className="flex min-h-[14em] w-full flex-col items-center justify-center px-4 text-center">
+                  <div className="text-lg font-medium">P2P transfer</div>
+                  <div className="mt-2 text-sm text-foreground-500">{p2pStatus || "Looking for the sender..."}</div>
+                  {p2pMeta && (
+                    <div className="mt-4 w-full max-w-2xl">
+                      <P2PProgressBar
+                        progress={p2pProgress}
+                        label={p2pMeta.name}
+                        connectionRoute={p2pConnectionRoute}
+                        status={p2pTransferStatus}
+                        reserveTransferStatsSpace
+                      />
+                    </div>
+                  )}
+                  {p2pFile ? (
+                    <div className="mt-2">
+                      <a
+                        href={downloadUrl}
+                        download={p2pFile.name}
+                        className={`text-primary inline ${isNativeDownloadDebounced ? "pointer-events-none opacity-50" : ""}`}
+                        aria-disabled={isNativeDownloadDebounced}
+                        onClick={onNativeDownloadClick}
+                      >
+                        Save file
+                      </a>
+                      {onP2PLoadAnyway && (
+                        <>
+                          {" or "}
+                          <button
+                            type="button"
+                            className="text-primary inline cursor-pointer"
+                            onClick={onP2PLoadAnyway}
+                          >
+                            load anyway
                           </button>
-                        )}
-                        {pasteLang && <span className={"grow text-right"}>{pasteLang}</span>}
-                      </div>
-                      {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
-                      <div className="font-mono relative" role="article">
-                        <pre
-                          style={{ marginLeft: lineNumOffset, width: `calc(100% - ${lineNumOffset})` }}
-                          dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-                          className={"overflow-x-auto"}
-                        />
-                        <span
-                          className={
-                            "line-number-rows absolute pointer-events-none text-default-500 top-0 left-0 " +
-                            "border-solid border-default-300 border-r-1"
-                          }
-                        >
-                          {Array.from({ length: pasteLineCount }, (_, idx) => {
-                            return <span key={idx} />
-                          })}
-                        </span>
-                      </div>
-                    </>
+                        </>
+                      )}
+                    </div>
+                  ) : isP2PDownloading ? (
+                    <div className="mt-4 flex items-center gap-3">
+                      <button
+                        type="button"
+                        disabled={isP2PPausing}
+                        onClick={() => (isP2PPaused ? onP2PResume?.() : onP2PPause?.())}
+                        className="text-primary cursor-pointer disabled:cursor-wait disabled:opacity-50"
+                      >
+                        {isP2PPausing ? "Pausing..." : isP2PPaused ? "Resume" : "Pause"}
+                      </button>
+                      <button type="button" onClick={() => onP2PTerminate?.()} className="text-danger cursor-pointer">
+                        Terminate
+                      </button>
+                    </div>
                   ) : (
-                    binaryFileIndicator
+                    <button
+                      type="button"
+                      disabled={!p2pMeta}
+                      onClick={() => onP2PDownload?.()}
+                      className="mt-4 text-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Receive file
+                    </button>
                   )}
                 </div>
-              )
-            )}
-          </div>
+              ) : mediaInfo && !pasteFile && mediaInfoKind ? (
+                <div>
+                  <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
+                    <span>{placeholderName}</span>
+                    {mediaInfo.sizeBytes !== null && <span>{`(${formatSize(mediaInfo.sizeBytes)})`}</span>}
+                  </div>
+                  <MediaElement kind={mediaInfoKind} src={mediaInfo.rawUrl} name={placeholderName} />
+                </div>
+              ) : pasteFile && pasteMediaKind ? (
+                <div>
+                  <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
+                    <span>{contentDisplayFilename || pasteFile.name}</span>
+                    <span>{`(${formatSize(pasteFile.size)})`}</span>
+                  </div>
+                  {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
+                  <MediaElement kind={pasteMediaKind} src={downloadUrl} name={pasteFile.name} />
+                </div>
+              ) : pendingInfo && !pasteFile ? (
+                pendingFileIndicator
+              ) : (
+                pasteFile && (
+                  <div>
+                    {showFileContent ? (
+                      <>
+                        <div className="mb-1 flex min-w-0 flex-row items-center gap-2 text-sm text-gray-500">
+                          <span className="min-w-0 truncate" title={contentDisplayFilename || pasteFile.name}>
+                            {contentDisplayFilename || pasteFile.name}
+                          </span>
+                          <span className="shrink-0">{`(${formatSize(pasteFile.size)})`}</span>
+                          {forceShowBinary && (
+                            <button className="shrink-0 text-primary" onClick={() => setForceShowBinary(false)}>
+                              (Click to hide)
+                            </button>
+                          )}
+                          <div className="ml-auto flex shrink-0 items-center gap-2">
+                            {pasteLang && <span>{pasteLang}</span>}
+                            <Tooltip content="Copy to clipboard">
+                              <CopyWidget
+                                variant="light"
+                                className={buttonClasses}
+                                getCopyContent={() => pasteStringContent!}
+                              />
+                            </Tooltip>
+                          </div>
+                        </div>
+                        {hasOriginalFiles && <OriginalFileList files={originalFiles} />}
+                        <div className="font-mono relative">
+                          <pre
+                            role="article"
+                            style={{ marginLeft: lineNumOffset, width: `calc(100% - ${lineNumOffset})` }}
+                            dangerouslySetInnerHTML={{ __html: highlightedHTML }}
+                            className={"overflow-x-auto"}
+                          />
+                          <LineNumbers
+                            lineCount={pasteLineCount}
+                            className={
+                              "line-number-rows absolute pointer-events-none text-default-500 top-0 left-0 " +
+                              "border-solid border-default-300 border-r-1"
+                            }
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      binaryFileIndicator
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+          {isP2PMode && p2pUpdateMeta && (
+            <div className={`mt-4 w-full bg-default-100 rounded-lg p-3 relative ${tst}`}>
+              <div className="flex min-h-[14em] w-full flex-col items-center justify-center px-4 text-center">
+                <div className="text-lg font-medium">P2P transfer</div>
+                <div className="mt-2 text-sm text-foreground-500">New version from sender.</div>
+                <div className="mt-4 w-full max-w-2xl">
+                  <P2PProgressBar
+                    label={p2pUpdateMeta.name}
+                    connectionRoute={p2pConnectionRoute}
+                    status="READY"
+                    reserveTransferStatsSpace
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={isP2PAcceptingUpdate}
+                  className="mt-2 text-primary cursor-pointer disabled:cursor-wait disabled:opacity-50"
+                  onClick={onP2PAcceptUpdate}
+                >
+                  {isP2PAcceptingUpdate ? "Switching to latest version..." : "Receive latest version"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>

@@ -39,6 +39,11 @@ test("mime type", async () => {
   // test disallowed mimetypes
   await testMime(`${url_pic}.html`, TEXT_MIME_TYPE)
   await testMime(`${url_pic}?mime=text/html`, TEXT_MIME_TYPE)
+  await testMime(`${url_pic}?mime=${encodeURIComponent("text/html; charset=UTF-8")}`, TEXT_MIME_TYPE)
+  await testMime(`${url_pic}?mime=${encodeURIComponent("Text/Html; Charset=UTF-8")}`, TEXT_MIME_TYPE)
+  await testMime(`${url_pic}?mime=${encodeURIComponent("image/svg+xml; charset=UTF-8")}`, TEXT_MIME_TYPE)
+  await testMime(`${url_pic}?mime=${encodeURIComponent("application/xhtml+xml")}`, TEXT_MIME_TYPE)
+  await testMime(`${url_pic}?mime=${encodeURIComponent("audio/x-mpegurl; charset=UTF-8")}`, TEXT_MIME_TYPE)
 })
 
 test("cache control", async () => {

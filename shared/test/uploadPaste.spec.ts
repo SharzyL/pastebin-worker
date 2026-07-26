@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { mapWithConcurrency } from "../async.js"
 import { UploadError, uploadMPU, uploadNormal } from "../uploadPaste.js"
-import { BINARY_MIME_TYPE, TEXT_MIME_TYPE } from "../constants.js"
+import { BINARY_MIME_TYPE, BINARY_SNIFF_BYTES, TEXT_MIME_TYPE } from "../constants.js"
 
 const API_URL = "https://example.com"
 
@@ -25,6 +26,7 @@ interface XhrCall {
 class FakeXHR {
   static respond: ((req: XhrCall) => { status: number; body: string }) | null = null
   static calls: XhrCall[] = []
+  static progressEvents: number[] = []
 
   private _method = ""
   private _url = ""
@@ -57,6 +59,11 @@ class FakeXHR {
     queueMicrotask(() => {
       const call = { method: this._method, url: this._url, body }
       FakeXHR.calls.push(call)
+      const total = body instanceof Blob ? body.size : 0
+      for (const loaded of FakeXHR.progressEvents) {
+        const event = { lengthComputable: true, loaded, total } as ProgressEvent
+        this._uploadListeners.get("progress")?.forEach((cb) => cb(event))
+      }
       const resp = FakeXHR.respond!(call)
       this.status = resp.status
       this.responseText = resp.body
@@ -77,6 +84,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   FakeXHR.respond = null
   FakeXHR.calls = []
+  FakeXHR.progressEvents = []
 })
 
 describe("UploadError", () => {
@@ -103,7 +111,7 @@ describe("uploadNormal", () => {
       password: "pw",
       name: "abcd",
       highlightLanguage: "ts",
-      encryptionScheme: "AES-GCM",
+      encryptionScheme: "AES-GCM-CHUNKED",
       expire: "10m",
       remainingReads: 3,
     })
@@ -117,7 +125,7 @@ describe("uploadNormal", () => {
     expect(fd.get("e")).toStrictEqual("10m")
     expect(fd.get("s")).toStrictEqual("pw")
     expect(fd.get("n")).toStrictEqual("abcd")
-    expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM")
+    expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM-CHUNKED")
     expect(fd.get("lang")).toStrictEqual("ts")
     expect(fd.get("reads")).toStrictEqual("3")
     expect(fd.get("p")).toStrictEqual("1")
@@ -141,13 +149,14 @@ describe("uploadNormal", () => {
     expect((calls[0].body as FormData).get("mimeType")).toStrictEqual(BINARY_MIME_TYPE)
   })
 
-  it("checks the first 256 bytes when inferring mimeType", async () => {
+  it("checks the configured binary sniff prefix when inferring mimeType", async () => {
+    expect(BINARY_SNIFF_BYTES).toStrictEqual(1024)
     const calls = setupXhr(() => ({
       status: 200,
       body: JSON.stringify({ url: "https://example.com/abcd", manageUrl: "https://example.com/abcd:pw" }),
     }))
-    const content = new Uint8Array(300).fill(1)
-    content[200] = 0
+    const content = new Uint8Array(BINARY_SNIFF_BYTES + 1).fill(1)
+    content[BINARY_SNIFF_BYTES - 1] = 0
 
     await uploadNormal(API_URL, {
       content: new File([content], "blob"),
@@ -261,8 +270,9 @@ describe("uploadMPU", () => {
 
   it("uploads in chunks, calls progress callback, and forwards optional fields on complete", async () => {
     const { fetchCalls, xhrCalls } = setupHappyPath(3)
+    vi.spyOn(performance, "now").mockReturnValue(1000)
 
-    const progress = vi.fn()
+    const progress = vi.fn<(doneBytes: number, allBytes: number) => void>()
     await uploadMPU(
       API_URL,
       4,
@@ -273,7 +283,7 @@ describe("uploadMPU", () => {
         isPrivate: true,
         password: "pw",
         highlightLanguage: "rust",
-        encryptionScheme: "AES-GCM",
+        encryptionScheme: "AES-GCM-CHUNKED",
         filenames: [{ name: "a.bin", sizeBytes: 6 }],
         expire: "1d",
         remainingReads: 5,
@@ -281,13 +291,10 @@ describe("uploadMPU", () => {
       progress,
     )
 
-    // final progress reports full size
+    // Rapid per-part updates are throttled, while final progress is always flushed.
     expect(progress).toHaveBeenLastCalledWith(10, 10)
-    // each cumulative checkpoint appears at some point
-    const progressValues = progress.mock.calls.map((c) => c[0] as number)
-    expect(progressValues).toContain(4)
-    expect(progressValues).toContain(8)
-    expect(progressValues).toContain(10)
+    const progressValues = progress.mock.calls.map((c) => c[0])
+    expect(progressValues).toStrictEqual([4, 10])
 
     const create = fetchCalls[0]
     expect(create.method).toStrictEqual("POST")
@@ -309,7 +316,7 @@ describe("uploadMPU", () => {
     expect(fd.get("reads")).toStrictEqual("5")
     expect(fd.get("s")).toStrictEqual("pw")
     expect(fd.get("lang")).toStrictEqual("rust")
-    expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM")
+    expect(fd.get("encryption-scheme")).toStrictEqual("AES-GCM-CHUNKED")
     expect(fd.get("filenames")).toStrictEqual(JSON.stringify([{ name: "a.bin", sizeBytes: 6 }]))
     expect(fd.get("mimeType")).toBeNull()
   })
@@ -325,6 +332,26 @@ describe("uploadMPU", () => {
 
     const completeReq = fetchCalls.find((c) => c.url.includes("/mpu/complete"))!
     expect((completeReq.body as FormData).get("mimeType")).toStrictEqual(BINARY_MIME_TYPE)
+  })
+
+  it("accumulates multipart progress incrementally and ignores regressing XHR values", async () => {
+    setupHappyPath(2)
+    FakeXHR.progressEvents = [1, 3, 2, 4]
+    let now = 0
+    vi.spyOn(performance, "now").mockImplementation(() => (now += 100))
+    const progress = vi.fn<(doneBytes: number, allBytes: number) => void>()
+
+    await uploadMPU(
+      API_URL,
+      4,
+      {
+        content: makeFile(8, "file.bin"),
+        isUpdate: false,
+      },
+      progress,
+    )
+
+    expect(progress.mock.calls.map(([doneBytes]) => doneBytes)).toStrictEqual([1, 3, 4, 5, 7, 8])
   })
 
   it("uses create-update endpoint and PUT on update with manageUrl password", async () => {
@@ -399,8 +426,6 @@ describe("uploadMPU", () => {
     expect(err).toBeInstanceOf(UploadError)
     expect((err as UploadError).statusCode).toStrictEqual(500)
 
-    // Wait a microtask so the fire-and-forget abort fetch has a chance to land.
-    await new Promise((r) => setTimeout(r, 0))
     const abortCall = fetchMock.mock.calls.find(([input]) => {
       const url = input instanceof URL ? input.toString() : (input as string)
       return url.includes("/mpu/abort")
@@ -410,6 +435,46 @@ describe("uploadMPU", () => {
     expect(abortUrl.searchParams.get("key")).toStrictEqual("k")
     expect(abortUrl.searchParams.get("uploadId")).toStrictEqual("uid")
     expect(abortCall![1]?.method).toStrictEqual("POST")
+    expect(abortCall![1]?.keepalive).toStrictEqual(true)
+  })
+
+  it("waits for multipart cleanup without replacing the original upload error", async () => {
+    let resolveAbort!: (response: Response) => void
+    const abortResponse = new Promise<Response>((resolve) => {
+      resolveAbort = resolve
+    })
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = input instanceof URL ? input.toString() : (input as string)
+      if (url.includes("/mpu/create")) {
+        return Promise.resolve(jsonResp({ name: "~a", key: "k", uploadId: "uid" }))
+      }
+      if (url.includes("/mpu/abort")) return abortResponse
+      return Promise.reject(new Error(`unexpected fetch ${url}`))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    setupXhr(() => ({ status: 500, body: "part failed" }))
+
+    const uploading = uploadMPU(API_URL, 4, {
+      content: makeFile(8),
+      isUpdate: false,
+    })
+    let settled = false
+    void uploading.catch(() => {
+      settled = true
+    })
+
+    await vi.waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          (input instanceof URL ? input.toString() : (input as string)).includes("/mpu/abort"),
+        ),
+      ).toStrictEqual(true),
+    )
+    await Promise.resolve()
+    expect(settled).toStrictEqual(false)
+
+    resolveAbort(new Response(null, { status: 204 }))
+    await expect(uploading).rejects.toMatchObject({ statusCode: 500 })
   })
 
   it("throws UploadError when complete returns non-ok", async () => {
@@ -438,5 +503,29 @@ describe("uploadMPU", () => {
 
     expect(err).toBeInstanceOf(UploadError)
     expect((err as UploadError).statusCode).toStrictEqual(502)
+  })
+})
+
+describe("mapWithConcurrency", () => {
+  it("preserves result order while bounding active tasks", async () => {
+    let activeTasks = 0
+    let maximumActiveTasks = 0
+
+    const results = await mapWithConcurrency([30, 5, 15, 1], 2, async (delay) => {
+      activeTasks += 1
+      maximumActiveTasks = Math.max(maximumActiveTasks, activeTasks)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      activeTasks -= 1
+      return delay * 2
+    })
+
+    expect(results).toEqual([60, 10, 30, 2])
+    expect(maximumActiveTasks).toBe(2)
+  })
+
+  it("rejects invalid concurrency values", async () => {
+    await expect(mapWithConcurrency([1], 0, (value) => Promise.resolve(value))).rejects.toThrow(
+      "concurrency must be a positive integer",
+    )
   })
 })

@@ -1,5 +1,23 @@
 import React, { useEffect } from "react"
 
+let bodyScrollLockCount = 0
+let previousBodyOverflow: string | undefined
+
+function lockBodyScroll() {
+  if (bodyScrollLockCount === 0) previousBodyOverflow = document.body.style.overflow
+  bodyScrollLockCount += 1
+  document.body.style.overflow = "hidden"
+}
+
+function unlockBodyScroll() {
+  if (bodyScrollLockCount === 0) return
+  bodyScrollLockCount -= 1
+  if (bodyScrollLockCount === 0) {
+    document.body.style.overflow = previousBodyOverflow ?? ""
+    previousBodyOverflow = undefined
+  }
+}
+
 export interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
   isOpen: boolean
   onClose: () => void
@@ -8,14 +26,9 @@ export interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Modal({ isOpen, onClose, children, ...rest }: ModalProps) {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
-    }
-    return () => {
-      document.body.style.overflow = ""
-    }
+    if (!isOpen) return
+    lockBodyScroll()
+    return unlockBodyScroll
   }, [isOpen])
 
   if (!isOpen) return null

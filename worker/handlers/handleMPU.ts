@@ -1,7 +1,7 @@
 import type { MPUCreateResponse } from "../../shared/interfaces.js"
 import { NAME_REGEX, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
-import { dateToUnix, genRandStr, WorkerError, timingSafeEqual } from "../common.js"
-import { getPasteMetadata, pasteNameAvailable } from "../storage/storage.js"
+import { dateToUnix, WorkerError, timingSafeEqual } from "../common.js"
+import { allocateRandomPasteName, getPasteMetadata, pasteNameAvailable } from "../storage/storage.js"
 import { parseExpiration, parseSize } from "../../shared/parsers.js"
 
 function mpuExpireMetadata(url: URL, env: Env): Record<string, string> {
@@ -30,7 +30,7 @@ export async function handleMPUCreate(request: Request, env: Env): Promise<Respo
       throw new WorkerError(409, `name ‘${name}’ is already used`)
     }
   } else {
-    name = genRandStr(isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
+    name = await allocateRandomPasteName(env, isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
   }
 
   const multipartUpload = await env.R2.createMultipartUpload(name, {

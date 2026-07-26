@@ -2,4 +2,5 @@ allowBuilds:
   esbuild: true
   msw: true
   sharp: true
+  wasm-pack: true
   workerd: true

@@ -2,6 +2,7 @@ import { verifyAuth } from "../pages/auth.js"
 import { decode, genRandStr, WorkerError, timingSafeEqual } from "../common.js"
 import {
   createPaste,
+  allocateRandomPasteName,
   getPasteMetadata,
   metaResponseFromMetadata,
   pasteNameAvailable,
@@ -10,13 +11,14 @@ import {
 import {
   BINARY_MIME_TYPE,
   DEFAULT_PASSWD_LEN,
+  DIRECT_UPLOAD_MAX_BYTES,
   PASTE_NAME_LEN,
   PRIVATE_PASTE_NAME_LEN,
   PASSWD_SEP,
   TEXT_MIME_TYPE,
 } from "../../shared/constants.js"
 import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
-import { parseReadLimit, verifyName, verifyPassword } from "../../shared/verify.js"
+import { isOriginalFileInfo, parseReadLimit, verifyName, verifyPassword } from "../../shared/verify.js"
 import type { OriginalFileInfo, PasteResponse } from "../../shared/interfaces.js"
 import {
   handleMPUAbort,
@@ -52,17 +54,6 @@ function parseOriginalFileInfos(raw: string | undefined): OriginalFileInfo[] | u
   })
 }
 
-function isOriginalFileInfo(value: unknown): value is OriginalFileInfo {
-  if (typeof value !== "object" || value === null) return false
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.name === "string" &&
-    typeof record.sizeBytes === "number" &&
-    Number.isFinite(record.sizeBytes) &&
-    record.sizeBytes >= 0
-  )
-}
-
 function parseMimeType(raw: string | undefined): string | undefined {
   if (raw === undefined) return undefined
   if (raw === TEXT_MIME_TYPE || raw === BINARY_MIME_TYPE) return raw
@@ -77,9 +68,12 @@ function parseRemainingReads(raw: string | undefined, defaultReads: number): num
   return remainingReads === 0 ? undefined : remainingReads
 }
 
-async function multipartToMap(req: Request, sizeLimit: string): Promise<Map<string, ParsedMultipartPart>> {
+async function multipartToMap(
+  req: Request,
+  maxPartSize: number,
+  sizeLimitLabel: string,
+): Promise<Map<string, ParsedMultipartPart>> {
   const partsMap = new Map<string, ParsedMultipartPart>()
-  const maxPartSize = parseSize(sizeLimit)!
   let formData: FormData
 
   try {
@@ -93,19 +87,18 @@ async function multipartToMap(req: Request, sizeLimit: string): Promise<Map<stri
     if (typeof value === "string") {
       const bytes = new TextEncoder().encode(value)
       if (bytes.byteLength > maxPartSize) {
-        throw new WorkerError(413, `payload too large (max ${sizeLimit} allowed)`)
+        throw new WorkerError(413, `payload too large (max ${sizeLimitLabel} allowed)`)
       }
-      const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
       partsMap.set(name, {
-        content: arrayBuffer,
+        content: bytes.buffer,
         contentLength: bytes.byteLength,
         contentAsString: () => value,
       })
     } else {
-      const arrayBuffer = await value.arrayBuffer()
-      if (arrayBuffer.byteLength > maxPartSize) {
-        throw new WorkerError(413, `payload too large (max ${sizeLimit} allowed)`)
+      if (value.size > maxPartSize) {
+        throw new WorkerError(413, `payload too large (max ${sizeLimitLabel} allowed)`)
       }
+      const arrayBuffer = await value.arrayBuffer()
       partsMap.set(name, {
         filename: value.name,
         content: arrayBuffer,
@@ -156,7 +149,9 @@ export async function handlePostOrPut(
     throw new WorkerError(400, `bad usage, please use 'multipart/form-data' instead of ${contentType}`)
   }
 
-  const parts = await multipartToMap(request, env.R2_MAX_ALLOWED)
+  const parts = isMPUComplete
+    ? await multipartToMap(request, parseSize(env.R2_MAX_ALLOWED)!, env.R2_MAX_ALLOWED)
+    : await multipartToMap(request, DIRECT_UPLOAD_MAX_BYTES, "5 MiB")
 
   if (!parts.has("c")) {
     throw new WorkerError(400, "cannot find content in formdata")
@@ -282,7 +277,7 @@ export async function handlePostOrPut(
         throw new WorkerError(409, `name '${pasteName}' is already used`)
       }
     } else {
-      pasteName = genRandStr(isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
+      pasteName = await allocateRandomPasteName(env, isPrivate ? PRIVATE_PASTE_NAME_LEN : PASTE_NAME_LEN)
     }
 
     const r2Object = isMPUComplete ? await handleMPUComplete(request, env, uploadedParts!) : undefined

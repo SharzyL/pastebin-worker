@@ -26,7 +26,7 @@ complete -c pb -n "__fish_seen_subcommand_from post p" -s n -l name -x -d Name
 complete -c pb -n "__fish_seen_subcommand_from post p" -s s -l password -x -d Password
 complete -c pb -n "__fish_seen_subcommand_from post p" -s p -l private -f -d 'Make generated paste name longer for privacy'
 complete -c pb -n "__fish_seen_subcommand_from post p" -s x -l clip -f -d 'Clip the url to the clipboard'
-complete -c pb -n "__fish_seen_subcommand_from post p" -s E -l encrypt -f -d 'Client-side AES-GCM encryption'
+complete -c pb -n "__fish_seen_subcommand_from post p" -s E -l encrypt -f -d 'Client-side chunked AES-GCM encryption'
 complete -c pb -n "__fish_seen_subcommand_from post p" -s F -l filename -x -d 'Filename to store with paste'
 
 # case update:
@@ -35,7 +35,7 @@ complete -c pb -n "__fish_seen_subcommand_from update u" -s f -l file -r -d 'Rea
 complete -c pb -n "__fish_seen_subcommand_from update u" -s e -l expire -x -d 'Expiration time'
 complete -c pb -n "__fish_seen_subcommand_from update u" -s s -l password -x -d Password
 complete -c pb -n "__fish_seen_subcommand_from update u" -s x -l clip -f -d 'Clip the url to the clipboard'
-complete -c pb -n "__fish_seen_subcommand_from update u" -s E -l encrypt -f -d 'Client-side AES-GCM encryption'
+complete -c pb -n "__fish_seen_subcommand_from update u" -s E -l encrypt -f -d 'Client-side chunked AES-GCM encryption'
 complete -c pb -n "__fish_seen_subcommand_from update u" -s F -l filename -x -d 'Filename to store with paste'
 
 # case get:

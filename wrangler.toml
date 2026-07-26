@@ -1,8 +1,12 @@
 name = "pb"
-compatibility_date = "2025-04-24"
+compatibility_date = "2026-06-16"
 
 workers_dev = false
 main = "worker/index.ts"
+
+[build]
+command = "pnpm ensure:argon2"
+watch_dir = ["argon2/src", "argon2/Cargo.toml"]
 
 [[rules]]
 type = "Text"
@@ -39,6 +43,22 @@ id = "435f8959b9de485ea48751ba557d90f5"  # id of your KV namespace
 binding = "R2"  # do not touch this
 bucket_name = "pb-shz-al"  # bucket name of your R2 bucket
 
+[[durable_objects.bindings]]
+name = "P2P_ROOM"
+class_name = "P2PRoom"
+
+[[durable_objects.bindings]]
+name = "PASTE_READ_COUNTER"
+class_name = "PasteReadCounter"
+
+[exports.P2PRoom]
+type = "durable-object"
+storage = "sqlite"
+
+[exports.PasteReadCounter]
+type = "durable-object"
+storage = "sqlite"
+
 [vars]
 # must be consistent with your routes
 DEPLOY_URL = "https://shz.al"
@@ -61,6 +81,9 @@ CACHE_STATIC_PAGE_AGE = 7200
 # Cache-Control max-age for paste pages
 CACHE_PASTE_AGE = 600
 
+# Default input tab on the home page: "edit" or "file"
+DEFAULT_TAB = "edit"
+
 # Default expiration
 DEFAULT_EXPIRATION = "7d"
 
@@ -70,7 +93,8 @@ MAX_EXPIRATION = "90d"
 # Default reads
 DEFAULT_READS = 0
 
-# A collection of {username: password} pair
+# A map of usernames to password hashes: { username = "password hash" }
+# Run `pnpm password` to generate a password hash.
 # Leave empty to disable auth
 BASIC_AUTH = {}
 
@@ -82,3 +106,32 @@ R2_MAX_ALLOWED = "256M"
 
 # The following mimetypes will be converted to text/plain
 DISALLOWED_MIME_FOR_PASTE = ["text/html", "audio/x-mpegurl"]
+
+# Whether P2P transfer is enabled by default on the index page
+DEFAULT_P2P_TRANSFER = false
+
+# Default P2P pairing link expiration
+DEFAULT_P2P_EXPIRATION = "6h"
+
+# Max P2P pairing link expiration
+# Expiration longer than 24h are not recommended.
+MAX_P2P_EXPIRATION = "12h"
+
+# Default max P2P transfers. 0 means unlimited.
+DEFAULT_P2P_TRANSFERS = 0
+
+# Whether P2P transfer verification is enabled by default
+DEFAULT_P2P_VERIFY = true
+
+# Optional Cloudflare Realtime TURN key for P2P. Keep CF_TURN_API_SECRET as a Wrangler secret:
+# Also set CF_TURN_API_SECRET, run:
+#    pnpm wrangler secret put CF_TURN_API_SECRET
+# CF_TURN_ID = ""
+
+# Optional self-hosted STUN/TURN servers for P2P fallback. STUN-only URLs do not need a secret.
+# Set TURN_SHARED_SECRET as a Wrangler secret to enable turn: or turns: URLs:
+# coturn should enable use-auth-secret with the same static-auth-secret.
+# Include a stun: URL when you want browsers to try direct connectivity first.
+# Also set TURN_SHARED_SECRET, run:
+#    pnpm wrangler secret put TURN_SHARED_SECRET
+# TURN_URLS = []

@@ -4,10 +4,10 @@ import { DisplayPasteView } from "../../frontend/pages/DisplayPasteView.js"
 import type { PasteMetadata } from "../storage/storage.js"
 import { hasReadLimit, metaResponseFromMetadata } from "../storage/storage.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
-import { decode, escapeHtml } from "../common.js"
+import { escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { detectUtf8 } from "../../shared/encoding.js"
-import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
+import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE, publicEnv } from "../ssrUtils.js"
 import { filenameForTitle } from "../../shared/filename.js"
 import { itemCountLabel } from "../../shared/format.js"
 
@@ -18,24 +18,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     binary += String.fromCharCode(byte)
   }
   return btoa(binary)
-}
-
-async function streamToArrayBuffer(stream: ReadableStream<Uint8Array>): Promise<ArrayBuffer> {
-  const reader = stream.getReader()
-  const chunks: Uint8Array[] = []
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    chunks.push(value)
-  }
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
-  const result = new Uint8Array(totalLength)
-  let offset = 0
-  for (const chunk of chunks) {
-    result.set(chunk, offset)
-    offset += chunk.length
-  }
-  return result.buffer
 }
 
 export function canRenderDisplayPage(metadata: PasteMetadata): boolean {
@@ -55,7 +37,7 @@ export async function renderDisplayPage(
     return null
   }
 
-  const content = paste instanceof ArrayBuffer ? paste : await streamToArrayBuffer(paste)
+  const content = paste instanceof ArrayBuffer ? paste : await new Response(paste).arrayBuffer()
 
   const encoding = detectUtf8(new Uint8Array(content))
   const isBinary = encoding === null
@@ -81,14 +63,7 @@ export async function renderDisplayPage(
   const titleName =
     name + (titleUrlFilename ? " / " + titleUrlFilename : urlExt ? urlExt : displayName ? " / " + displayName : "")
 
-  const config: Env = {
-    DEPLOY_URL: env.DEPLOY_URL,
-    REPO: env.REPO,
-    MAX_EXPIRATION: env.MAX_EXPIRATION,
-    DEFAULT_READS: env.DEFAULT_READS,
-    DEFAULT_EXPIRATION: env.DEFAULT_EXPIRATION,
-    INDEX_PAGE_TITLE: env.INDEX_PAGE_TITLE,
-  } as Env
+  const config = publicEnv(env)
 
   const reactElement = React.createElement(
     React.StrictMode,
@@ -116,13 +91,7 @@ export async function renderDisplayPage(
   )
 
   const stream = await renderToReadableStream(reactElement)
-  const reader = stream.getReader() as ReadableStreamDefaultReader<Uint8Array>
-  let html = ""
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    html += decode(value)
-  }
+  const html = await new Response(stream).text()
 
   const { jsFile, cssPaths } = getAssetPaths(manifest, "display.html")
 

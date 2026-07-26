@@ -1,9 +1,11 @@
 // we will move this file to a shared directory later
 
 import type { MPUCreateResponse, OriginalFileInfo, PasteResponse } from "./interfaces.js"
-import type { EncryptionScheme } from "../frontend/utils/encryption.js"
+import type { EncryptionScheme } from "./constants.js"
 import { BINARY_MIME_TYPE, TEXT_MIME_TYPE } from "./constants.js"
+import { hasBinaryMarker } from "./encoding.js"
 import { parsePath } from "./parsers.js"
+import { mapIndicesWithConcurrency } from "./async.js"
 
 export class UploadError extends Error {
   public statusCode: number
@@ -33,8 +35,15 @@ export interface UploadOptions {
   manageUrl?: string
 }
 
-export const DEFAULT_MPU_CONCURRENCY = 8
-const MIME_TYPE_SNIFF_BYTES = 256
+export interface MPUUploadSource {
+  name: string
+  size: number
+  partCount: number
+  getPart: (index: number, signal: AbortSignal) => Promise<Blob>
+}
+
+const DEFAULT_MPU_CONCURRENCY = 8
+const MPU_PROGRESS_THROTTLE_MS = 75
 
 interface XhrSendOptions {
   method: "POST" | "PUT"
@@ -100,41 +109,18 @@ function xhrSend(url: string | URL, opts: XhrSendOptions): Promise<XhrResponse> 
   })
 }
 
-async function runWithConcurrency<T>(
-  count: number,
-  limit: number,
-  worker: (index: number) => Promise<T>,
-): Promise<T[]> {
-  const results = new Array<T>(count)
-  let next = 0
-  let aborted = false
-  async function run() {
-    while (!aborted) {
-      const i = next++
-      if (i >= count) return
-      try {
-        results[i] = await worker(i)
-      } catch (e) {
-        aborted = true
-        throw e
-      }
-    }
-  }
-  const runners = Array.from({ length: Math.min(limit, count) }, () => run())
-  await Promise.all(runners)
-  return results
-}
-
 function filenameHasExtension(filename: string): boolean {
   const lastSlash = Math.max(filename.lastIndexOf("/"), filename.lastIndexOf("\\"))
   const basename = filename.slice(lastSlash + 1)
   return basename.lastIndexOf(".") > 0
 }
 
-async function inferMimeTypeFromContent(content: File): Promise<string | undefined> {
-  if (filenameHasExtension(content.name)) return undefined
-  const bytes = new Uint8Array(await content.slice(0, MIME_TYPE_SNIFF_BYTES).arrayBuffer())
-  return bytes.includes(0) ? BINARY_MIME_TYPE : TEXT_MIME_TYPE
+async function inferMimeTypeFromContent(
+  content: File,
+  options?: { ignoreFilename?: boolean },
+): Promise<string | undefined> {
+  if (!options?.ignoreFilename && filenameHasExtension(content.name)) return undefined
+  return (await hasBinaryMarker(content)) ? BINARY_MIME_TYPE : TEXT_MIME_TYPE
 }
 
 async function maybeAddMimeType(
@@ -148,6 +134,27 @@ async function maybeAddMimeType(
 
   const mimeType = await inferMimeTypeFromContent(content)
   if (mimeType !== undefined) fd.set("mimeType", mimeType)
+}
+
+interface UploadMetadataOptions {
+  content: File
+  filenames?: OriginalFileInfo[]
+  password?: string
+  highlightLanguage?: string
+  encryptionScheme?: EncryptionScheme
+  inferMimeType?: boolean
+  expire?: string
+  remainingReads?: number
+}
+
+async function appendUploadMetadata(fd: FormData, options: UploadMetadataOptions): Promise<void> {
+  await maybeAddMimeType(fd, options.content, options.encryptionScheme, options.inferMimeType)
+  if (options.filenames !== undefined) fd.set("filenames", JSON.stringify(options.filenames))
+  if (options.expire !== undefined) fd.set("e", options.expire)
+  if (options.remainingReads !== undefined) fd.set("reads", String(options.remainingReads))
+  if (options.password !== undefined) fd.set("s", options.password)
+  if (options.encryptionScheme !== undefined) fd.set("encryption-scheme", options.encryptionScheme)
+  if (options.highlightLanguage !== undefined) fd.set("lang", options.highlightLanguage)
 }
 
 // note that apiUrl should be manageUrl when isUpload
@@ -174,19 +181,22 @@ export async function uploadNormal(
 
   // typescript cannot handle overload on union types
   fd.set("c", content)
-  await maybeAddMimeType(fd, content, encryptionScheme, inferMimeType)
-  if (filenames !== undefined) fd.set("filenames", JSON.stringify(filenames))
+  await appendUploadMetadata(fd, {
+    content,
+    filenames,
+    password,
+    highlightLanguage,
+    encryptionScheme,
+    inferMimeType,
+    expire,
+    remainingReads,
+  })
 
   if (isUpdate && manageUrl === undefined) {
     throw TypeError("uploadMPU: no manageUrl specified in update")
   }
 
-  if (expire !== undefined) fd.set("e", expire)
-  if (remainingReads !== undefined) fd.set("reads", String(remainingReads))
-  if (password !== undefined) fd.set("s", password)
   if (!isUpdate && name !== undefined) fd.set("n", name)
-  if (encryptionScheme !== undefined) fd.set("encryption-scheme", encryptionScheme)
-  if (highlightLanguage !== undefined) fd.set("lang", highlightLanguage)
   if (isPrivate) fd.set("p", "1")
 
   const resp = await xhrSend(isUpdate ? manageUrl! : apiUrl, {
@@ -208,6 +218,58 @@ export async function uploadNormal(
 export async function uploadMPU(
   apiUrl: string,
   chunkSize: number,
+  options: UploadOptions,
+  progressCallback?: (doneBytes: number, allBytes: number) => void,
+  concurrency: number = DEFAULT_MPU_CONCURRENCY,
+  signal?: AbortSignal,
+): Promise<PasteResponse> {
+  const { content } = options
+  const partCount = Math.ceil(content.size / chunkSize)
+  return await uploadMPUSource(
+    apiUrl,
+    {
+      name: content.name,
+      size: content.size,
+      partCount,
+      getPart: (index) => Promise.resolve(content.slice(index * chunkSize, (index + 1) * chunkSize)),
+    },
+    options,
+    progressCallback,
+    concurrency,
+    signal,
+  )
+}
+
+async function abortMultipartUpload(apiUrl: string, createResp: MPUCreateResponse): Promise<void> {
+  const abortUrl = new URL(`${apiUrl}/mpu/abort`)
+  abortUrl.searchParams.set("key", createResp.key)
+  abortUrl.searchParams.set("uploadId", createResp.uploadId)
+  try {
+    // This request is intentionally detached from the upload signal. keepalive
+    // lets the browser finish submitting it when pagehide triggered the abort.
+    const cleanupRequest = fetch(abortUrl, { method: "POST", keepalive: true }).then(
+      () => undefined,
+      () => undefined,
+    )
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        cleanupRequest,
+        new Promise<void>((resolve) => {
+          timeout = setTimeout(resolve, 5000)
+        }),
+      ])
+    } finally {
+      if (timeout !== undefined) clearTimeout(timeout)
+    }
+  } catch {
+    // Multipart cleanup is best-effort and must not replace the original error.
+  }
+}
+
+export async function uploadMPUSource(
+  apiUrl: string,
+  source: MPUUploadSource,
   {
     content,
     filenames,
@@ -241,15 +303,7 @@ export async function uploadMPU(
     return await doMPU()
   } catch (e) {
     ctrl.abort()
-    if (createResp) {
-      const abortUrl = new URL(`${apiUrl}/mpu/abort`)
-      abortUrl.searchParams.set("key", createResp.key)
-      abortUrl.searchParams.set("uploadId", createResp.uploadId)
-      // Fire-and-forget: must outlive the cancellation that triggered us, no signal/progress.
-      void fetch(abortUrl, { method: "POST" }).catch(() => {
-        /* swallow: orphaned R2 parts are a soft failure */
-      })
-    }
+    if (createResp) await abortMultipartUpload(apiUrl, createResp)
     throw e
   } finally {
     signal?.removeEventListener("abort", onExternalAbort)
@@ -287,29 +341,44 @@ export async function uploadMPU(
     createResp = parsedCreateResp
     const { key: createKey, uploadId: createUploadId, name: createName } = parsedCreateResp
 
-    const numParts = Math.ceil(content.size / chunkSize)
+    if (!Number.isInteger(source.partCount) || source.partCount < 1) {
+      throw new TypeError("uploadMPUSource: partCount must be a positive integer")
+    }
 
-    const chunkLoaded = new Array<number>(numParts).fill(0)
+    const chunkLoaded = new Array<number>(source.partCount).fill(0)
+    let totalLoaded = 0
+    let lastReportedLoaded = -1
+    let lastReportedAt = Number.NEGATIVE_INFINITY
     const reportProgress = progressCallback
-      ? () =>
-          progressCallback(
-            chunkLoaded.reduce((a, b) => a + b, 0),
-            content.size,
-          )
+      ? (force = false) => {
+          if (totalLoaded === lastReportedLoaded) return
+          const now = performance.now()
+          if (!force && now - lastReportedAt < MPU_PROGRESS_THROTTLE_MS) return
+          lastReportedAt = now
+          lastReportedLoaded = totalLoaded
+          progressCallback(totalLoaded, source.size)
+        }
       : undefined
-    const uploadedParts = await runWithConcurrency(numParts, concurrency, async (i) => {
+    const updatePartProgress = (index: number, loaded: number, partSize: number) => {
+      const previous = chunkLoaded[index]
+      const next = Math.max(previous, Math.min(Math.max(loaded, 0), partSize))
+      chunkLoaded[index] = next
+      totalLoaded += next - previous
+      reportProgress?.()
+    }
+    const uploadedParts = await mapIndicesWithConcurrency(source.partCount, concurrency, async (i) => {
       const resumeUrl = new URL(`${apiUrl}/mpu/resume`)
       resumeUrl.searchParams.set("key", createKey)
       resumeUrl.searchParams.set("uploadId", createUploadId)
       resumeUrl.searchParams.set("partNumber", (i + 1).toString()) // because partNumber need to nonzero
-      const chunk = content.slice(i * chunkSize, (i + 1) * chunkSize)
+      const chunk = await source.getPart(i, ctrl.signal)
+      ctrl.signal.throwIfAborted()
       const resumeReqResp = await xhrSend(resumeUrl, {
         method: "PUT",
         body: chunk,
         onUploadProgress: reportProgress
           ? (loaded) => {
-              chunkLoaded[i] = Math.min(loaded, chunk.size)
-              reportProgress()
+              updatePartProgress(i, loaded, chunk.size)
             }
           : undefined,
         signal: ctrl.signal,
@@ -317,36 +386,27 @@ export async function uploadMPU(
       if (!resumeReqResp.ok) {
         throw new UploadError(resumeReqResp.status, await resumeReqResp.text())
       }
-      chunkLoaded[i] = chunk.size
-      reportProgress?.()
+      updatePartProgress(i, chunk.size, chunk.size)
       return await resumeReqResp.json<R2UploadedPart>()
     })
+    reportProgress?.(true)
 
     const completeFormData = new FormData()
     const completeUrl = new URL(`${apiUrl}/mpu/complete`)
     completeUrl.searchParams.set("name", createName)
     completeUrl.searchParams.set("key", createKey)
     completeUrl.searchParams.set("uploadId", createUploadId)
-    completeFormData.set("c", new File([JSON.stringify(uploadedParts)], content.name))
-    await maybeAddMimeType(completeFormData, content, encryptionScheme, inferMimeType)
-    if (filenames !== undefined) {
-      completeFormData.set("filenames", JSON.stringify(filenames))
-    }
-    if (expire !== undefined) {
-      completeFormData.set("e", expire)
-    }
-    if (remainingReads !== undefined) {
-      completeFormData.set("reads", String(remainingReads))
-    }
-    if (password !== undefined) {
-      completeFormData.set("s", password)
-    }
-    if (highlightLanguage !== undefined) {
-      completeFormData.set("lang", highlightLanguage)
-    }
-    if (encryptionScheme !== undefined) {
-      completeFormData.set("encryption-scheme", encryptionScheme)
-    }
+    completeFormData.set("c", new File([JSON.stringify(uploadedParts)], source.name))
+    await appendUploadMetadata(completeFormData, {
+      content,
+      filenames,
+      password,
+      highlightLanguage,
+      encryptionScheme,
+      inferMimeType,
+      expire,
+      remainingReads,
+    })
     const completeReqResp = await fetch(completeUrl, {
       method: isUpdate ? "PUT" : "POST",
       body: completeFormData,

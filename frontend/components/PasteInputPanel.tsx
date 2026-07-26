@@ -8,6 +8,7 @@ import { cardOverrides, tst } from "../utils/overrides.js"
 import { CodeEditor } from "./CodeEditor.js"
 import { FileTree } from "./FileTree.js"
 import { itemCountLabel } from "../../shared/format.js"
+import type { PublicEnv } from "../../shared/interfaces.js"
 
 export type EditKind = "edit" | "file"
 
@@ -43,6 +44,17 @@ interface FileSystemDirectoryEntryLike extends FileSystemEntryLike {
 
 type TransferFileRecord = { kind: "entry"; entry: FileSystemEntryLike } | { kind: "file"; file: File }
 
+class FileCollectionCancelledError extends Error {
+  constructor() {
+    super("File collection was superseded.")
+    this.name = "FileCollectionCancelledError"
+  }
+}
+
+function ensureCollectionActive(isCurrent: () => boolean): void {
+  if (!isCurrent()) throw new FileCollectionCancelledError()
+}
+
 function fileWithPath(file: File, path: string): File {
   if (file.name === path) return file
   return new File([file], path, { type: file.type, lastModified: file.lastModified })
@@ -64,12 +76,17 @@ function readDirectoryBatch(reader: FileSystemDirectoryReaderLike): Promise<File
   return new Promise((resolve, reject) => reader.readEntries(resolve, reject))
 }
 
-async function readAllDirectoryEntries(entry: FileSystemDirectoryEntryLike): Promise<FileSystemEntryLike[]> {
+async function readAllDirectoryEntries(
+  entry: FileSystemDirectoryEntryLike,
+  isCurrent: () => boolean,
+): Promise<FileSystemEntryLike[]> {
   const reader = entry.createReader()
   const entries: FileSystemEntryLike[] = []
 
   while (true) {
+    ensureCollectionActive(isCurrent)
     const batch = await readDirectoryBatch(reader)
+    ensureCollectionActive(isCurrent)
     if (batch.length === 0) break
     entries.push(...batch)
   }
@@ -77,18 +94,25 @@ async function readAllDirectoryEntries(entry: FileSystemDirectoryEntryLike): Pro
   return entries
 }
 
-async function filesFromEntry(entry: FileSystemEntryLike, parentPath = ""): Promise<File[]> {
+async function filesFromEntry(
+  entry: FileSystemEntryLike,
+  parentPath = "",
+  isCurrent: () => boolean = () => true,
+): Promise<File[]> {
+  ensureCollectionActive(isCurrent)
   if (entry.isFile) {
     const file = await readFileEntry(entry as FileSystemFileEntryLike)
+    ensureCollectionActive(isCurrent)
     return [fileWithPath(file, pathJoin(parentPath, file.name))]
   }
 
   if (entry.isDirectory) {
     const directoryPath = `${pathJoin(parentPath, entry.name)}/`
-    const children = await readAllDirectoryEntries(entry as FileSystemDirectoryEntryLike)
+    const children = await readAllDirectoryEntries(entry as FileSystemDirectoryEntryLike, isCurrent)
     if (children.length === 0) return [emptyFolderFile(directoryPath)]
 
-    const nestedFiles = await Promise.all(children.map((child) => filesFromEntry(child, directoryPath)))
+    const nestedFiles = await Promise.all(children.map((child) => filesFromEntry(child, directoryPath, isCurrent)))
+    ensureCollectionActive(isCurrent)
     return nestedFiles.flat()
   }
 
@@ -117,10 +141,14 @@ function transferRecordsFromDataTransferItems(items: DataTransferItemList | unde
   return records
 }
 
-async function filesFromTransferRecords(records: TransferFileRecord[]): Promise<File[]> {
+async function filesFromTransferRecords(records: TransferFileRecord[], isCurrent: () => boolean): Promise<File[]> {
+  ensureCollectionActive(isCurrent)
   const files = await Promise.all(
-    records.map((record) => (record.kind === "entry" ? filesFromEntry(record.entry) : Promise.resolve([record.file]))),
+    records.map((record) =>
+      record.kind === "entry" ? filesFromEntry(record.entry, "", isCurrent) : Promise.resolve([record.file]),
+    ),
   )
+  ensureCollectionActive(isCurrent)
   return files.flat()
 }
 
@@ -148,7 +176,8 @@ interface PasteEditorProps extends CardProps {
   isPasteLoading: boolean
   state: PasteEditState
   onStateChange: (state: PasteEditState) => void
-  config: Env
+  config: PublicEnv
+  skipFileSizeLimit?: boolean
   showModal: (title: string, content: string) => void
 }
 
@@ -157,6 +186,7 @@ export function PasteInputPanel({
   state,
   onStateChange,
   config,
+  skipFileSizeLimit = false,
   showModal,
   ...rest
 }: PasteEditorProps) {
@@ -164,6 +194,13 @@ export function PasteInputPanel({
   const [isDragged, setDragged] = useState<boolean>(false)
   const [isEditDragged, setEditDragged] = useState<boolean>(false)
   const [isCollectingFiles, setIsCollectingFiles] = useState<boolean>(false)
+  const collectionGeneration = useRef(0)
+
+  useEffect(() => {
+    return () => {
+      collectionGeneration.current += 1
+    }
+  }, [])
 
   const resetFileInput = useCallback(() => {
     if (fileInput.current) fileInput.current.value = ""
@@ -172,32 +209,39 @@ export function PasteInputPanel({
   const setFiles = useCallback(
     (files: File[]) => {
       const totalSize = totalFileSize(files)
-      const [totalOk, totalMsg] = verifyFileSize(totalSize, config)
-      if (!totalOk) {
-        showModal(files.length > 1 ? "Pastes too large" : "Paste too large", totalMsg)
-        resetFileInput()
-        return
+      if (!skipFileSizeLimit) {
+        const [totalOk, totalMsg] = verifyFileSize(totalSize, config)
+        if (!totalOk) {
+          showModal(files.length > 1 ? "Pastes too large" : "Paste too large", totalMsg)
+          resetFileInput()
+          return
+        }
       }
 
       onStateChange({ ...state, editKind: "file", files })
     },
-    [config, onStateChange, resetFileInput, showModal, state],
+    [config, onStateChange, resetFileInput, showModal, skipFileSizeLimit, state],
   )
 
   const collectAndSetFiles = useCallback(
     async (records: TransferFileRecord[]) => {
       if (records.length === 0) return
 
+      const generation = collectionGeneration.current + 1
+      collectionGeneration.current = generation
+      const isCurrent = () => collectionGeneration.current === generation
       setIsCollectingFiles(true)
       try {
-        const files = await filesFromTransferRecords(records)
-        if (files.length > 0) setFiles(files)
+        const files = await filesFromTransferRecords(records, isCurrent)
+        if (isCurrent() && files.length > 0) setFiles(files)
       } catch (error) {
+        if (!isCurrent()) return
+        if (error instanceof FileCollectionCancelledError) return
         const message = error instanceof Error ? error.message : "The selected files could not be read."
         showModal("Could not read files", message)
         resetFileInput()
       } finally {
-        setIsCollectingFiles(false)
+        if (isCurrent()) setIsCollectingFiles(false)
       }
     },
     [resetFileInput, setFiles, showModal],
@@ -225,7 +269,10 @@ export function PasteInputPanel({
       void collectAndSetFiles(records)
     } else {
       const files = filesFromFileList(e.dataTransfer?.files)
-      if (files.length > 0) setFiles(files)
+      if (files.length > 0) {
+        collectionGeneration.current += 1
+        setFiles(files)
+      }
     }
     setDragged(false)
     setEditDragged(false)
@@ -242,7 +289,10 @@ export function PasteInputPanel({
           className="hidden"
           onChange={(e) => {
             const files = filesFromFileList(e.target.files)
-            if (files.length > 0) setFiles(files)
+            if (files.length > 0) {
+              collectionGeneration.current += 1
+              setFiles(files)
+            }
           }}
           multiple
         />

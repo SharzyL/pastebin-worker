@@ -11,6 +11,7 @@ import math
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import time
@@ -20,12 +21,16 @@ from urllib.parse import unquote, urlsplit, urlunsplit
 
 import requests
 
-DEFAULT_DOMAIN = "https://shz.al"
+DEFAULT_DOMAIN = "https://paste.su7.pp.ua"
 SCRIPT_NAME = "pb"
 MPU_THRESHOLD = 5 * 1024 * 1024  # switch to multipart upload above this size
 MPU_CHUNK_SIZE = 5 * 1024 * 1024  # R2 requires every part except the last to be >=5 MiB
-ENCRYPTION_SCHEME = "AES-GCM"
+ENCRYPTION_SCHEME = "AES-GCM-CHUNKED"
 ENCRYPTION_HEADER = "X-PB-Encryption-Scheme"
+ENCRYPTION_MAGIC = b"PBENC001"
+ENCRYPTION_CHUNK_SIZE = 5 * 1024 * 1024
+ENCRYPTION_HEADER_SIZE = 32
+ENCRYPTION_TAG_SIZE = 16
 
 LEVEL_COLORS = {
     logging.DEBUG: "90",
@@ -143,22 +148,43 @@ def _import_aesgcm():
 
 
 def b64_variant_encode(data: bytes) -> str:
-    # Same variant as the frontend: '/' -> '_', strip trailing '='. '+' is kept.
-    return base64.b64encode(data).decode("ascii").replace("/", "_").rstrip("=")
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
 
 
 def b64_variant_decode(s: str) -> bytes:
-    s = s.replace("_", "/")
     pad = (-len(s)) % 4
-    return base64.b64decode(s + "=" * pad)
+    return base64.b64decode(s + "=" * pad, altchars=b"-_", validate=True)
+
+
+def encryption_chunk_bounds(plaintext_size: int, index: int) -> tuple[int, int]:
+    start = index * ENCRYPTION_CHUNK_SIZE
+    return start, min(plaintext_size, start + ENCRYPTION_CHUNK_SIZE)
+
+
+def encryption_chunk_count(plaintext_size: int) -> int:
+    return max(1, math.ceil(plaintext_size / ENCRYPTION_CHUNK_SIZE))
 
 
 def encrypt_body(body: bytes) -> tuple[str, bytes]:
     AESGCM = _import_aesgcm()
     raw_key = os.urandom(32)
-    iv = os.urandom(12)
-    ciphertext = AESGCM(raw_key).encrypt(iv, body, None)
-    return b64_variant_encode(raw_key), iv + ciphertext
+    nonce_prefix = os.urandom(8)
+    header = struct.pack(
+        ">8sIIQ8s",
+        ENCRYPTION_MAGIC,
+        ENCRYPTION_CHUNK_SIZE,
+        ENCRYPTION_TAG_SIZE,
+        len(body),
+        nonce_prefix,
+    )
+    aes = AESGCM(raw_key)
+    encrypted_chunks = [header]
+    for index in range(encryption_chunk_count(len(body))):
+        start, end = encryption_chunk_bounds(len(body), index)
+        iv = nonce_prefix + index.to_bytes(4, "big")
+        additional_data = header + index.to_bytes(4, "big")
+        encrypted_chunks.append(aes.encrypt(iv, body[start:end], additional_data))
+    return b64_variant_encode(raw_key), b"".join(encrypted_chunks)
 
 
 def decrypt_body(scheme: str, encoded_key: str, blob: bytes) -> bytes:
@@ -170,18 +196,52 @@ def decrypt_body(scheme: str, encoded_key: str, blob: bytes) -> bytes:
     except (ValueError, base64.binascii.Error) as e:
         die(f"invalid decryption key: {e}")
         raise
-    if len(raw_key) not in (16, 24, 32):
+    if len(raw_key) != 32:
         die(
-            f"AES-GCM key must decode to 16/24/32 bytes, got {len(raw_key)}; "
+            f"AES-GCM key must decode to 32 bytes, got {len(raw_key)}; "
             "make sure the full URL fragment was passed"
         )
-    if len(blob) < 12 + 16:
-        die("ciphertext too short to contain IV + GCM tag")
-    iv, ct = blob[:12], blob[12:]
+    if len(blob) < ENCRYPTION_HEADER_SIZE + ENCRYPTION_TAG_SIZE:
+        die("ciphertext is too short to contain a chunked encryption header")
+
+    header = blob[:ENCRYPTION_HEADER_SIZE]
+    magic, chunk_size, tag_size, plaintext_size, nonce_prefix = struct.unpack(
+        ">8sIIQ8s", header
+    )
+    if (
+        magic != ENCRYPTION_MAGIC
+        or chunk_size != ENCRYPTION_CHUNK_SIZE
+        or tag_size != ENCRYPTION_TAG_SIZE
+    ):
+        die("unsupported or invalid chunked encryption header")
+    expected_size = (
+        ENCRYPTION_HEADER_SIZE
+        + plaintext_size
+        + encryption_chunk_count(plaintext_size) * ENCRYPTION_TAG_SIZE
+    )
+    if len(blob) != expected_size:
+        die("ciphertext size does not match its chunked encryption header")
+
     from cryptography.exceptions import InvalidTag
 
     try:
-        return AESGCM(raw_key).decrypt(iv, ct, None)
+        aes = AESGCM(raw_key)
+        decrypted_chunks = []
+        offset = ENCRYPTION_HEADER_SIZE
+        for index in range(encryption_chunk_count(plaintext_size)):
+            start, end = encryption_chunk_bounds(plaintext_size, index)
+            encrypted_length = end - start + ENCRYPTION_TAG_SIZE
+            iv = nonce_prefix + index.to_bytes(4, "big")
+            additional_data = header + index.to_bytes(4, "big")
+            decrypted_chunks.append(
+                aes.decrypt(
+                    iv,
+                    blob[offset : offset + encrypted_length],
+                    additional_data,
+                )
+            )
+            offset += encrypted_length
+        return b"".join(decrypted_chunks)
     except InvalidTag:
         die("decryption failed: wrong key or corrupted ciphertext")
         raise
@@ -888,7 +948,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-E",
         "--encrypt",
         action="store_true",
-        help="client-side encrypt with a fresh AES-GCM key (requires 'cryptography')",
+        help="client-side encrypt in authenticated 5 MiB AES-GCM chunks (requires 'cryptography')",
     )
     p_post.add_argument(
         "-F",
@@ -923,7 +983,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-E",
         "--encrypt",
         action="store_true",
-        help="client-side encrypt with a fresh AES-GCM key (requires 'cryptography')",
+        help="client-side encrypt in authenticated 5 MiB AES-GCM chunks (requires 'cryptography')",
     )
     p_update.add_argument(
         "-F",

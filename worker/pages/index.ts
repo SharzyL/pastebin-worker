@@ -1,10 +1,10 @@
 import { renderToReadableStream } from "react-dom/server.edge"
 import React from "react"
 import { PasteBin } from "../../frontend/pages/PasteBin.js"
-import { decode, escapeHtml } from "../common.js"
+import { escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { PASSWD_SEP } from "../../shared/constants.js"
-import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
+import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT, publicEnv } from "../ssrUtils.js"
 
 export async function renderIndexPage(env: Env, pathname: string): Promise<string | null> {
   // Admin URLs (containing password separator) skip SSR because they need client-side fetch
@@ -13,26 +13,13 @@ export async function renderIndexPage(env: Env, pathname: string): Promise<strin
   }
 
   // Build React element
-  const config: Env = {
-    DEPLOY_URL: env.DEPLOY_URL,
-    REPO: env.REPO,
-    MAX_EXPIRATION: env.MAX_EXPIRATION,
-    DEFAULT_READS: env.DEFAULT_READS,
-    DEFAULT_EXPIRATION: env.DEFAULT_EXPIRATION,
-    INDEX_PAGE_TITLE: env.INDEX_PAGE_TITLE,
-  } as Env
+  const config = publicEnv(env)
 
   const reactElement = React.createElement(React.StrictMode, null, React.createElement(PasteBin, { config }))
 
   // Render to HTML stream
   const stream = await renderToReadableStream(reactElement)
-  const reader = stream.getReader() as ReadableStreamDefaultReader<Uint8Array>
-  let html = ""
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    html += decode(value)
-  }
+  const html = await new Response(stream).text()
 
   // Get resource paths from manifest
   const { jsFile, cssPaths } = getAssetPaths(manifest, "index.html")

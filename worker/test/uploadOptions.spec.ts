@@ -13,6 +13,19 @@ import { createExecutionContext, env } from "cloudflare:test"
 import type { MetaResponse } from "../../shared/interfaces.js"
 import { BINARY_MIME_TYPE, MAX_PASSWD_LEN, MIN_PASSWD_LEN, PRIVATE_PASTE_NAME_LEN } from "../../shared/constants.js"
 import { parseExpiration } from "../../shared/parsers.js"
+import { isOriginalFileInfo } from "../../shared/verify.js"
+
+test("validates original file metadata", () => {
+  expect(isOriginalFileInfo({ name: "notes.txt", sizeBytes: 10 })).toBe(true)
+  expect(isOriginalFileInfo({ name: "", sizeBytes: 10 })).toBe(false)
+  expect(isOriginalFileInfo({ name: "notes.txt", sizeBytes: -1 })).toBe(false)
+  expect(
+    isOriginalFileInfo({
+      name: "notes.txt",
+      sizeBytes: Number.MAX_SAFE_INTEGER + 1,
+    }),
+  ).toBe(false)
+})
 
 test("privacy url with option p", async () => {
   const blob1 = genRandomBlob(1024)
@@ -187,6 +200,36 @@ test("filenames metadata", async () => {
   expect(uploadResp.filenames).toStrictEqual(filenames)
   expect(metaResp.filename).toStrictEqual("2-files-abc123.zip")
   expect(metaResp.filenames).toStrictEqual(filenames)
+})
+
+test("filenames metadata larger than the Workers KV metadata limit", async () => {
+  const ctx = createExecutionContext()
+  const filenames = Array.from({ length: 30 }, (_, index) => ({
+    name: `folder-${index}/a-descriptive-file-name-${index}.txt`,
+    sizeBytes: index + 1,
+  }))
+  expect(new TextEncoder().encode(JSON.stringify(filenames)).byteLength).toBeGreaterThan(1024)
+
+  const content = "small archive body"
+  const uploadResp = await upload(ctx, {
+    c: { content: new Blob([content]), filename: "30-files.zip" },
+    filenames: JSON.stringify(filenames),
+  })
+
+  // A small body would normally live in KV, but oversized metadata is moved to
+  // the R2-backed layout so KV's 1024-byte metadata cap cannot reject the write.
+  expect(uploadResp.location).toStrictEqual("R2")
+  expect(uploadResp.filenames).toStrictEqual(filenames)
+  expect(await (await workerFetch(ctx, uploadResp.url)).bytes()).toStrictEqual(new TextEncoder().encode(content))
+
+  const metaResp: MetaResponse = await (await workerFetch(ctx, addRole(uploadResp.url, "m"))).json()
+  expect(metaResp.filenames).toStrictEqual(filenames)
+
+  const pasteName = uploadResp.url.slice(BASE_URL.length + 1)
+  const stored = await env.PB.getWithMetadata<Record<string, unknown>>(pasteName)
+  expect(new TextEncoder().encode(JSON.stringify(stored.metadata)).byteLength).toBeLessThanOrEqual(1024)
+  expect(stored.metadata?.filenames).toBeUndefined()
+  expect(stored.metadata?.extendedMetadataInValue).toStrictEqual(true)
 })
 
 test("invalid filenames metadata", async () => {

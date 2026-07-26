@@ -8,10 +8,16 @@ import { setupServer } from "msw/node"
 import { http, HttpResponse } from "msw"
 import { encodeKey, encrypt, genKey } from "../utils/encryption.js"
 import { stubBrowerFunctions, unStubBrowerFunctions } from "./testUtils.js"
-import { BINARY_MIME_TYPE, DEFAULT_EDIT_FILENAME, MAX_AUTO_FETCH_BYTES, TEXT_MIME_TYPE } from "../../shared/constants.js"
+import {
+  BINARY_MIME_TYPE,
+  DEFAULT_EDIT_FILENAME,
+  MAX_AUTO_FETCH_BYTES,
+  TEXT_MIME_TYPE,
+} from "../../shared/constants.js"
 import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { formatSize } from "../utils/utils.js"
 import { LOCAL_UPLOADS_KEY } from "../utils/localUploads.js"
+import * as responseDownload from "../utils/responseDownload.js"
 
 interface RespInit {
   body: ArrayBuffer
@@ -55,6 +61,7 @@ const server = setupServer()
 beforeAll(() => {
   stubBrowerFunctions()
   globalThis.URL.createObjectURL = () => "blob:mock"
+  globalThis.URL.revokeObjectURL = () => undefined
   server.listen()
 })
 
@@ -71,6 +78,75 @@ afterAll(() => {
 })
 
 describe("DisplayPaste", () => {
+  it("aborts an in-flight initialization request when the page unmounts", async () => {
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+    let requestSignal: AbortSignal | undefined
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => {
+      requestSignal = init?.signal instanceof AbortSignal ? init.signal : undefined
+      return new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener(
+          "abort",
+          () => reject(new DOMException("The operation was aborted", "AbortError")),
+          { once: true },
+        )
+      })
+    })
+
+    try {
+      const view = render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+      await waitFor(() => expect(requestSignal).toBeInstanceOf(AbortSignal))
+      view.unmount()
+      expect(requestSignal?.aborted).toStrictEqual(true)
+    } finally {
+      fetchSpy.mockRestore()
+    }
+  })
+
+  it("defers cleanup of an OPFS-backed download when its page lifetime ends", async () => {
+    const cleanupTemporaryFile = vi.fn(() => Promise.resolve())
+    const deferTemporaryFileCleanup = vi.fn()
+    const downloadFile = new File(["download"], "download.bin", { type: BINARY_MIME_TYPE })
+    const downloadSpy = vi.spyOn(responseDownload, "downloadResponseToFile").mockResolvedValueOnce({
+      file: downloadFile,
+      cleanup: cleanupTemporaryFile,
+      deferCleanup: deferTemporaryFileCleanup,
+    })
+    const createObjectUrlSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:disk-backed")
+    const revokeObjectUrlSpy = vi.spyOn(URL, "revokeObjectURL")
+    const timeoutSpy = vi.spyOn(window, "setTimeout")
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined)
+    server.use(
+      ...mockPaste("abcd", {
+        body: new Uint8Array([1]).buffer,
+        headers: { "Content-Type": BINARY_MIME_TYPE, "X-PB-Remaining-Reads": "1" },
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    const view = render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+    try {
+      await userEvent.click(await screen.findByRole("button", { name: "Download" }))
+      await waitFor(() => expect(createObjectUrlSpy).toHaveBeenCalledWith(downloadFile))
+
+      expect(timeoutSpy.mock.calls.some(([, delay]) => delay === 60_000)).toStrictEqual(false)
+      expect(cleanupTemporaryFile).not.toHaveBeenCalled()
+      expect(deferTemporaryFileCleanup).not.toHaveBeenCalled()
+      expect(revokeObjectUrlSpy).not.toHaveBeenCalledWith("blob:disk-backed")
+
+      view.unmount()
+      expect(revokeObjectUrlSpy).toHaveBeenCalledWith("blob:disk-backed")
+      expect(cleanupTemporaryFile).not.toHaveBeenCalled()
+      expect(deferTemporaryFileCleanup).toHaveBeenCalledOnce()
+    } finally {
+      view.unmount()
+      downloadSpy.mockRestore()
+      createObjectUrlSpy.mockRestore()
+      revokeObjectUrlSpy.mockRestore()
+      timeoutSpy.mockRestore()
+      clickSpy.mockRestore()
+    }
+  })
+
   it("auto-fetches and highlights small plain text", async () => {
     const text = "hello world"
     server.use(
@@ -85,6 +161,32 @@ describe("DisplayPaste", () => {
 
     const article = await screen.findByRole("article")
     expect(article.textContent).toStrictEqual(text)
+  })
+
+  it("places the text copy button at the far right of the preview title bar", async () => {
+    const text = "const answer = 42"
+    server.use(
+      ...mockPaste("abcd", {
+        body: new TextEncoder().encode(text).buffer,
+        headers: {
+          "Content-Type": TEXT_MIME_TYPE,
+          "X-PB-Highlight-Language": "javascript",
+        },
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    const article = await screen.findByRole("article")
+    const language = screen.getByText("javascript")
+    const copyButton = screen.getByRole("button", { name: "Copy" })
+    const titleBar = article.parentElement?.previousElementSibling
+    const previewFrame = article.closest(".bg-default-100")
+    expect(titleBar).toContainElement(copyButton)
+    expect(previewFrame).toHaveClass("p-3", "pt-1")
+    expect(language.parentElement).toContainElement(copyButton)
+    expect(language.compareDocumentPosition(copyButton) & Node.DOCUMENT_POSITION_FOLLOWING).not.toStrictEqual(0)
   })
 
   it("renders plain image via raw URL without downloading bytes", async () => {
@@ -168,7 +270,7 @@ describe("DisplayPaste", () => {
   })
 
   it("auto-decrypts and renders small encrypted audio via blob URL", async () => {
-    const scheme = "AES-GCM"
+    const scheme = "AES-GCM-CHUNKED"
     const key = await genKey(scheme)
     const fakeAudio = new Uint8Array([0xff, 0xfb, 0x90, 0x44])
     const encryptedBytes = await encrypt(scheme, key, fakeAudio)
@@ -176,7 +278,7 @@ describe("DisplayPaste", () => {
       ...mockPaste("abcd", {
         body: encryptedBytes.buffer as ArrayBuffer,
         headers: {
-          "X-PB-Encryption-Scheme": "AES-GCM",
+          "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
           "X-PB-Decrypted-Content-Type": "audio/mpeg",
           "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''song.mp3.encrypted",
@@ -194,14 +296,14 @@ describe("DisplayPaste", () => {
 
   it("auto-decrypts and renders a small encrypted image via blob URL", async () => {
     const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
-    const scheme = "AES-GCM"
+    const scheme = "AES-GCM-CHUNKED"
     const key = await genKey(scheme)
     const encryptedBytes = await encrypt(scheme, key, pngHeader)
     server.use(
       ...mockPaste("abcd", {
         body: encryptedBytes.buffer as ArrayBuffer,
         headers: {
-          "X-PB-Encryption-Scheme": "AES-GCM",
+          "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
           "X-PB-Decrypted-Content-Type": "image/png",
           "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''photo.png.encrypted",
@@ -219,14 +321,14 @@ describe("DisplayPaste", () => {
 
   it("auto-decrypts and renders a small encrypted text paste", async () => {
     const text = "encrypted hello"
-    const scheme = "AES-GCM"
+    const scheme = "AES-GCM-CHUNKED"
     const key = await genKey(scheme)
     const encryptedBytes = await encrypt(scheme, key, new TextEncoder().encode(text))
     server.use(
       ...mockPaste("abcd", {
         body: encryptedBytes.buffer as ArrayBuffer,
         headers: {
-          "X-PB-Encryption-Scheme": "AES-GCM",
+          "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
           "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
           "Content-Type": BINARY_MIME_TYPE,
         },
@@ -433,6 +535,8 @@ describe("DisplayPaste", () => {
     expect(article.textContent).toStrictEqual(text)
     const heading = await screen.findByRole("heading")
     expect(heading.textContent).toContain("ssr.txt")
+    const previewTitle = article.parentElement?.previousElementSibling?.querySelector("span[title]")
+    expect(previewTitle).toHaveAttribute("title", "ssr.txt")
   })
 
   it("removes local upload when SSR data consumes the final read", async () => {
@@ -539,7 +643,7 @@ describe("DisplayPaste", () => {
   })
 
   it("auto-decrypts and renders small encrypted video via blob URL", async () => {
-    const scheme = "AES-GCM"
+    const scheme = "AES-GCM-CHUNKED"
     const key = await genKey(scheme)
     const fakeVideo = new Uint8Array([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70])
     const encryptedBytes = await encrypt(scheme, key, fakeVideo)
@@ -547,7 +651,7 @@ describe("DisplayPaste", () => {
       ...mockPaste("abcd", {
         body: encryptedBytes.buffer as ArrayBuffer,
         headers: {
-          "X-PB-Encryption-Scheme": "AES-GCM",
+          "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
           "X-PB-Decrypted-Content-Type": "video/mp4",
           "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''clip.mp4.encrypted",
@@ -641,7 +745,7 @@ describe("DisplayPaste", () => {
   })
 
   it("decrypts pending encrypted zip before download", async () => {
-    const scheme = "AES-GCM"
+    const scheme = "AES-GCM-CHUNKED"
     const key = await genKey(scheme)
     const zipBytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])
     const encryptedBytes = await encrypt(scheme, key, zipBytes)
@@ -651,7 +755,7 @@ describe("DisplayPaste", () => {
       ...mockPaste("abcd", {
         body: encryptedBytes.buffer as ArrayBuffer,
         headers: {
-          "X-PB-Encryption-Scheme": "AES-GCM",
+          "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
           "X-PB-Decrypted-Content-Type": "application/zip",
           "Content-Type": BINARY_MIME_TYPE,
           "Content-Disposition": "inline; filename*=UTF-8''files.zip.encrypted",
@@ -689,7 +793,7 @@ describe("DisplayPaste", () => {
   })
 
   it("uses metadata filename for decrypted pending downloads when raw response has no filename", async () => {
-    const scheme = "AES-GCM"
+    const scheme = "AES-GCM-CHUNKED"
     const key = await genKey(scheme)
     const encryptedBytes = await encrypt(scheme, key, new TextEncoder().encode("secret text"))
     let downloadAnchor: HTMLAnchorElement | undefined
@@ -698,7 +802,7 @@ describe("DisplayPaste", () => {
       http.head("/abcd", () => {
         return new HttpResponse(null, {
           headers: {
-            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
             "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
             "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(MAX_AUTO_FETCH_BYTES + 1),
@@ -708,7 +812,7 @@ describe("DisplayPaste", () => {
       http.get("/abcd", () => {
         return HttpResponse.arrayBuffer(encryptedBytes.buffer as ArrayBuffer, {
           headers: {
-            "X-PB-Encryption-Scheme": "AES-GCM",
+            "X-PB-Encryption-Scheme": "AES-GCM-CHUNKED",
             "X-PB-Decrypted-Content-Type": TEXT_MIME_TYPE,
             "Content-Type": BINARY_MIME_TYPE,
             "Content-Length": String(encryptedBytes.byteLength),
