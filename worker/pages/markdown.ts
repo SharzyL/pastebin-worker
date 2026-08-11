@@ -302,7 +302,7 @@ const mathInlineExt = {
   },
 }
 
-export function makeMarkdown(content: string): string {
+export function makeMarkdown(content: string, sourceUrl?: string): string {
   const metadata: DocMetadata = { title: defaultTitle, description: "", toc: [] }
   const slugger = new GithubSlugger()
 
@@ -352,6 +352,7 @@ export function makeMarkdown(content: string): string {
   const tocHtml = renderToc(metadata.toc)
   const hasToc = tocHtml.length > 0
   const { jsFile, cssPaths } = getAssetPaths(manifest, "pages/render/markdown.ts")
+  const escapedSourceUrl = sourceUrl ? escapeHtml(sourceUrl) : ""
 
   return `<!DOCTYPE html>
 <html lang='en' class='light'>
@@ -360,6 +361,8 @@ export function makeMarkdown(content: string): string {
   <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
   <title>${metadata.title}</title>
   ${metadata.description.length > 0 ? `<meta name='description' content='${metadata.description}'>` : ""}
+  ${escapedSourceUrl ? `<link rel='canonical' href='${escapedSourceUrl}'>` : ""}
+  ${escapedSourceUrl ? `<meta property='og:url' content='${escapedSourceUrl}'>` : ""}
   <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css'>
   ${renderCssLinks(cssPaths)}
   <style>${sidebarStyles}</style>
