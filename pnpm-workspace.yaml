@@ -1,0 +1,4 @@
+allowBuilds:
+  esbuild: true
+  msw: true
+  workerd: true
