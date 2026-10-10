@@ -13,7 +13,7 @@ import { getAssetPaths, renderCssLinks } from "../ssrUtils.js"
 // other element from inline HTML is stripped or escaped.
 //
 // Spelled out rather than spreading xss.getDefaultWhiteList() to:
-//  - Avoid CJS/ESM interop fragility under @cloudflare/vitest-pool-workers
+//  - Avoid CJS/ESM interop fragility under @cloudflare/vitest-plugin
 //    (the named `FilterXSS` constructor and `getDefaultWhiteList` helper
 //    aren't always reachable; only the default-exported `filterXSS()`
 //    function survives unmolested).

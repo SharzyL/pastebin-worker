@@ -1,5 +1,3 @@
-/* global __dirname */
-
 import { defineConfig } from "vite"
 import { resolve } from "path"
 import react from "@vitejs/plugin-react"
@@ -35,7 +33,7 @@ export default defineConfig(({ mode }) => {
     name: "ssr-manifest",
     apply: "build",
     closeBundle() {
-      const manifestPath = resolve(__dirname, "../dist/frontend/.vite/manifest.json")
+      const manifestPath = resolve(import.meta.dirname, "../dist/frontend/.vite/manifest.json")
       const manifest = JSON.parse(readFileSync(manifestPath, "utf8"))
       const resolveEntry = (entryKey) => {
         const entry = manifest[entryKey]
@@ -68,7 +66,10 @@ export default defineConfig(({ mode }) => {
         // Vanilla bootstrap for the /a/<paste> markdown render page.
         "pages/render/markdown.ts": resolveEntry("pages/render/markdown.ts"),
       }
-      writeFileSync(resolve(__dirname, "../dist/frontend/.vite/ssr-manifest.json"), JSON.stringify(slim, null, 2))
+      writeFileSync(
+        resolve(import.meta.dirname, "../dist/frontend/.vite/ssr-manifest.json"),
+        JSON.stringify(slim, null, 2),
+      )
     },
   })
 
@@ -87,7 +88,7 @@ export default defineConfig(({ mode }) => {
       },
       load(id) {
         if (id !== RESOLVED_ID) return
-        const langDir = resolve(__dirname, "../node_modules/highlight.js/lib/languages")
+        const langDir = resolve(import.meta.dirname, "../node_modules/highlight.js/lib/languages")
         const aliases = {}
         for (const f of readdirSync(langDir).sort()) {
           if (!f.endsWith(".js") || f.endsWith(".js.js")) continue
@@ -128,9 +129,9 @@ export default defineConfig(({ mode }) => {
       manifest: true,
       rollupOptions: {
         input: {
-          index: resolve(__dirname, "index.html"),
-          display: resolve(__dirname, "display.html"),
-          markdown: resolve(__dirname, "pages/render/markdown.ts"),
+          index: resolve(import.meta.dirname, "index.html"),
+          display: resolve(import.meta.dirname, "display.html"),
+          markdown: resolve(import.meta.dirname, "pages/render/markdown.ts"),
         },
       },
     },

@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config"
-import { cloudflareTest } from "@cloudflare/vitest-pool-workers"
+import { cloudflareTest } from "@cloudflare/vitest-plugin"
 
 export default defineConfig({
   test: {
