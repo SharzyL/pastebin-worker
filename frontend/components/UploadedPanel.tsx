@@ -19,6 +19,7 @@ import { tst } from "../utils/overrides.js"
 import type { UploadProgress } from "../utils/uploader.js"
 import { formatSize } from "../utils/utils.js"
 import { CopyWidget } from "./CopyWidget.js"
+import { QRCodeWidget } from "./QRCodeWidget.js"
 import { ChevronDownIcon, InfoIcon } from "./icons.js"
 
 interface UploadedPanelProps extends CardProps {
@@ -116,7 +117,12 @@ export function UploadedPanel({
       label={label}
       labelExtra={labelExtra}
       value={value}
-      endContent={<CopyWidget className={copyWidgetClassNames} getCopyContent={() => value} />}
+      endContent={
+        <div className="flex flex-row">
+          <QRCodeWidget className={copyWidgetClassNames} label={label} getContent={() => value} />
+          <CopyWidget className={copyWidgetClassNames} getCopyContent={() => value} />
+        </div>
+      }
     />
   )
 
@@ -176,10 +182,17 @@ export function UploadedPanel({
                 className="mb-2"
                 value={makeDecryptionUrl(pasteResponse.url, encryptionKey)}
                 endContent={
-                  <CopyWidget
-                    className={encryptionKey ? `${copyWidgetClassNames} hover:bg-success-100` : copyWidgetClassNames}
-                    getCopyContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
-                  />
+                  <div className="flex flex-row">
+                    <QRCodeWidget
+                      className={encryptionKey ? `${copyWidgetClassNames} hover:bg-success-100` : copyWidgetClassNames}
+                      label={"Display URL"}
+                      getContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
+                    />
+                    <CopyWidget
+                      className={encryptionKey ? `${copyWidgetClassNames} hover:bg-success-100` : copyWidgetClassNames}
+                      getCopyContent={() => makeDecryptionUrl(pasteResponse.url, encryptionKey)}
+                    />
+                  </div>
                 }
               />
               {isMarkdown && !isEncrypted && markdownUrlField(pasteResponse)}

@@ -79,6 +79,15 @@ describe("Pastebin", () => {
 
     const manageUrlShow = screen.getByRole("textbox", { name: "Manage URL" })
     expect((manageUrlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.manageUrl)
+
+    const qrButtons = screen.getAllByRole("button", { name: "Show QR code" })
+    expect(qrButtons.length).toBeGreaterThanOrEqual(3)
+    await userEvent.click(qrButtons[0])
+    const dialog = screen.getByRole("dialog", { name: "Display URL QR code" })
+    expect(dialog).toHaveTextContent("https://example.com/d/abcd")
+    expect(screen.getByRole("img", { name: "QR code" })).toBeInTheDocument()
+    await userEvent.keyboard("{Escape}")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it("refuse illegal settings", async () => {
