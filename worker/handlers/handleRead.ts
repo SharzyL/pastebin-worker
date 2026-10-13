@@ -253,7 +253,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle article (render as markdown)
   if (role === "a") {
-    return new Response(shouldGetPasteContent ? makeMarkdown(await decodeMaybeStream(item.paste)) : null, {
+    return new Response(shouldGetPasteContent ? makeMarkdown(await decodeMaybeStream(item.paste), url.href) : null, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),
