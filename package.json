@@ -31,7 +31,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
-    "@types/node": "^25.9.9",
+    "@types/node": "^26.6.5",
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-istanbul": "4.1.10",
     "eslint": "^10.12.0",
