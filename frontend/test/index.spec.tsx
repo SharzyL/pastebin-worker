@@ -15,8 +15,12 @@ export const mockedPasteUpload: PasteResponse = {
 
 export const mockedPasteContent = "something"
 
+// raw multipart body; parsing it as FormData fails across the jsdom and node realms
+let lastUpload: string | undefined
+
 export const server = setupServer(
-  http.post(`${__WRANGLER_CONFIG__.DEPLOY_URL}/`, () => {
+  http.post(`${__WRANGLER_CONFIG__.DEPLOY_URL}/`, async ({ request }) => {
+    lastUpload = await request.text()
     return HttpResponse.json(mockedPasteUpload)
   }),
   http.head(`${__WRANGLER_CONFIG__.DEPLOY_URL}/abcd`, () => {
@@ -63,6 +67,7 @@ describe("Pastebin", () => {
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
     expect(editor).toBeInTheDocument()
+    expect(screen.getByRole("checkbox", { name: "Client-side encryption" })).toBeChecked()
 
     const submitter = screen.getByRole("button", { name: "Upload" })
     expect(submitter).toBeInTheDocument()
@@ -74,6 +79,10 @@ describe("Pastebin", () => {
     await userEvent.click(submitter)
 
     await new Promise((resolve) => setTimeout(resolve, 1000))
+    // encrypted by default
+    expect(lastUpload).toMatch(/name="encryption-scheme"\r\n\r\nAES-GCM\r\n/)
+    expect(lastUpload).not.toContain("something")
+
     const urlShow = screen.getByRole("textbox", { name: "Raw URL" })
     expect((urlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.url)
 
@@ -109,5 +118,7 @@ describe("Pastebin admin page", () => {
     await userEvent.click(editor) // meaningless click, just ensure useEffect is done
     expect(editor).toBeInTheDocument()
     expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent)
+    // the paste is not encrypted, so neither is the update by default
+    expect(screen.getByRole("checkbox", { name: "Client-side encryption" })).not.toBeChecked()
   })
 })

@@ -8,7 +8,7 @@ This is a wrapper script to make it easier to use our pastebin.
 
 **Requirements**: `python3` (>=3.9) with the `requests` package available.
 
-The `cryptography` package is only required when using client-side encryption (`post -E` / `update -E`, or fetching an encrypted paste with `get`). Plain pastes work without it.
+The `cryptography` package is required for client-side encryption, which `post` and `update` use by default, and for fetching an encrypted paste with `get`. Without it, upload with `-u/--unencrypted`.
 
 **Installation**: download `pb` to your `PATH` and give it execution permission. For example:
 
@@ -54,11 +54,14 @@ Options:
     -s, --passwd PASSWD     the password
     -p, --private           make the generated paste name longer for better privacy
     -x, --clip              clip the url to the clipboard
-    -E, --encrypt           client-side encrypt with a fresh AES-GCM key.
-                            The key is recorded in the history file and the
+    -u, --unencrypted       upload without client-side encryption. By default
+                            the paste is encrypted with a fresh AES-GCM key,
+                            the key is recorded in the history file, and the
                             decryption URL is printed as `decryptionUrl` in
                             the response (the server response itself never
                             contains the key)
+    -E, --encrypt           client-side encrypt (the default, kept for
+                            compatibility)
     -F, --filename NAME     override the filename stored with the paste
                             (defaults to the basename of the source file, if any)
 
@@ -68,7 +71,10 @@ Options:
     -e, --expire SECONDS    the expiration time of the paste (in seconds)
     -s, --passwd PASSWD     the password
     -x, --clip              clip the url to the clipboard
-    -E, --encrypt           re-encrypt with a fresh AES-GCM key on update
+    -u, --unencrypted       upload without client-side encryption; by default
+                            the paste is re-encrypted with a fresh AES-GCM key
+    -E, --encrypt           client-side encrypt (the default, kept for
+                            compatibility)
     -F, --filename NAME     override the filename stored with the paste
 
   get options:
