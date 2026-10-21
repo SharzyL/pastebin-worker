@@ -178,7 +178,7 @@ export function LivePaste({ config }: { config: Env }) {
                   {room.status === "open" && (
                     <>
                       {" · "}
-                      {room.peerCount} {room.peerCount === 1 ? "person" : "people"} here
+                      {room.peerCount} online
                     </>
                   )}
                   {room.status === "open" && room.peerCount === 1 && (

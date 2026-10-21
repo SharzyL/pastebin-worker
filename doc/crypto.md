@@ -100,7 +100,7 @@ Suppose B and C are in the room and A connects.
 
 A and C go through the same steps. The rule on both sides is the same: **a peer is confirmed when it sends a valid proof over my challenge.** Each side sends one proof to each peer, so two pages joining at the same time also end up confirming each other. Proofs addressed to another session, and proofs whose sequence number is not above the last one seen from that peer, are ignored.
 
-The page shows "N people here", where N is 1 plus the number of confirmed peers, rather than the connection count reported by the server.
+The page shows "N online", where N is 1 plus the number of confirmed peers, rather than the connection count reported by the server.
 
 ## Posting
 
