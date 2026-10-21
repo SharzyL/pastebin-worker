@@ -6,6 +6,10 @@ import { handlePostOrPut } from "./handlers/handleWrite.js"
 import { handleGet } from "./handlers/handleRead.js"
 import { handleDelete } from "./handlers/handleDelete.js"
 import { cleanExpiredInR2 } from "./storage/storage.js"
+import { handleLiveSocket } from "./live.js"
+import { LIVE_WS_PATH_PREFIX } from "../shared/live.js"
+
+export { LiveRoom } from "./live.js"
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -20,7 +24,10 @@ export default {
 
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   try {
-    if (request.method === "OPTIONS") {
+    if (new URL(request.url).pathname.startsWith(LIVE_WS_PATH_PREFIX)) {
+      // a WebSocket upgrade response must be returned untouched
+      return await handleLiveSocket(request, env)
+    } else if (request.method === "OPTIONS") {
       return handleOptions(request)
     } else {
       const response = await handleNormalRequest(request, env, ctx)

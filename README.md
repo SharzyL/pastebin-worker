@@ -11,6 +11,7 @@ This is a pastebin running on Cloudflare workers. Try it on [shz.al](https://shz
 1. Client-side encryption.
 1. Share **markdown** file with rendered HTML.
 1. URL shortener.
+1. **Live pastebin**: share a `/live#<key>` link and post text or files to everyone on it in real time, end-to-end encrypted.
 1. Smart and tweakable handling for `Content-Type` and `Content-Disposition`.
 
 ## Usage
@@ -53,7 +54,7 @@ $ pnpm deploy
 
 ## Cost
 
-The service runs on Cloudflare Workers, Workers KV, and R2. Each has a free tier; beyond it you pay only for what you use. Figures below are accurate as of writing — **prices change, so confirm against the official pricing pages before relying on them**:
+The service runs on Cloudflare Workers, Workers KV, R2, and Durable Objects. Each has a free tier; beyond it you pay only for what you use. Figures below are accurate as of writing — **prices change, so confirm against the official pricing pages before relying on them**:
 
 - **[Workers](https://developers.cloudflare.com/workers/platform/pricing/)** — request routing and execution. Egress is free.
   - Free plan: 100 k requests/day, 10 ms CPU per invocation.
@@ -64,6 +65,9 @@ The service runs on Cloudflare Workers, Workers KV, and R2. Each has a free tier
 - **[R2](https://developers.cloudflare.com/r2/pricing/)** — paste content above `R2_THRESHOLD`. Egress is free. Class A op = upload (`PutObject`); Class B op = fetch (`GetObject`). Cloudflare rounds storage up to the next GB-month.
   - Free: 10 GB-month storage, 1 M Class A ops/month, 10 M Class B ops/month.
   - Standard paid: $0.015/GB-month storage, $4.50/M Class A ops, $0.36/M Class B ops.
+- **[Durable Objects](https://developers.cloudflare.com/durable-objects/platform/pricing/)** — WebSocket relay of the live pastebin. Nothing is stored; idle connections hibernate and are not billed for duration. Each connection counts as one request, and 20 incoming WebSocket messages count as one request.
+  - Free plan: 100 k requests/day, 13 k GB-s duration/day.
+  - Paid plan: 1 M requests/month ($0.15/M extra), 400 k GB-s/month ($12.50/M GB-s extra).
 - **[Workers Logs](https://developers.cloudflare.com/workers/observability/logs/workers-logs/)** — optional, off unless enabled in `wrangler.toml`.
   - Free: 200 k events/day, 3-day retention.
   - Paid: 20 M events/month included + $0.60 per additional million, 7-day retention.

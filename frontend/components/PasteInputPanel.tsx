@@ -23,6 +23,8 @@ interface PasteEditorProps extends CardProps {
   onStateChange: (state: PasteEditState) => void
   config: Env
   showModal: (title: string, content: string) => void
+  // overrides the deployment's R2_MAX_ALLOWED
+  maxFileSize?: number
 }
 
 export function PasteInputPanel({
@@ -31,6 +33,7 @@ export function PasteInputPanel({
   onStateChange,
   config,
   showModal,
+  maxFileSize,
   ...rest
 }: PasteEditorProps) {
   const fileInput = useRef<HTMLInputElement>(null)
@@ -39,7 +42,7 @@ export function PasteInputPanel({
 
   function setFile(file: File | null) {
     if (file) {
-      const [ok, msg] = verifyFileSize(file.size, config)
+      const [ok, msg] = verifyFileSize(file.size, config, maxFileSize)
       if (!ok) {
         showModal("File too large", msg)
         // also reset the underlying input so picking the same file again re-triggers onChange

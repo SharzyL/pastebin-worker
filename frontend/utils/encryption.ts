@@ -7,7 +7,7 @@ function concat(buffer1: Uint8Array, buffer2: Uint8Array): Uint8Array {
   return tmp
 }
 
-function base64VariantEncode(src: Uint8Array): string {
+export function base64VariantEncode(src: Uint8Array): string {
   // we use a variant of base64 that replaces "/" with "_" and removes trailing padding
   const uint8Array = new Uint8Array(src)
   let binaryString = ""
@@ -17,7 +17,7 @@ function base64VariantEncode(src: Uint8Array): string {
   return btoa(binaryString).replaceAll("/", "_").replaceAll("=", "")
 }
 
-function base64VariantDecode(src: string): Uint8Array {
+export function base64VariantDecode(src: string): Uint8Array {
   const binaryString = atob(src.replaceAll("_", "/").replaceAll(/[^a-zA-Z0-9+/]/g, ""))
   const uint8Array = new Uint8Array(binaryString.length)
   for (let i = 0; i < binaryString.length; i++) {

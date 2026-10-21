@@ -12,8 +12,11 @@ export function getMaxExpirationReadable(config: Env): string {
 
 export { ErrorWithTitle } from "./errors.js"
 
-export function verifyFileSize(size: number, config: Env): [boolean, string] {
-  const max = parseSize(config.R2_MAX_ALLOWED)
+export function verifyFileSize(
+  size: number,
+  config: Env,
+  max: number | null = parseSize(config.R2_MAX_ALLOWED),
+): [boolean, string] {
   if (max === null || size <= max) return [true, ""]
   return [false, `File too large (${formatSize(size)} > ${formatSize(max)})`]
 }
