@@ -1,0 +1,130 @@
+/* Markdown rendered inside the app, where Tailwind's preflight has reset
+   the default element styles */
+.markdown-view {
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.markdown-view > :first-child {
+  margin-top: 0;
+}
+
+.markdown-view > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-view :is(p, ul, ol, blockquote, table, pre, .code-block, hr) {
+  margin: 0.75em 0;
+}
+
+.markdown-view :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.25em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-view h1 {
+  font-size: 1.75em;
+}
+
+.markdown-view h2 {
+  font-size: 1.5em;
+}
+
+.markdown-view h3 {
+  font-size: 1.25em;
+}
+
+.markdown-view h4 {
+  font-size: 1.1em;
+}
+
+.markdown-view :is(h1, h2) {
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--color-default-300);
+}
+
+.markdown-view a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.markdown-view ul {
+  list-style: disc;
+  padding-left: 1.75em;
+}
+
+.markdown-view ol {
+  list-style: decimal;
+  padding-left: 1.75em;
+}
+
+.markdown-view li > :is(ul, ol) {
+  margin: 0.25em 0;
+}
+
+.markdown-view blockquote {
+  padding-left: 1em;
+  border-left: 0.25em solid var(--color-default-300);
+  color: var(--color-default-500);
+}
+
+.markdown-view hr {
+  border: 0;
+  border-top: 1px solid var(--color-default-300);
+}
+
+.markdown-view img {
+  max-width: 100%;
+}
+
+.markdown-view :not(pre) > code {
+  padding: 0.1em 0.35em;
+  border-radius: 0.375rem;
+  background: var(--color-default-200);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.markdown-view table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown-view :is(th, td) {
+  padding: 0.35em 0.75em;
+  border: 1px solid var(--color-default-300);
+}
+
+.markdown-view th {
+  font-weight: 600;
+}
+
+/* Fenced code blocks: line-number gutter next to the code */
+.markdown-view .code-block {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  border: 1px solid var(--color-default-300);
+  border-radius: 0.5rem;
+  background: var(--color-default-200);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  line-height: 1.45;
+  overflow: hidden;
+}
+
+.markdown-view .code-block > pre {
+  grid-column: 2;
+  margin: 0;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+}
+
+.markdown-view .code-block > .line-number-rows {
+  grid-column: 1;
+  padding: 0.75em 0.5em 0.75em 0.75em;
+  border-right: 1px solid var(--color-default-300);
+  color: var(--color-default-500);
+  user-select: none;
+}

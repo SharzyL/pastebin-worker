@@ -8,6 +8,7 @@ import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
 import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
+import { LIVE_PAGE_PATH } from "../../shared/live.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
 
@@ -150,6 +151,23 @@ ${DARK_MODE_SCRIPT}
         },
       })
     }
+  }
+
+  if (url.pathname === LIVE_PAGE_PATH) {
+    const authResponse = verifyAuth(request, env)
+    if (authResponse !== null) {
+      return authResponse
+    }
+    const pageUrl = new URL(url)
+    pageUrl.search = ""
+    pageUrl.pathname = "/live.html"
+    const page = await env.ASSETS.fetch(pageUrl)
+    return new Response(page.body, {
+      headers: {
+        "Content-Type": "text/html;charset=UTF-8",
+        ...staticPageCacheHeader(env),
+      },
+    })
   }
 
   if (url.pathname === "/doc" || url.pathname.startsWith("/doc/")) {

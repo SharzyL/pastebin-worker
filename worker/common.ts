@@ -15,9 +15,7 @@ export function atob_utf8(value: string): string {
   )
 }
 
-export function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m]!)
-}
+export { escapeHtml } from "../shared/html.js"
 
 export class WorkerError extends Error {
   public statusCode: number

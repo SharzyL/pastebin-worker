@@ -26,6 +26,9 @@ export const staticPages = [
   "doc/skill",
   "doc/skill.html",
   "doc/skill.md",
+  "doc/crypto",
+  "doc/crypto.html",
+  "doc/crypto.md",
   "favicon.ico",
 ]
 

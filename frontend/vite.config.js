@@ -131,6 +131,7 @@ export default defineConfig(({ mode }) => {
         input: {
           index: resolve(import.meta.dirname, "index.html"),
           display: resolve(import.meta.dirname, "display.html"),
+          live: resolve(import.meta.dirname, "live.html"),
           markdown: resolve(import.meta.dirname, "pages/render/markdown.ts"),
         },
       },

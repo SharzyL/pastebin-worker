@@ -7,7 +7,7 @@
 // be imported from client entries.
 import { createContext, useContext } from "react"
 import type { HLJSApi } from "highlight.js"
-import { escapeHtml } from "../../worker/common.js"
+import { escapeHtml } from "../../shared/html.js"
 
 export type { HLJSApi }
 
