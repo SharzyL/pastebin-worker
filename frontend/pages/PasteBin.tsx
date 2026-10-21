@@ -37,7 +37,7 @@ export function PasteBin({ config }: { config: Env }) {
     name: "",
     password: "",
     uploadKind: "short",
-    doEncrypt: false,
+    doEncrypt: true,
   })
 
   const [pasteResponse, setPasteResponse] = useState<PasteResponse | undefined>(undefined)
@@ -90,6 +90,10 @@ export function PasteBin({ config }: { config: Env }) {
           const contentLength = Number(headResp.headers.get("Content-Length"))
           const contentLang = headResp.headers.get("X-PB-Highlight-Language")
           const contentDisp = headResp.headers.get("Content-Disposition")
+
+          // keep an update as encrypted as the paste it replaces
+          const isEncrypted = headResp.headers.get("X-PB-Encryption-Scheme") !== null
+          setPasteSetting((setting) => ({ ...setting, doEncrypt: isEncrypted }))
 
           const isText = contentType?.startsWith("text/") || !!contentLang
           if (!isText || !Number.isFinite(contentLength) || contentLength >= MAX_AUTO_FETCH_BYTES) {

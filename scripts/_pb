@@ -49,7 +49,8 @@ case "$state" in
             '(-s --passwd)'{-s,--passwd}'[Password]:Password of paste'
             '(-p --private)'{-p,--private}'[Make generated paste name longer for privacy]'
             '(-x --clip)'{-x,--clip}'[Clip the url to the clipboard]'
-            '(-E --encrypt)'{-E,--encrypt}'[Client-side AES-GCM encryption]'
+            '(-u --unencrypted -E --encrypt)'{-u,--unencrypted}'[Upload without client-side encryption]'
+            '(-u --unencrypted -E --encrypt)'{-E,--encrypt}'[Client-side AES-GCM encryption (default)]'
             '(-F --filename)'{-F,--filename}'[Filename to store with paste]:filename'
         )
         _arguments -s $args $common_args
@@ -64,7 +65,8 @@ case "$state" in
             '(-e --expire)'{-e,--expire}'[Expiration time]:expiration'
             '(-s --passwd)'{-s,--passwd}'[Password]:Password of paste'
             '(-x --clip)'{-x,--clip}'[Clip the url to the clipboard]'
-            '(-E --encrypt)'{-E,--encrypt}'[Client-side AES-GCM encryption]'
+            '(-u --unencrypted -E --encrypt)'{-u,--unencrypted}'[Upload without client-side encryption]'
+            '(-u --unencrypted -E --encrypt)'{-E,--encrypt}'[Client-side AES-GCM encryption (default)]'
             '(-F --filename)'{-F,--filename}'[Filename to store with paste]:filename'
         )
         _arguments -s $args $common_args

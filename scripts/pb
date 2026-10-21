@@ -129,14 +129,15 @@ class ProgressReader:
 
 
 def _import_aesgcm():
-    # Lazy import so that users who never touch encryption don't need the
-    # optional 'cryptography' dependency installed.
+    # Lazy import so that users who only upload with -u/--unencrypted and fetch
+    # plain pastes don't need the 'cryptography' dependency installed.
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     except ImportError:
         die(
             "encryption requires the 'cryptography' package; "
-            "install it with `pip install cryptography`"
+            "install it with `pip install cryptography`, "
+            "or pass -u/--unencrypted to upload without encryption"
         )
         raise  # unreachable; appeases type-checker
     return AESGCM
@@ -857,6 +858,26 @@ def build_common_parser() -> argparse.ArgumentParser:
     return common
 
 
+def add_encryption_arguments(p: argparse.ArgumentParser) -> None:
+    group = p.add_mutually_exclusive_group()
+    group.add_argument(
+        "-u",
+        "--unencrypted",
+        dest="encrypt",
+        action="store_false",
+        help="upload without client-side encryption",
+    )
+    # encryption is the default; the flag is kept so older invocations still work
+    group.add_argument(
+        "-E",
+        "--encrypt",
+        dest="encrypt",
+        action="store_true",
+        help="client-side encrypt with a fresh AES-GCM key (the default)",
+    )
+    p.set_defaults(encrypt=True)
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = build_common_parser()
     parser = argparse.ArgumentParser(
@@ -884,12 +905,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_post.add_argument(
         "-x", "--clip", action="store_true", help="copy URL to clipboard"
     )
-    p_post.add_argument(
-        "-E",
-        "--encrypt",
-        action="store_true",
-        help="client-side encrypt with a fresh AES-GCM key (requires 'cryptography')",
-    )
+    add_encryption_arguments(p_post)
     p_post.add_argument(
         "-F",
         "--filename",
@@ -919,12 +935,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_update.add_argument(
         "-x", "--clip", action="store_true", help="copy URL to clipboard"
     )
-    p_update.add_argument(
-        "-E",
-        "--encrypt",
-        action="store_true",
-        help="client-side encrypt with a fresh AES-GCM key (requires 'cryptography')",
-    )
+    add_encryption_arguments(p_update)
     p_update.add_argument(
         "-F",
         "--filename",
