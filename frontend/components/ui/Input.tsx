@@ -89,7 +89,7 @@ export function Input({
           ref={inputRef}
           aria-label={label}
           aria-invalid={isInvalid}
-          className={`flex-1 py-2 bg-transparent text-sm text-foreground focus:outline-none color-tst ${startContent || endContent || showClearButton ? "" : "px-3"} ${classNames.input || ""}`}
+          className={`flex-1 min-w-0 py-2 bg-transparent text-sm text-foreground focus:outline-none color-tst ${startContent || endContent || showClearButton ? "" : "px-3"} ${classNames.input || ""}`}
           onChange={handleChange}
           value={value}
           {...rest}
