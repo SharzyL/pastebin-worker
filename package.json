@@ -37,7 +37,7 @@
     "eslint": "^10.12.0",
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
-    "prettier": "^3.9.9",
+    "prettier": "^3.9.10",
     "toml": "^4.3.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.1",
