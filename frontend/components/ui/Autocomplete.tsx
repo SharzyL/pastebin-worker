@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useImperativeHandle } from "react"
 import { XIcon } from "../icons.js"
 
 export interface AutocompleteItemProps {
@@ -18,6 +18,9 @@ export interface AutocompleteProps {
   defaultItems?: { key: string }[]
   onInputChange?: (value: string) => void
   onSelectionChange?: (key: string | null) => void
+  // called when Enter is pressed, after choosing the highlighted item if any,
+  // e.g. to move on to the next field
+  onEnter?: () => void
   className?: string
   classNames?: {
     base?: string
@@ -30,27 +33,41 @@ export interface AutocompleteProps {
   isClearable?: boolean
 }
 
-export function Autocomplete({
-  label,
-  size: _size = "md",
-  inputValue = "",
-  selectedKey,
-  defaultItems = [],
-  onInputChange,
-  onSelectionChange,
-  className,
-  classNames = {},
-  children,
-  placeholder,
-  readOnly,
-  isClearable,
-}: AutocompleteProps) {
+export interface AutocompleteHandle {
+  focus(): void
+}
+
+export const Autocomplete = React.forwardRef<AutocompleteHandle, AutocompleteProps>(function Autocomplete(
+  {
+    label,
+    size: _size = "md",
+    inputValue = "",
+    selectedKey,
+    defaultItems = [],
+    onInputChange,
+    onSelectionChange,
+    onEnter,
+    className,
+    classNames = {},
+    children,
+    placeholder,
+    readOnly,
+    isClearable,
+  },
+  forwardedRef,
+) {
   const [isOpen, setIsOpen] = useState(false)
   const [internalValue, setInternalValue] = useState(selectedKey != null ? selectedKey : inputValue)
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useImperativeHandle(forwardedRef, () => ({
+    focus() {
+      inputRef.current?.focus()
+    },
+  }))
 
   useEffect(() => {
     if (focusedKey === null || !listRef.current) return
@@ -78,9 +95,16 @@ export function Autocomplete({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const focusedIndex = isOpen && focusedKey !== null ? filtered.findIndex((item) => item.key === focusedKey) : -1
+    if (e.key === "Enter" && focusedIndex < 0) {
+      // nothing highlighted to choose: just move on
+      if (onEnter) {
+        e.preventDefault()
+        onEnter()
+      }
+      return
+    }
     if (!isOpen) return
-
-    const focusedIndex = focusedKey !== null ? filtered.findIndex((item) => item.key === focusedKey) : -1
 
     if (e.key === "ArrowDown") {
       e.preventDefault()
@@ -98,6 +122,7 @@ export function Autocomplete({
       onInputChange?.(item.key)
       setIsOpen(false)
       setFocusedKey(null)
+      onEnter?.()
     } else if (e.key === "Escape") {
       setIsOpen(false)
       setFocusedKey(null)
@@ -112,6 +137,7 @@ export function Autocomplete({
       >
         <input
           ref={inputRef}
+          aria-label={label}
           type="text"
           value={internalValue}
           placeholder={placeholder}
@@ -190,4 +216,4 @@ export function Autocomplete({
       )}
     </div>
   )
-}
+})

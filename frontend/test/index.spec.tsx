@@ -1,6 +1,7 @@
 import { describe, it, vi, expect, beforeAll, afterEach, afterAll } from "vitest"
 import { cleanup, render, screen } from "@testing-library/react"
 import { PasteBin } from "../pages/PasteBin.js"
+import { HljsProvider } from "../utils/highlight-client.js"
 
 export const mockedPasteUpload: PasteResponse = {
   url: "https://example.com/abcd",
@@ -67,7 +68,7 @@ describe("Pastebin", () => {
 
     const editor = screen.getByRole("textbox", { name: "Paste editor" })
     expect(editor).toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: "Client-side encryption" })).toBeChecked()
+    expect(screen.getByRole("switch", { name: "Client-side encryption" })).toBeChecked()
 
     const submitter = screen.getByRole("button", { name: "Upload" })
     expect(submitter).toBeInTheDocument()
@@ -99,6 +100,65 @@ describe("Pastebin", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
+  it("moves focus from the editor to the language box on Shift+Tab", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    await userEvent.click(screen.getByRole("textbox", { name: "Paste editor" }))
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}")
+    expect(screen.getByRole("textbox", { name: "Language" })).toHaveFocus()
+  })
+
+  it("moves on to the next field on Enter in the indent and language boxes", async () => {
+    // jsdom has no layout; the dropdowns scroll their highlighted item into view
+    Element.prototype.scrollIntoView = vi.fn()
+    // provides the list of languages, as the page entry does
+    render(
+      <HljsProvider>
+        <PasteBin config={__WRANGLER_CONFIG__} />
+      </HljsProvider>,
+    )
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    const language = screen.getByRole("textbox", { name: "Language" })
+    await userEvent.click(editor)
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}{Shift>}{Tab}{/Shift}")
+    expect(language).not.toHaveFocus()
+
+    // Indent With -> Language
+    await userEvent.keyboard("{Enter}")
+    expect(language).toHaveFocus()
+
+    // Language -> editor, with the highlighted language chosen
+    await userEvent.clear(language)
+    await userEvent.type(language, "pyth")
+    await userEvent.keyboard("{Enter}")
+    expect(editor).toHaveFocus()
+    expect(language).toHaveValue("python")
+  })
+
+  it("toggles the encryption switch with Enter", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    const toggle = screen.getByRole("switch", { name: "Client-side encryption" })
+    toggle.focus()
+    await userEvent.keyboard("{Enter}")
+    expect(toggle).not.toBeChecked()
+    await userEvent.keyboard("{Enter}")
+    expect(toggle).toBeChecked()
+  })
+
+  it("uploads with Ctrl+Enter in the editor", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    // nothing to upload yet
+    await userEvent.click(editor)
+    await userEvent.keyboard("{Control>}{Enter}{/Control}")
+    expect(screen.queryByRole("textbox", { name: "Raw URL" })).toBeNull()
+
+    await userEvent.type(editor, "something")
+    await userEvent.keyboard("{Control>}{Enter}{/Control}")
+    const urlShow = await screen.findByRole("textbox", { name: "Raw URL" }, { timeout: 3000 })
+    expect((urlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.url)
+    expect((editor as HTMLTextAreaElement).value).toStrictEqual("something")
+  })
+
   it("refuse illegal settings", async () => {
     render(<PasteBin config={__WRANGLER_CONFIG__} />)
     // due to bugs https://github.com/adobe/react-spectrum/discussions/8037, we need to use duplicated name here
@@ -119,6 +179,6 @@ describe("Pastebin admin page", () => {
     expect(editor).toBeInTheDocument()
     expect((editor as HTMLTextAreaElement).value).toStrictEqual(mockedPasteContent)
     // the paste is not encrypted, so neither is the update by default
-    expect(screen.getByRole("checkbox", { name: "Client-side encryption" })).not.toBeChecked()
+    expect(screen.getByRole("switch", { name: "Client-side encryption" })).not.toBeChecked()
   })
 })

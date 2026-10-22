@@ -35,6 +35,6 @@ export { Select, SelectItem } from "./Select.js"
 export type { SelectProps, SelectItemProps, SelectHandle } from "./Select.js"
 
 export { Autocomplete, AutocompleteItem } from "./Autocomplete.js"
-export type { AutocompleteProps, AutocompleteItemProps } from "./Autocomplete.js"
+export type { AutocompleteHandle, AutocompleteProps, AutocompleteItemProps } from "./Autocomplete.js"
 
 export { mergeClasses } from "./utils.js"

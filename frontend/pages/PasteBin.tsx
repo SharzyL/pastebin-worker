@@ -249,7 +249,13 @@ export function PasteBin({ config }: { config: Env }) {
 
   const submitter = (
     <div className="flex flex-row items-stretch">
-      <button type="button" onClick={onStartUpload} disabled={uploadDisabled} className={uploadClass}>
+      <button
+        type="button"
+        onClick={onStartUpload}
+        disabled={uploadDisabled}
+        title="Ctrl+Enter in the editor"
+        className={uploadClass}
+      >
         {isManageMode ? "Update" : "Upload"}
       </button>
       {isManageMode && (
@@ -284,6 +290,9 @@ export function PasteBin({ config }: { config: Env }) {
           onStateChange={setEditorState}
           config={config}
           showModal={showModal}
+          onCtrlEnter={() => {
+            if (!uploadDisabled) onStartUpload()
+          }}
           className="mt-6 mb-4 mx-2 lg:mx-0"
         />
         <div className="flex flex-col items-start lg:flex-row gap-4 mx-2 lg:mx-0">
