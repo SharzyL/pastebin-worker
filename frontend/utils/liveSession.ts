@@ -3,7 +3,7 @@ import { base64VariantDecode, base64VariantEncode } from "./encryption.js"
 import type { LiveKeys, LiveMessage } from "./live.js"
 import { decodePost, encodePost, toHex } from "./live.js"
 
-// Forward secret encryption for one connection to a live room, see doc/crypto.md.
+// Forward secret encryption for one connection to a live room, see doc/live-crypto.md.
 //
 // Every connection makes an ephemeral ECDH key pair that only lives in memory.
 // Peers exchange public keys (hello, proof) and derive a pairwise key from

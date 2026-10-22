@@ -1,6 +1,6 @@
 # Live Pastebin Cryptography
 
-This document describes how the live pastebin at [{{BASE_URL}}/live]({{BASE_URL}}/live) encrypts posts, and what that does and does not protect against. The implementation is in `frontend/utils/live.ts` and `frontend/utils/liveSession.ts`; the server side (`worker/live.ts`) is a relay that never sees a key.
+This document describes how the live pastebin at [{{BASE_URL}}/live]({{BASE_URL}}/live) encrypts posts, and what that does and does not protect against. The implementation is in `frontend/utils/live.ts` and `frontend/utils/liveSession.ts`; the server side (`worker/live.ts`) is a relay that never sees a key. The encryption of ordinary pastes is described in [{{BASE_URL}}/doc/paste-crypto]({{BASE_URL}}/doc/paste-crypto).
 
 ## Goals
 

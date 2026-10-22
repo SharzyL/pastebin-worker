@@ -1,5 +1,5 @@
 import type { CardProps } from "./ui/index.js"
-import { Card, CardBody, CardHeader, Divider, Input, Switch, Tooltip } from "./ui/index.js"
+import { Card, CardBody, CardHeader, Divider, Input, Link, Switch, Tooltip } from "./ui/index.js"
 import { verifyExpiration, verifyManageUrl } from "../utils/utils.js"
 import { verifyName, verifyPassword } from "../../shared/verify.js"
 import type { NameAvailability } from "../utils/useNameAvailability.js"
@@ -256,30 +256,13 @@ export function PanelSettingsPanel({
           >
             Client-side encryption
           </Switch>
-          <Tooltip
-            content={
-              <div className="px-1 py-2 max-w-[20rem]">
-                <h3 className="text-normal font-bold mb-2">Client-side encryption</h3>
-                <div className="text-small">
-                  Your paste is shared via a URL containing the decryption key in the URL hash, which is never sent to
-                  the server. Decryption happens in the browser, so only those with the key (not the server) can view
-                  the decrypted content.
-                </div>
-                <div className="text-small mt-2 text-yellow-600">
-                  Only the paste content is encrypted. The filename and its inferred mime type remain visible to the
-                  server and anyone with the URL.
-                </div>
-              </div>
-            }
-          >
-            <button
-              type="button"
-              aria-label="More information about client-side encryption"
-              className="inline-flex items-center ml-2 text-default-500 hover:text-default-700 focus:outline-none focus-visible:ring-1 focus-visible:ring-default-400 rounded"
-            >
-              <InfoIcon className="size-3.5" />
-            </button>
-          </Tooltip>
+          <span className="ml-2 text-default-500">
+            (
+            <Link href={`${config.DEPLOY_URL}/doc/paste-crypto`} className={tst}>
+              How it works
+            </Link>
+            )
+          </span>
         </div>
       </CardBody>
       {footer}

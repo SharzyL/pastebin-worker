@@ -4,7 +4,8 @@ import tosMd from "../../doc/tos.md"
 import apiMd from "../../doc/api.md"
 import curlMd from "../../doc/curl.md"
 import skillMd from "../../doc/skill.md"
-import cryptoMd from "../../doc/crypto.md"
+import liveCryptoMd from "../../doc/live-crypto.md"
+import pasteCryptoMd from "../../doc/paste-crypto.md"
 import indexMd from "../../doc/index.md"
 
 function renderTemplate(template: string, env: Env): string {
@@ -27,8 +28,10 @@ export function getDocMarkdown(path: string, env: Env): string | null {
     return renderTemplate(curlMd, env)
   } else if (path === "/doc/skill" || path === "/doc/skill.html") {
     return renderTemplate(skillMd, env)
-  } else if (path === "/doc/crypto" || path === "/doc/crypto.html") {
-    return renderTemplate(cryptoMd, env)
+  } else if (path === "/doc/live-crypto" || path === "/doc/live-crypto.html") {
+    return renderTemplate(liveCryptoMd, env)
+  } else if (path === "/doc/paste-crypto" || path === "/doc/paste-crypto.html") {
+    return renderTemplate(pasteCryptoMd, env)
   } else {
     return null
   }

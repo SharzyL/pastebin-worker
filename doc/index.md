@@ -17,11 +17,12 @@ deletion.
 ## More
 
 ```shell
-$ curl {{BASE_URL}}/doc/curl.md    # comprehensive curl usage
-$ curl {{BASE_URL}}/doc/api.md     # HTTP API reference
-$ curl {{BASE_URL}}/doc/skill.md   # AI agent skill (concise, ready to feed into a coding agent)
-$ curl {{BASE_URL}}/doc/crypto.md  # cryptography of the live pastebin
-$ curl {{BASE_URL}}/doc/tos.md     # terms of service
+$ curl {{BASE_URL}}/doc/curl.md           # comprehensive curl usage
+$ curl {{BASE_URL}}/doc/api.md            # HTTP API reference
+$ curl {{BASE_URL}}/doc/skill.md          # AI agent skill (concise, ready to feed into a coding agent)
+$ curl {{BASE_URL}}/doc/paste-crypto.md   # cryptography of encrypted pastes
+$ curl {{BASE_URL}}/doc/live-crypto.md    # cryptography of the live pastebin
+$ curl {{BASE_URL}}/doc/tos.md            # terms of service
 ```
 
 Source: {{REPO}}

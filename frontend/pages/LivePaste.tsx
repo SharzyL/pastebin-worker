@@ -134,7 +134,7 @@ export function LivePaste({ config }: { config: Env }) {
       <p className="my-2">
         Everyone with the room link can post here, and posts show up on every open page immediately. Posts are encrypted
         and not visible to the server. (
-        <Link href={`${config.DEPLOY_URL}/doc/crypto`} className={tst}>
+        <Link href={`${config.DEPLOY_URL}/doc/live-crypto`} className={tst}>
           How it works
         </Link>
         )
