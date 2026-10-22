@@ -5,8 +5,9 @@ import type { ButtonProps } from "./ui/index.js"
 import { Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from "./ui/index.js"
 import { QRCodeIcon } from "./icons.js"
 
-// Quiet zone of 4 modules, as required by the QR spec for reliable scanning
-const QR_BORDER = 4
+// Quiet zone of 2 modules. The spec asks for 4, but scanners read 2 fine,
+// and 4 makes the code look much smaller than its dialog.
+const QR_BORDER = 2
 
 // Build a single SVG path covering all dark modules, one 1x1 square each
 function qrPath(data: boolean[][]): string {
@@ -25,7 +26,8 @@ export function QRCode({ value, className }: { value: string; className?: string
     return { size: qr.size, path: qrPath(qr.data) }
   }, [value])
 
-  // Always dark-on-white regardless of theme: inverted codes are rejected by some scanners
+  // Dark on white, inverted in dark mode so the code does not show as a white
+  // block. Most phone scanners read inverted codes, though some older ones do not.
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -35,8 +37,8 @@ export function QRCode({ value, className }: { value: string; className?: string
       aria-label="QR code"
       className={className}
     >
-      <rect width={size} height={size} fill="#fff" />
-      <path d={path} fill="#000" />
+      <rect width={size} height={size} className="fill-white dark:fill-transparent" />
+      <path d={path} className="fill-black dark:fill-white" />
     </svg>
   )
 }
@@ -68,7 +70,7 @@ export function QRCodeWidget({ className, label, getContent, ...rest }: QRCodeWi
           <ModalHeader>{label}</ModalHeader>
           {content !== undefined && (
             <ModalBody className="flex flex-col items-center gap-3">
-              <QRCode value={content} className="w-full max-w-64 rounded-lg" />
+              <QRCode value={content} className="w-full rounded-lg" />
               <code className="font-mono text-xs break-all text-center">{content}</code>
             </ModalBody>
           )}
