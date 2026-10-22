@@ -21,6 +21,8 @@ import type { UploadProgress } from "../utils/uploader.js"
 import { uploadPaste } from "../utils/uploader.js"
 import { tst } from "../utils/overrides.js"
 
+import { LIVE_PAGE_PATH } from "../../shared/live.js"
+
 import "../style.css"
 
 export function PasteBin({ config }: { config: Env }) {
@@ -212,7 +214,13 @@ export function PasteBin({ config }: { config: Env }) {
         <h1 className="text-3xl">{config.INDEX_PAGE_TITLE}</h1>
         <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
       </div>
-      <p className="my-2">A pastebin running on Cloudflare Workers.</p>
+      <p className="my-2">
+        A pastebin running on Cloudflare Workers. It now has{" "}
+        <Link className={tst} href={`${config.DEPLOY_URL}${LIVE_PAGE_PATH}`}>
+          live mode
+        </Link>
+        .
+      </p>
       <p className="my-2">
         <b>Usage</b>: paste text or drop a file, then share the returned URL. You can also use{" "}
         <Link className={tst} href={`${config.DEPLOY_URL}/doc/curl`}>
