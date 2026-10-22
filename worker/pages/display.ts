@@ -7,34 +7,14 @@ import type { SerializedPasteData } from "../../shared/interfaces.js"
 import { decode, escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { detectUtf8 } from "../../shared/encoding.js"
-import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
-  let binary = ""
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte)
-  }
-  return btoa(binary)
-}
-
-async function streamToArrayBuffer(stream: ReadableStream<Uint8Array>): Promise<ArrayBuffer> {
-  const reader = stream.getReader()
-  const chunks: Uint8Array[] = []
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    chunks.push(value)
-  }
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
-  const result = new Uint8Array(totalLength)
-  let offset = 0
-  for (const chunk of chunks) {
-    result.set(chunk, offset)
-    offset += chunk.length
-  }
-  return result.buffer
-}
+import {
+  arrayBufferToBase64,
+  getAssetPaths,
+  renderCssLinks,
+  streamToArrayBuffer,
+  DARK_MODE_SCRIPT,
+  MAX_SSR_FILE_SIZE,
+} from "../ssrUtils.js"
 
 export async function renderDisplayPage(
   env: Env,
