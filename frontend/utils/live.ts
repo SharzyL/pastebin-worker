@@ -5,7 +5,7 @@ import { NICKNAME_PARTS } from "./nicknames.js"
 // derived from it with HKDF: the room id, which the server uses for routing,
 // the room key, which encrypts every frame, and the pre-shared key mixed into
 // the pairwise keys of liveSession.ts. HKDF is one-way, so knowing the room id
-// reveals nothing about the others. See doc/crypto.md.
+// reveals nothing about the others. See doc/live-crypto.md.
 export const LIVE_SECRET_BYTES = 32
 
 // Oldest posts are dropped once the page holds more than this
