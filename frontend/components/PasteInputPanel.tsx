@@ -25,6 +25,8 @@ interface PasteEditorProps extends CardProps {
   showModal: (title: string, content: string) => void
   // overrides the deployment's R2_MAX_ALLOWED
   maxFileSize?: number
+  // Ctrl+Enter (Cmd+Enter on macOS) in the editor
+  onCtrlEnter?: () => void
 }
 
 export function PasteInputPanel({
@@ -34,6 +36,7 @@ export function PasteInputPanel({
   config,
   showModal,
   maxFileSize,
+  onCtrlEnter,
   ...rest
 }: PasteEditorProps) {
   const fileInput = useRef<HTMLInputElement>(null)
@@ -125,6 +128,7 @@ export function PasteInputPanel({
                 setFilename={(name) => onStateChange({ ...state, editFilename: name })}
                 disabled={isPasteLoading}
                 placeholder={isPasteLoading ? "Loading..." : "Edit your paste here"}
+                onCtrlEnter={onCtrlEnter}
               />
               {isEditDragged && (
                 <div

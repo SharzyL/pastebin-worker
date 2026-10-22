@@ -18,6 +18,8 @@ export interface SelectProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
   size?: "sm" | "md" | "lg"
   selectedKeys?: string[]
   onSelectionChange?: (keys: Set<string>) => void
+  // called after an item is chosen with Enter, e.g. to move on to the next field
+  onEnter?: () => void
   classNames?: {
     base?: string
     trigger?: string
@@ -27,7 +29,17 @@ export interface SelectProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
 }
 
 export const Select = React.forwardRef<SelectHandle, SelectProps>(function Select(
-  { label, size: _size = "md", selectedKeys = [], onSelectionChange, className, classNames = {}, children, ...rest },
+  {
+    label,
+    size: _size = "md",
+    selectedKeys = [],
+    onSelectionChange,
+    onEnter,
+    className,
+    classNames = {},
+    children,
+    ...rest
+  },
   forwardedRef,
 ) {
   const [isOpen, setIsOpen] = useState(false)
@@ -83,6 +95,7 @@ export const Select = React.forwardRef<SelectHandle, SelectProps>(function Selec
       onSelectionChange?.(new Set([getItemValue(items[focusedIndex])]))
       setIsOpen(false)
       setFocusedIndex(-1)
+      onEnter?.()
     } else if (e.key === "Escape") {
       setIsOpen(false)
       setFocusedIndex(-1)

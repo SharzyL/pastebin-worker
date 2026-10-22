@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import type { SelectHandle } from "./ui/index.js"
+import type { AutocompleteHandle } from "./ui/index.js"
 import { Autocomplete, AutocompleteItem, Input, Select, SelectItem } from "./ui/index.js"
 
 import { autoCompleteOverrides, inputOverrides, selectOverrides, tst } from "../utils/overrides.js"
@@ -18,6 +18,8 @@ interface CodeInputProps extends React.HTMLProps<HTMLDivElement> {
   setFilename: (filename?: string) => void
   placeholder?: string
   disabled?: boolean
+  // Ctrl+Enter (Cmd+Enter on macOS) in the editor, e.g. to upload
+  onCtrlEnter?: () => void
 }
 
 interface TabSetting {
@@ -71,13 +73,14 @@ export function CodeEditor({
   setFilename,
   placeholder,
   disabled,
+  onCtrlEnter,
   className,
   ...rest
 }: CodeInputProps) {
   const refHighlighting = useRef<HTMLPreElement | null>(null)
   const refTextarea = useRef<HTMLTextAreaElement | null>(null)
   const refLineNumbers = useRef<HTMLSpanElement | null>(null)
-  const refIndentWith = useRef<SelectHandle | null>(null)
+  const refLanguage = useRef<AutocompleteHandle | null>(null)
 
   const lineCount = (content?.match(/\n/g)?.length || 0) + 1
   const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, idx) => <span key={idx} />), [lineCount])
@@ -102,9 +105,12 @@ export function CodeEditor({
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     const element = refTextarea.current!
-    if (event.key === "Tab" && event.shiftKey) {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault()
-      refIndentWith.current?.focus()
+      onCtrlEnter?.()
+    } else if (event.key === "Tab" && event.shiftKey) {
+      event.preventDefault()
+      refLanguage.current?.focus()
     } else if (event.key === "Tab") {
       event.preventDefault() // stop normal
       const beforeTab = content.slice(0, element.selectionStart)
@@ -153,31 +159,12 @@ export function CodeEditor({
           onValueChange={setFilename}
           isClearable
         />
-        <Autocomplete
-          className={"max-w-[8em]"}
-          classNames={autoCompleteOverrides}
-          label={"Language"}
-          size={"sm"}
-          isClearable
-          defaultItems={availableLanguages.map((lang) => ({ key: lang }))}
-          // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
-          selectedKey={lang && availableLanguages.includes(lang) ? lang : ""}
-          onSelectionChange={(key) => {
-            setLang(key || undefined) // when key is empty string, convert back to undefined
-          }}
-        >
-          {(language: { key: string }) => (
-            <AutocompleteItem key={language.key} value={language.key}>
-              {language.key}
-            </AutocompleteItem>
-          )}
-        </Autocomplete>
         <Select
-          ref={refIndentWith}
           size={"sm"}
           label={"Indent With"}
           className={"w-[6em] text-foreground"}
           classNames={selectOverrides}
+          onEnter={() => refLanguage.current?.focus()}
           selectedKeys={[formatTabSetting(tabSetting, false)]}
           onSelectionChange={(s) => {
             const key = Array.from(s)[0]
@@ -189,6 +176,27 @@ export function CodeEditor({
             <SelectItem key={formatTabSetting(s, false)}>{formatTabSetting(s, true)}</SelectItem>
           ))}
         </Select>
+        <Autocomplete
+          ref={refLanguage}
+          className={"max-w-[8em]"}
+          classNames={autoCompleteOverrides}
+          label={"Language"}
+          size={"sm"}
+          isClearable
+          defaultItems={availableLanguages.map((lang) => ({ key: lang }))}
+          // we must not use undefined here to avoid conversion from uncontrolled component to controlled component
+          selectedKey={lang && availableLanguages.includes(lang) ? lang : ""}
+          onSelectionChange={(key) => {
+            setLang(key || undefined) // when key is empty string, convert back to undefined
+          }}
+          onEnter={() => refTextarea.current?.focus()}
+        >
+          {(language: { key: string }) => (
+            <AutocompleteItem key={language.key} value={language.key}>
+              {language.key}
+            </AutocompleteItem>
+          )}
+        </Autocomplete>
       </div>
       <div
         className={`text-sm w-full bg-default-100 ${tst} rounded-xl p-2 relative border border-default-200 hover:border-default-400 focus-within:border-default-400`}
