@@ -3,14 +3,14 @@ import { isLegalUrl } from "../../shared/verify.js"
 import { getDocMarkdown, getCurlIndexMarkdown, renderDocAsHtml } from "../pages/docs.js"
 import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
-import { makeMarkdown } from "../pages/markdown.js"
+import { makeEncryptedMarkdown, makeMarkdown } from "../pages/markdown.js"
 import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
 import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 import { LIVE_PAGE_PATH } from "../../shared/live.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
-import { getAssetPaths, renderCssLinks, DARK_MODE_SCRIPT } from "../ssrUtils.js"
+import { getAssetPaths, renderCssLinks, streamToArrayBuffer, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
 
 type Headers = Record<string, string>
 
@@ -271,7 +271,24 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle article (render as markdown)
   if (role === "a") {
-    return new Response(shouldGetPasteContent ? makeMarkdown(await decodeMaybeStream(item.paste)) : null, {
+    const scheme = item.metadata.encryptionScheme
+    let page: string | null = null
+    if (scheme) {
+      if (shouldGetPasteContent && item.metadata.sizeBytes <= MAX_SSR_FILE_SIZE) {
+        const ciphertext =
+          item.paste instanceof ArrayBuffer
+            ? item.paste
+            : await streamToArrayBuffer(item.paste as ReadableStream<Uint8Array>)
+        page = makeEncryptedMarkdown(`/${name}`, scheme, ciphertext)
+      } else {
+        // too large to embed: the browser fetches the paste itself
+        if (item.paste instanceof ReadableStream) await item.paste.cancel()
+        if (shouldGetPasteContent) page = makeEncryptedMarkdown(`/${name}`, scheme)
+      }
+    } else if (shouldGetPasteContent) {
+      page = makeMarkdown(await decodeMaybeStream(item.paste))
+    }
+    return new Response(page, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),

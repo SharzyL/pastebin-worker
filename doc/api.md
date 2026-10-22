@@ -95,6 +95,8 @@ Return the HTML converted from the markdown file stored in the paste of name `<n
 
 Syntax highlighting is supported by [prism.js](https://prismjs.com/). LaTeX mathematics is supported by [MathJax](https://www.mathjax.org).
 
+If the paste is encrypted, the server cannot read it, so it returns a page without content, and the browser fetches the paste, decrypts it with the key in the URL fragment, and renders it. Open it as `/a/<name>#<key>`, or as `/a/<name>#<key>:<section>` to jump to the heading with id `<section>` (percent-encoded). Links inside the rendered page keep the key in the same way. See [{{BASE_URL}}/doc/paste-crypto]({{BASE_URL}}/doc/paste-crypto).
+
 If error occurs, the worker returns status code different from `200`:
 
 - `404`: the paste of given name is not found.

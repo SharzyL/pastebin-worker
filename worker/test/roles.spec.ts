@@ -59,6 +59,25 @@ test("markdown with role a", async () => {
   expect(bigResp.indexOf("Untitled")).toBeGreaterThan(-1)
 })
 
+test("markdown with role a for an encrypted paste", async () => {
+  const ctx = createExecutionContext()
+  // stands in for ciphertext: the server never looks inside
+  const url = (await upload(ctx, { c: testMd, "encryption-scheme": "AES-GCM" })).url
+  const name = new URL(url).pathname.slice(1)
+
+  const resp = await workerFetch(ctx, addRole(url, "a"))
+  expect(resp.status).toStrictEqual(200)
+  const html = await resp.text()
+  // an empty page that the browser fills in
+  // small, so the ciphertext is embedded
+  expect(html).toContain(
+    `<div id="encrypted-markdown" data-src="/${name}" data-scheme="AES-GCM" data-ciphertext="${btoa(testMd)}">`,
+  )
+  expect(html).toContain("<title>Encrypted paste</title>")
+  expect(html).not.toContain("Header 1")
+  expect(html).not.toContain("language-js")
+})
+
 test("meta with role m", async () => {
   beforeEach(vi.useFakeTimers)
   afterEach(vi.useRealTimers)

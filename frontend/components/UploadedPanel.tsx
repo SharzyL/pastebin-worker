@@ -38,9 +38,12 @@ function withPathPrefix(url: string, prefix: string): string {
   return u.toString()
 }
 
+function makeKeyedUrl(url: string, key?: string): string {
+  return key ? `${url}#${key}` : url
+}
+
 function makeDecryptionUrl(url: string, key?: string): string {
-  const base = withPathPrefix(url, "/d")
-  return key ? `${base}#${key}` : base
+  return makeKeyedUrl(withPathPrefix(url, "/d"), key)
 }
 
 const RAW_URL_FLAGS: { syntax: string; desc: string }[] = [
@@ -111,26 +114,35 @@ export function UploadedPanel({
   const isEncrypted = Boolean(encryptionKey)
   const isMarkdown = highlightLang === "markdown"
 
-  const urlInput = (label: string, value: string, labelExtra?: React.ReactNode) => (
-    <Input
-      {...inputProps}
-      label={label}
-      labelExtra={labelExtra}
-      value={value}
-      endContent={
-        <div className="flex flex-row">
-          <QRCodeWidget className={copyWidgetClassNames} label={label} getContent={() => value} />
-          <CopyWidget className={copyWidgetClassNames} getCopyContent={() => value} />
-        </div>
-      }
-    />
-  )
+  // `hasKey`: the URL carries the decryption key, which is shown in green
+  const urlInput = (label: string, value: string, labelExtra?: React.ReactNode, hasKey = false) => {
+    const widgetClassNames = hasKey ? `${copyWidgetClassNames} hover:bg-success-100` : copyWidgetClassNames
+    return (
+      <Input
+        {...inputProps}
+        label={label}
+        labelExtra={labelExtra}
+        color={hasKey ? "success" : "default"}
+        value={value}
+        endContent={
+          <div className="flex flex-row">
+            <QRCodeWidget className={widgetClassNames} label={label} getContent={() => value} />
+            <CopyWidget className={widgetClassNames} getCopyContent={() => value} />
+          </div>
+        }
+      />
+    )
+  }
 
   const markdownUrlField = (pasteResponse: PasteResponse) =>
     urlInput(
       "Markdown URL",
-      withPathPrefix(pasteResponse.url, "/a"),
-      <InfoTooltip>Render the paste as GitHub-flavored markdown (with code highlighting and LaTeX).</InfoTooltip>,
+      makeKeyedUrl(withPathPrefix(pasteResponse.url, "/a"), encryptionKey),
+      <InfoTooltip>
+        Render the paste as GitHub-flavored markdown (with code highlighting and LaTeX).
+        {encryptionKey && " The paste is decrypted and rendered in the browser."}
+      </InfoTooltip>,
+      isEncrypted,
     )
 
   return (
@@ -195,7 +207,7 @@ export function UploadedPanel({
                   </div>
                 }
               />
-              {isMarkdown && !isEncrypted && markdownUrlField(pasteResponse)}
+              {isMarkdown && markdownUrlField(pasteResponse)}
               {urlInput(
                 "Raw URL",
                 pasteResponse.url,
@@ -231,7 +243,7 @@ export function UploadedPanel({
 
               {moreOpen && (
                 <div id="uploaded-paste-more">
-                  {!isEncrypted && !isMarkdown && markdownUrlField(pasteResponse)}
+                  {!isMarkdown && markdownUrlField(pasteResponse)}
                   {!isEncrypted &&
                     isUrlPaste &&
                     urlInput(

@@ -8,3 +8,5 @@ export const MIN_PASSWD_LEN = 8
 export const MAX_URL_REDIRECT_LEN = 2000
 export const PASSWD_SEP = ":"
 export const MAX_AUTO_FETCH_BYTES = 256 * 1024
+// Placeholder on /a/<name> for an encrypted paste, which the browser renders
+export const ENCRYPTED_MARKDOWN_ID = "encrypted-markdown"

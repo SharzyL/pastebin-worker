@@ -48,6 +48,12 @@ Someone opens the decryption link. The browser does not send the fragment after 
 
 Without a fragment, the page reports that the paste is encrypted and offers the ciphertext for download.
 
+### Rendering as markdown
+
+The markdown URL `/a/<name>` of a plain paste is rendered by the server. For an encrypted paste, the server sends a page that contains nothing derived from the content: a fixed title, the paste URL, the scheme label, and $c$ itself if it is at most 1 MiB. The page takes $c$ from there or fetches it from `/<name>`, computes $m = \mathsf{Open}_K(c)$ with the key from the fragment, renders $m$ with the same markdown renderer and HTML sanitizer that the server uses for plain pastes, and only then sets the title and builds the table of contents.
+
+The fragment of a markdown URL is `#<key>` or `#<key>:<section>`, where `<section>` is the id of a heading. Keys never contain `:`, so the two parts are told apart without ambiguity. Every in-page link of the rendered page, including the table of contents and the heading anchors, is rewritten to `#<key>:<section>`, so following, copying or sharing a link to a section keeps the key in it.
+
 ## Updating and deleting
 
 Updating a paste through its manage URL encrypts the new content under a **fresh** key $K'$, and the server replaces $c$ with $c'$. The old decryption link stops working: $\mathsf{Open}_K(c')$ fails, so its holders see an error rather than the new content. The new link has to be shared again.
@@ -91,6 +97,10 @@ The link carries the key, so everything that can see the link can read the paste
 - **Readers** can forward the link to anyone; nothing ties it to the people it was first given to.
 
 To limit exposure, set a short expiration, delete the paste once it has been read, or share the paste URL and the key over different channels, and let the reader put them together as `/d/<name>#<key>`.
+
+### Rendered markdown
+
+Like the key, the section in `#<key>:<section>` is never sent to the server. The page sent for an encrypted markdown paste is the same for every paste, apart from its URL and the embedded ciphertext, so neither the server nor a link preview learns the title or any other part of the content from it. Decrypted markdown is rendered in this site's page, sanitized the same way as server-rendered markdown. Remote images and other resources referenced by the content are loaded from their servers, which then see the reader's IP address, as they would for a plain paste.
 
 ### Metadata
 
