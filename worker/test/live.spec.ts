@@ -12,7 +12,7 @@ function bin(text: string): ArrayBuffer {
   return new TextEncoder().encode(text).buffer
 }
 
-const ROOM_ID = "0123456789abcdef0123456789abcdef"
+const CHANNEL_ID = "0123456789abcdef0123456789abcdef"
 
 interface Peer {
   ws: WebSocket
@@ -20,10 +20,10 @@ interface Peer {
   closed: Promise<CloseEvent>
 }
 
-async function connect(ctx: ExecutionContext, roomId: string = ROOM_ID): Promise<Peer> {
+async function connect(ctx: ExecutionContext, channelId: string = CHANNEL_ID): Promise<Peer> {
   const resp = await workerFetch(
     ctx,
-    new Request(`${BASE_URL}/live/ws/${roomId}`, { headers: { Upgrade: "websocket" } }),
+    new Request(`${BASE_URL}/live/ws/${channelId}`, { headers: { Upgrade: "websocket" } }),
   )
   expect(resp.status).toStrictEqual(101)
   const ws = resp.webSocket!
@@ -51,7 +51,7 @@ async function connect(ctx: ExecutionContext, roomId: string = ROOM_ID): Promise
   return { ws, next, closed }
 }
 
-describe("live room", () => {
+describe("live channel", () => {
   const ctx = createExecutionContext()
 
   it("serves the live page", async () => {
@@ -61,25 +61,30 @@ describe("live room", () => {
     expect(await resp.text()).toContain('<div id="root">')
   })
 
-  it("rejects illegal room ids and non-upgrade requests", async () => {
-    for (const path of ["/live/ws/", "/live/ws/xyz", `/live/ws/${ROOM_ID}0`, `/live/ws/${ROOM_ID.toUpperCase()}`]) {
+  it("rejects illegal channel ids and non-upgrade requests", async () => {
+    for (const path of [
+      "/live/ws/",
+      "/live/ws/xyz",
+      `/live/ws/${CHANNEL_ID}0`,
+      `/live/ws/${CHANNEL_ID.toUpperCase()}`,
+    ]) {
       const resp = await workerFetch(ctx, new Request(`${BASE_URL}${path}`, { headers: { Upgrade: "websocket" } }))
       expect(resp.status, `visiting ${path}`).toStrictEqual(400)
     }
-    const resp = await workerFetch(ctx, `${BASE_URL}/live/ws/${ROOM_ID}`)
+    const resp = await workerFetch(ctx, `${BASE_URL}/live/ws/${CHANNEL_ID}`)
     expect(resp.status).toStrictEqual(426)
   })
 
   it("relays frames to other peers and announces peer counts", async () => {
-    const roomId = "11111111111111111111111111111111"
-    const alice = await connect(ctx, roomId)
+    const channelId = "11111111111111111111111111111111"
+    const alice = await connect(ctx, channelId)
     expect(await alice.next()).toStrictEqual({ t: "peers", n: 1 })
 
-    const bob = await connect(ctx, roomId)
+    const bob = await connect(ctx, channelId)
     expect(await alice.next()).toStrictEqual({ t: "peers", n: 2 })
     expect(await bob.next()).toStrictEqual({ t: "peers", n: 2 })
 
-    const carol = await connect(ctx, roomId)
+    const carol = await connect(ctx, channelId)
     for (const peer of [alice, bob, carol]) {
       expect(await peer.next()).toStrictEqual({ t: "peers", n: 3 })
     }
@@ -100,14 +105,14 @@ describe("live room", () => {
     bob.ws.close(1000)
   })
 
-  it("isolates rooms", async () => {
+  it("isolates channels", async () => {
     const alice = await connect(ctx, "22222222222222222222222222222222")
     const bob = await connect(ctx, "33333333333333333333333333333333")
     expect(await alice.next()).toStrictEqual({ t: "peers", n: 1 })
     expect(await bob.next()).toStrictEqual({ t: "peers", n: 1 })
 
-    bob.ws.send(bin("for-room-3"))
-    // the error frame is the next thing alice receives, so nothing leaked from room 3
+    bob.ws.send(bin("for-channel-3"))
+    // the error frame is the next thing alice receives, so nothing leaked from channel 3
     alice.ws.send("not binary")
     expect(await alice.next()).toStrictEqual({ t: "error", msg: "expected a binary frame, frame dropped" })
 
@@ -137,10 +142,10 @@ describe("live room", () => {
     alice.ws.close(1000)
   })
 
-  it("rate limits by bytes per room", async () => {
-    const roomId = "77777777777777777777777777777777"
-    const peers = [await connect(ctx, roomId), await connect(ctx, roomId), await connect(ctx, roomId)]
-    // the room budget fits fewer than six maximum-size posts in a burst
+  it("rate limits by bytes per channel", async () => {
+    const channelId = "77777777777777777777777777777777"
+    const peers = [await connect(ctx, channelId), await connect(ctx, channelId), await connect(ctx, channelId)]
+    // the channel budget fits fewer than six maximum-size posts in a burst
     for (const peer of peers) {
       peer.ws.send(new Uint8Array(LIVE_MAX_BODY_BYTES))
       peer.ws.send(new Uint8Array(LIVE_MAX_BODY_BYTES))

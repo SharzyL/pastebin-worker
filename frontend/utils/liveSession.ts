@@ -3,17 +3,17 @@ import { base64VariantDecode, base64VariantEncode } from "./encryption.js"
 import type { LiveKeys, LiveMessage } from "./live.js"
 import { decodePost, encodePost, toHex } from "./live.js"
 
-// Forward secret encryption for one connection to a live room, see doc/live-crypto.md.
+// Forward secret encryption for one connection to a live channel, see doc/live-crypto.md.
 //
 // Every connection makes an ephemeral ECDH key pair that only lives in memory.
 // Peers exchange public keys (hello, proof) and derive a pairwise key from
 // their ECDH secret and the pre-shared key. A post body is encrypted once under
 // a fresh content key, which is wrapped for each confirmed peer under the
 // pairwise key. Once both pages drop their key pairs, a recorded post cannot be
-// decrypted again, even by someone who learns the room link.
+// decrypted again, even by someone who learns the channel link.
 //
 // Frame layout: 4-byte big-endian outer length, outer, body. The outer part is
-// a JSON control message sealed under the room key; the body, only present in
+// a JSON control message sealed under the channel key; the body, only present in
 // posts, is sealed under the content key. Sealed data is a 12-byte IV followed
 // by AES-GCM ciphertext.
 
@@ -250,7 +250,7 @@ export class LiveSession {
     if (data.length < 4) return none
     const outerLen = new DataView(data.buffer, data.byteOffset).getUint32(0)
     if (4 + outerLen > data.length) return none
-    const outerPlain = await unseal(this.keys.roomKey, data.subarray(4, 4 + outerLen), new Uint8Array())
+    const outerPlain = await unseal(this.keys.channelKey, data.subarray(4, 4 + outerLen), new Uint8Array())
     const outer = outerPlain && parseOuter(outerPlain)
     if (!outer) return none
     const body = data.subarray(4 + outerLen)
@@ -340,7 +340,7 @@ export class LiveSession {
   }
 
   private async frame(outer: Outer, body: Uint8Array = new Uint8Array()): Promise<Uint8Array> {
-    const sealed = await seal(this.keys.roomKey, utf8.encode(JSON.stringify(outer)), new Uint8Array())
+    const sealed = await seal(this.keys.channelKey, utf8.encode(JSON.stringify(outer)), new Uint8Array())
     const out = new Uint8Array(4 + sealed.length + body.length)
     new DataView(out.buffer).setUint32(0, sealed.length)
     out.set(sealed, 4)

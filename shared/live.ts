@@ -1,15 +1,15 @@
-// Wire protocol between live-room clients and the relaying Durable Object.
+// Wire protocol between live-channel clients and the relaying Durable Object.
 //
 // Posts travel as binary frames holding AES-GCM ciphertext produced with a key
 // derived from the URL fragment, so the server never sees plaintext. The
-// server forwards every binary frame as is to all other peers in the room and
+// server forwards every binary frame as is to all other peers in the channel and
 // keeps nothing. Text frames carry control messages from the server.
 
 export const LIVE_PAGE_PATH = "/live"
 export const LIVE_WS_PATH_PREFIX = "/live/ws/"
 
-// Room ids are 128-bit HKDF outputs, hex encoded
-export const LIVE_ROOM_ID_REGEX = /^[0-9a-f]{32}$/
+// Channel ids are 128-bit HKDF outputs, hex encoded
+export const LIVE_CHANNEL_ID_REGEX = /^[0-9a-f]{32}$/
 
 // Text frame answered by the server without waking the Durable Object up
 export const LIVE_PING = "ping"

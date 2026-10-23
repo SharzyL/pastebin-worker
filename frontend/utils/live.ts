@@ -2,16 +2,17 @@ import { base64VariantDecode, base64VariantEncode } from "./encryption.js"
 import { NICKNAME_PARTS } from "./nicknames.js"
 
 // The secret in the URL fragment is never sent to the server. Three values are
-// derived from it with HKDF: the room id, which the server uses for routing,
-// the room key, which encrypts every frame, and the pre-shared key mixed into
-// the pairwise keys of liveSession.ts. HKDF is one-way, so knowing the room id
+// derived from it with HKDF: the channel id, which the server uses for routing,
+// the channel key, which encrypts every frame, and the pre-shared key mixed into
+// the pairwise keys of liveSession.ts. HKDF is one-way, so knowing the channel id
 // reveals nothing about the others. See doc/live-crypto.md.
 export const LIVE_SECRET_BYTES = 32
 
 // Oldest posts are dropped once the page holds more than this
 export const LIVE_MAX_PAGE_BYTES = 128 * 1024 * 1024
 
-const HKDF_ROOM_INFO = "pb-live-room-v1"
+// from when channels were called rooms; changing it would break existing links
+const HKDF_CHANNEL_INFO = "pb-live-room-v1"
 const HKDF_KEY_INFO = "pb-live-key-v1"
 const HKDF_PSK_INFO = "pb-live-psk-v2"
 
@@ -33,9 +34,9 @@ export interface LiveMessage extends LivePost {
 type LiveHeader = Omit<LiveMessage, "body">
 
 export interface LiveKeys {
-  roomId: string
+  channelId: string
   // AES-GCM, encrypts the outer layer of every frame
-  roomKey: CryptoKey
+  channelKey: CryptoKey
   // salt of the pairwise key derivation
   psk: Uint8Array
 }
@@ -64,7 +65,7 @@ export async function deriveLiveKeys(secret: string): Promise<LiveKeys> {
   const raw = base64VariantDecode(secret)
   if (raw.length !== LIVE_SECRET_BYTES) {
     throw new Error(
-      `Live room key must decode to ${LIVE_SECRET_BYTES} bytes, got ${raw.length} bytes. ` +
+      `Live channel key must decode to ${LIVE_SECRET_BYTES} bytes, got ${raw.length} bytes. ` +
         `Make sure the URL fragment after "#" was copied in full.`,
     )
   }
@@ -75,13 +76,16 @@ export async function deriveLiveKeys(secret: string): Promise<LiveKeys> {
     salt: new Uint8Array(),
     info: new TextEncoder().encode(info),
   })
-  const roomBits = await crypto.subtle.deriveBits(hkdf(HKDF_ROOM_INFO), master, 128)
-  const roomKey = await crypto.subtle.deriveKey(hkdf(HKDF_KEY_INFO), master, { name: "AES-GCM", length: 256 }, false, [
-    "encrypt",
-    "decrypt",
-  ])
+  const channelBits = await crypto.subtle.deriveBits(hkdf(HKDF_CHANNEL_INFO), master, 128)
+  const channelKey = await crypto.subtle.deriveKey(
+    hkdf(HKDF_KEY_INFO),
+    master,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  )
   const psk = new Uint8Array(await crypto.subtle.deriveBits(hkdf(HKDF_PSK_INFO), master, 256))
-  return { roomId: toHex(new Uint8Array(roomBits)), roomKey, psk }
+  return { channelId: toHex(new Uint8Array(channelBits)), channelKey, psk }
 }
 
 // Post plaintext layout: 4-byte big-endian header length, JSON header, body
