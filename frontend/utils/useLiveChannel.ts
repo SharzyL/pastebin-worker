@@ -12,11 +12,11 @@ export interface LiveEntry extends LiveMessage {
   isOwn: boolean
 }
 
-export interface LiveRoomState {
+export interface LiveChannelState {
   status: LiveStatus
   error?: string
   // derived from the secret, undefined until derived; the server sees it too
-  roomId?: string
+  channelId?: string
   // this page plus the peers that completed the key exchange
   peerCount: number
   messages: LiveEntry[]
@@ -35,20 +35,20 @@ const STABLE_CONNECTION_MS = 10_000
 // Frames arriving while this much is still waiting to be decrypted are dropped
 const MAX_PENDING_DECRYPT_BYTES = 32 * 1024 * 1024
 
-export function liveSocketUrl(deployUrl: string, roomId: string): string {
+export function liveSocketUrl(deployUrl: string, channelId: string): string {
   const url = new URL(deployUrl)
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
-  url.pathname = LIVE_WS_PATH_PREFIX + roomId
+  url.pathname = LIVE_WS_PATH_PREFIX + channelId
   return url.toString()
 }
 
-// Connects to the live room derived from `secret`, reconnecting when the
+// Connects to the live channel derived from `secret`, reconnecting when the
 // connection drops. Only messages received while connected are shown. Every
 // connection uses a fresh LiveSession, so its keys are dropped with it.
-export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
+export function useLiveChannel(deployUrl: string, secret: string): LiveChannelState {
   const [status, setStatus] = useState<LiveStatus>("connecting")
   const [error, setError] = useState<string | undefined>(undefined)
-  const [roomId, setRoomId] = useState<string | undefined>(undefined)
+  const [channelId, setChannelId] = useState<string | undefined>(undefined)
   const [peerCount, setPeerCount] = useState(0)
   const [messages, setMessages] = useState<LiveEntry[]>([])
 
@@ -63,9 +63,9 @@ export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
     setStatus("connecting")
     setError(undefined)
     setPeerCount(0)
-    setRoomId(undefined)
+    setChannelId(undefined)
 
-    // set by the cleanup; work left over from this room must not touch state
+    // set by the cleanup; work left over from this channel must not touch state
     // that now belongs to the next one
     let disposed = false
     let retries = 0
@@ -77,7 +77,7 @@ export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
     const connect = async (keys: LiveKeys) => {
       const session = await LiveSession.create(keys)
       if (disposed) return
-      const ws = new WebSocket(liveSocketUrl(deployUrl, keys.roomId))
+      const ws = new WebSocket(liveSocketUrl(deployUrl, keys.channelId))
       ws.binaryType = "arraybuffer"
       currentWs = ws
       currentSession = session
@@ -131,7 +131,7 @@ export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
         if (ev.data instanceof ArrayBuffer) {
           const data = new Uint8Array(ev.data)
           if (pendingBytes + data.length > MAX_PENDING_DECRYPT_BYTES) {
-            console.warn("live room: too many frames waiting to be decrypted, frame dropped")
+            console.warn("live channel: too many frames waiting to be decrypted, frame dropped")
             return
           }
           enqueue(data.length, async () => {
@@ -146,7 +146,7 @@ export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
           // keys, so the count of confirmed peers is shown instead
           const frame = parseControlFrame(ev.data)
           if (frame?.t === "error") {
-            console.warn("live room:", frame.msg)
+            console.warn("live channel:", frame.msg)
           }
         }
       }
@@ -194,7 +194,7 @@ export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
     deriveLiveKeys(secret)
       .then((keys) => {
         if (disposed) return
-        setRoomId(keys.roomId)
+        setChannelId(keys.channelId)
         return connect(keys)
       })
       .catch(onFatal)
@@ -213,7 +213,7 @@ export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
   const send = useCallback(
     async (post: LivePost) => {
       const conn = connRef.current
-      if (conn === null) throw new Error("Not connected to the live room")
+      if (conn === null) throw new Error("Not connected to the live channel")
       const msg: LiveMessage = { ...post, id: genMessageId(), ts: Date.now() }
       // null when nobody else has joined: the post is only shown here
       const frame = await conn.session.encryptPost(msg)
@@ -230,5 +230,5 @@ export function useLiveRoom(deployUrl: string, secret: string): LiveRoomState {
 
   const clear = useCallback(() => setMessages([]), [])
 
-  return { status, error, roomId, peerCount, messages, send, clear }
+  return { status, error, channelId, peerCount, messages, send, clear }
 }

@@ -219,25 +219,25 @@ If error occurs, the worker returns status code different from `200`:
 
 ## GET `/live`
 
-Return the live pastebin page. Everyone who opens the same `/live#<key>` URL joins one room, where posts (text with an optional filename and highlight language, or files up to 10 MiB) show up on every open page immediately. `<key>` is 32 random bytes in base64 (with `/` replaced by `_` and padding removed); a fresh one is generated if the fragment is empty.
+Return the live pastebin page. Everyone who opens the same `/live#<key>` URL joins one channel, where posts (text with an optional filename and highlight language, or files up to 10 MiB) show up on every open page immediately. `<key>` is 32 random bytes in base64 (with `/` replaced by `_` and padding removed); a fresh one is generated if the fragment is empty.
 
-The key never reaches the server. Each open page makes an ephemeral key pair, exchanges public keys with the other pages in the room, and encrypts every post separately for the pages that are open at the time, so a recorded post cannot be decrypted later even with the link. Nothing is stored anywhere: a page only shows posts made while it is open. See [{{BASE_URL}}/doc/live-crypto]({{BASE_URL}}/doc/live-crypto) for the cryptographic design and its analysis.
+The key never reaches the server. Each open page makes an ephemeral key pair, exchanges public keys with the other pages in the channel, and encrypts every post separately for the pages that are open at the time, so a recorded post cannot be decrypted later even with the link. Nothing is stored anywhere: a page only shows posts made while it is open. See [{{BASE_URL}}/doc/live-crypto]({{BASE_URL}}/doc/live-crypto) for the cryptographic design and its analysis.
 
 Nicknames are not authenticated: anyone with the link can post under any nickname and timestamp. Since posts come from other people, the page treats them as untrusted: markdown is sanitized more strictly than on `/a/<name>` (no custom classes, ids, form controls or remote images), text over 512 KiB and images other than PNG, JPEG, GIF, WebP, AVIF and BMP (including SVG) are only offered for download.
 
-`/live` takes precedence over a paste named `live`, which can still be read through `/d/live` or `/m/live`. Random paste names never collide with it. If `BASIC_AUTH` is configured, both `/live` and `/live/ws/<room-id>` require it.
+`/live` takes precedence over a paste named `live`, which can still be read through `/d/live` or `/m/live`. Random paste names never collide with it. If `BASIC_AUTH` is configured, both `/live` and `/live/ws/<channel-id>` require it.
 
-## GET `/live/ws/<room-id>`
+## GET `/live/ws/<channel-id>`
 
-WebSocket endpoint that relays posts between peers in the room `<room-id>`, which must be 32 lowercase hex characters.
+WebSocket endpoint that relays posts between peers in the channel `<channel-id>`, which must be 32 lowercase hex characters.
 
-- Binary frames carry key exchange messages and posts. A frame sent by a client is forwarded as is to all other peers in the room. The server cannot read it; the format is described in [{{BASE_URL}}/doc/live-crypto]({{BASE_URL}}/doc/live-crypto).
+- Binary frames carry key exchange messages and posts. A frame sent by a client is forwarded as is to all other peers in the channel. The server cannot read it; the format is described in [{{BASE_URL}}/doc/live-crypto]({{BASE_URL}}/doc/live-crypto).
 - Text frames sent by the server are control messages: `{"t":"peers","n":<count>}` whenever someone joins or leaves, and `{"t":"error","msg":...}` when a frame is dropped. A text frame `ping` sent by a client is answered with `pong`; other text frames from clients are dropped.
 
-A post body is at most 10 MiB, and frames larger than that plus 64 KiB close the connection with code `1009`. Frames are rate limited by size, both per connection (24 MiB burst, then 1 MiB/s) and per room (48 MiB burst, then 4 MiB/s); frames over the limit are dropped with an error message.
+A post body is at most 10 MiB, and frames larger than that plus 64 KiB close the connection with code `1009`. Frames are rate limited by size, both per connection (24 MiB burst, then 1 MiB/s) and per channel (48 MiB burst, then 4 MiB/s); frames over the limit are dropped with an error message.
 
 If error occurs, the worker returns status code different from `101`:
 
-- `400`: the room id is illegal.
+- `400`: the channel id is illegal.
 - `426`: the request is not a WebSocket upgrade.
-- `503`: the room already has 64 peers.
+- `503`: the channel already has 64 peers.

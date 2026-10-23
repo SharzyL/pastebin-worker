@@ -1,5 +1,5 @@
 // `wrangler types` refers to Durable Object classes as import("./worker/index"),
-// which does not resolve under moduleResolution node16, so LIVE_ROOM would be
+// which does not resolve under moduleResolution node16, so LIVE_CHANNEL would be
 // typed as an error. Add the extension node16 requires.
 import { readFileSync, writeFileSync } from "node:fs"
 

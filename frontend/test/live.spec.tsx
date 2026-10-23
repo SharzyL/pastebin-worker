@@ -14,7 +14,7 @@ import {
   LIVE_MAX_PAGE_BYTES,
 } from "../utils/live.js"
 import { LIVE_PEER_TIMEOUT_MS, LiveSession } from "../utils/liveSession.js"
-import { liveSocketUrl, useLiveRoom } from "../utils/useLiveRoom.js"
+import { liveSocketUrl, useLiveChannel } from "../utils/useLiveChannel.js"
 import { LivePaste } from "../pages/LivePaste.js"
 import { LivePostCard } from "../components/LivePostCard.js"
 import { stubBrowerFunctions } from "./testUtils.js"
@@ -68,15 +68,15 @@ async function join(peers: Endpoint[], newcomer: Endpoint) {
 }
 
 describe("live crypto", () => {
-  it("derives deterministic room keys from a secret", async () => {
+  it("derives deterministic channel keys from a secret", async () => {
     const secret = genLiveSecret()
     const a = await deriveLiveKeys(secret)
     const b = await deriveLiveKeys(secret)
-    expect(a.roomId).toMatch(/^[0-9a-f]{32}$/)
-    expect(a.roomId).toStrictEqual(b.roomId)
+    expect(a.channelId).toMatch(/^[0-9a-f]{32}$/)
+    expect(a.channelId).toStrictEqual(b.channelId)
     expect(Array.from(a.psk)).toStrictEqual(Array.from(b.psk))
     expect(a.psk.length).toStrictEqual(32)
-    expect(a.roomId).not.toStrictEqual((await deriveLiveKeys(genLiveSecret())).roomId)
+    expect(a.channelId).not.toStrictEqual((await deriveLiveKeys(genLiveSecret())).channelId)
     await expect(deriveLiveKeys(genLiveSecret().slice(0, 20))).rejects.toThrow("copied in full")
   })
 
@@ -98,36 +98,36 @@ describe("live crypto", () => {
   it("exchanges keys and delivers posts to confirmed peers", async () => {
     const keys = await deriveLiveKeys(genLiveSecret())
     const [alice, bob, carol] = await Promise.all([endpoint(keys), endpoint(keys), endpoint(keys)])
-    const room: Endpoint[] = []
-    await join(room, alice)
+    const channel: Endpoint[] = []
+    await join(channel, alice)
     expect(alice.session.confirmedCount).toStrictEqual(0)
     expect(await alice.session.encryptPost(msg("m0", 0))).toBeNull()
 
-    await join(room, bob)
-    await join(room, carol)
-    for (const peer of room) expect(peer.session.confirmedCount).toStrictEqual(2)
+    await join(channel, bob)
+    await join(channel, carol)
+    for (const peer of channel) expect(peer.session.confirmedCount).toStrictEqual(2)
 
     const frame = (await alice.session.encryptPost(msg("m1", 1, "secret text")))!
     expect(new TextDecoder().decode(frame)).not.toContain("secret text")
-    await broadcast(room, alice, frame)
+    await broadcast(channel, alice, frame)
     expect(bob.inbox.map(plain)).toStrictEqual([plain(msg("m1", 1, "secret text"))])
     expect(carol.inbox.map(plain)).toStrictEqual([plain(msg("m1", 1, "secret text"))])
   })
 
-  it("does not let the room link alone decrypt recorded posts", async () => {
+  it("does not let the channel link alone decrypt recorded posts", async () => {
     const keys = await deriveLiveKeys(genLiveSecret())
-    const room: Endpoint[] = []
+    const channel: Endpoint[] = []
     const [alice, bob] = await Promise.all([endpoint(keys), endpoint(keys)])
-    await join(room, alice)
-    await join(room, bob)
+    await join(channel, alice)
+    await join(channel, bob)
     const recorded = (await alice.session.encryptPost(msg("m1", 1, "old post")))!
 
     // a later page with the same link, even fed the recorded frame, cannot read it
     const eve = await endpoint(keys)
     expect(await eve.session.receive(recorded)).toStrictEqual({ replies: [] })
-    await join(room, eve)
+    await join(channel, eve)
     expect(await eve.session.receive(recorded)).toStrictEqual({ replies: [] })
-    // nor can a page in another room
+    // nor can a page in another channel
     const mallory = await endpoint(await deriveLiveKeys(genLiveSecret()))
     expect(await mallory.session.receive(recorded)).toStrictEqual({ replies: [] })
   })
@@ -146,30 +146,30 @@ describe("live crypto", () => {
 
   it("rejects tampered posts and posts sent before joining", async () => {
     const keys = await deriveLiveKeys(genLiveSecret())
-    const room: Endpoint[] = []
+    const channel: Endpoint[] = []
     const [alice, bob] = await Promise.all([endpoint(keys), endpoint(keys)])
-    await join(room, alice)
-    await join(room, bob)
+    await join(channel, alice)
+    await join(channel, bob)
     const frame = (await alice.session.encryptPost(msg("m1", 1, "hello")))!
     const tampered = frame.slice()
     tampered[tampered.length - 1] ^= 1
     expect(await bob.session.receive(tampered)).toStrictEqual({ replies: [] })
 
     const carol = await endpoint(keys)
-    await join(room, carol)
+    await join(channel, carol)
     expect(await carol.session.receive(frame)).toStrictEqual({ replies: [] })
     expect((await bob.session.receive(frame)).message).toBeDefined()
   })
 
   it("forgets peers that leave or go silent", async () => {
     const keys = await deriveLiveKeys(genLiveSecret())
-    const room: Endpoint[] = []
+    const channel: Endpoint[] = []
     const [alice, bob, carol] = await Promise.all([endpoint(keys), endpoint(keys), endpoint(keys)])
-    await join(room, alice)
-    await join(room, bob)
-    await join(room, carol)
+    await join(channel, alice)
+    await join(channel, bob)
+    await join(channel, carol)
 
-    await broadcast(room, carol, await carol.session.bye())
+    await broadcast(channel, carol, await carol.session.bye())
     expect(alice.session.confirmedCount).toStrictEqual(1)
 
     // an alive keeps bob around, a replayed one does not
@@ -211,7 +211,7 @@ describe("live nickname", () => {
   })
 })
 
-// In-memory stand-in for the LiveRoom Durable Object
+// In-memory stand-in for the LiveChannel Durable Object
 class FakeRelay {
   sockets = new Set<FakeWebSocket>()
 
@@ -272,7 +272,7 @@ class FakeWebSocket {
   }
 }
 
-describe("useLiveRoom", () => {
+describe("useLiveChannel", () => {
   beforeEach(() => {
     relay = new FakeRelay()
     vi.stubGlobal("WebSocket", FakeWebSocket)
@@ -284,12 +284,12 @@ describe("useLiveRoom", () => {
 
   it("delivers posts to peers online at the time", async () => {
     const secret = genLiveSecret()
-    const { roomId } = await deriveLiveKeys(secret)
-    const alice = renderHook(() => useLiveRoom("https://example.com", secret))
-    const bob = renderHook(() => useLiveRoom("https://example.com", secret))
+    const { channelId } = await deriveLiveKeys(secret)
+    const alice = renderHook(() => useLiveChannel("https://example.com", secret))
+    const bob = renderHook(() => useLiveChannel("https://example.com", secret))
     await waitFor(() => expect(alice.result.current.peerCount).toStrictEqual(2))
     await waitFor(() => expect(bob.result.current.peerCount).toStrictEqual(2))
-    expect([...relay.sockets][0].url).toStrictEqual(`wss://example.com/live/ws/${roomId}`)
+    expect([...relay.sockets][0].url).toStrictEqual(`wss://example.com/live/ws/${channelId}`)
 
     await act(() => alice.result.current.send(textPost("alice", "first post")))
     await act(() => bob.result.current.send(textPost("bob", "second post")))
@@ -300,7 +300,7 @@ describe("useLiveRoom", () => {
     expect(alice.result.current.messages.map((m) => m.isOwn)).toStrictEqual([true, false])
 
     // a newcomer only sees what is posted after joining
-    const carol = renderHook(() => useLiveRoom("https://example.com", secret))
+    const carol = renderHook(() => useLiveChannel("https://example.com", secret))
     await waitFor(() => expect(carol.result.current.peerCount).toStrictEqual(3))
     await waitFor(() => expect(bob.result.current.peerCount).toStrictEqual(3))
     expect(carol.result.current.messages).toStrictEqual([])
@@ -316,7 +316,7 @@ describe("useLiveRoom", () => {
 
   it("fails a send when the connection drops while encrypting", async () => {
     const secret = genLiveSecret()
-    const alice = renderHook(() => useLiveRoom("https://example.com", secret))
+    const alice = renderHook(() => useLiveChannel("https://example.com", secret))
     await waitFor(() => expect(alice.result.current.status).toStrictEqual("open"))
     const socket = [...relay.sockets][0]
     const sending = alice.result.current.send(textPost("alice", "lost"))
@@ -339,17 +339,17 @@ describe("LivePaste", () => {
     vi.unstubAllGlobals()
   })
 
-  it("warns when nobody else is in the room", async () => {
+  it("warns when nobody else is in the channel", async () => {
     render(<LivePaste config={__WRANGLER_CONFIG__} />)
     expect(await screen.findByText("· nobody will see your post!")).toBeInTheDocument()
   })
 
-  it("shows the room id in the title", async () => {
+  it("shows the channel id in the title", async () => {
     render(<LivePaste config={__WRANGLER_CONFIG__} />)
-    const { roomId } = await deriveLiveKeys(location.hash.slice(1))
+    const { channelId } = await deriveLiveKeys(location.hash.slice(1))
     await waitFor(() =>
       expect(document.title).toStrictEqual(
-        `${__WRANGLER_CONFIG__.INDEX_PAGE_TITLE} / Live (Room ${roomId.slice(0, 8)})`,
+        `${__WRANGLER_CONFIG__.INDEX_PAGE_TITLE} / Live (Channel ${channelId.slice(0, 8)})`,
       ),
     )
   })
@@ -404,7 +404,7 @@ describe("LivePostCard", () => {
     expect(heading.id).toStrictEqual("")
     expect(document.querySelector("script")).toBeNull()
 
-    // in-page links must not replace the room key in the URL fragment
+    // in-page links must not replace the channel key in the URL fragment
     const hashBefore = location.hash
     await userEvent.click(screen.getByText("in page"))
     expect(location.hash).toStrictEqual(hashBefore)

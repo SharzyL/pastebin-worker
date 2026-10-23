@@ -5,17 +5,17 @@ This document describes how the live pastebin at [{{BASE_URL}}/live]({{BASE_URL}
 ## Goals
 
 - **Confidentiality against the server.** The relay, and anyone who can read its traffic or logs, learns nothing about the content of posts.
-- **Forward secrecy.** A post recorded while it was relayed cannot be decrypted later, even by someone who then learns the room link, once the pages that sent and received it are closed or have reconnected.
+- **Forward secrecy.** A post recorded while it was relayed cannot be decrypted later, even by someone who then learns the channel link, once the pages that sent and received it are closed or have reconnected.
 - **Posts reach the pages that are online.** A post is readable only by the pages that completed the key exchange before it was sent. Nothing is stored.
 
-Nicknames are deliberately **not** authenticated: anyone in the room can post under any name, so no part of the design tries to bind a post to a person.
+Nicknames are deliberately **not** authenticated: anyone in the channel can post under any name, so no part of the design tries to bind a post to a person.
 
 ## Limitations
 
-- **The page is served by the same server.** An operator who wants to read posts can serve a page that sends the room link and the plaintext elsewhere. End-to-end encryption delivered by a website protects against a server that is honest when the page is loaded, and against later leaks of its logs and recordings; it cannot protect against a server that is malicious at that time.
+- **The page is served by the same server.** An operator who wants to read posts can serve a page that sends the channel link and the plaintext elsewhere. End-to-end encryption delivered by a website protects against a server that is honest when the page is loaded, and against later leaks of its logs and recordings; it cannot protect against a server that is malicious at that time.
 - **Device compromise** while the page is open exposes everything shown on it.
 - Participants can copy, save or screenshot posts.
-- **No post-quantum cryptography.** The key exchange is ECDH on P-256, which a large quantum computer could break, and WebCrypto in browsers offers no post-quantum key exchange such as ML-KEM yet. Since every pairwise key also depends on a pre-shared key derived from the room link, recorded posts stay safe against such an adversary as long as the link stays secret, but forward secrecy does not hold against an adversary who records traffic now, learns the link, and has a quantum computer later. The symmetric parts (AES-256, HMAC-SHA256, HKDF-SHA256) are not affected in a meaningful way.
+- **No post-quantum cryptography.** The key exchange is ECDH on P-256, which a large quantum computer could break, and WebCrypto in browsers offers no post-quantum key exchange such as ML-KEM yet. Since every pairwise key also depends on a pre-shared key derived from the channel link, recorded posts stay safe against such an adversary as long as the link stays secret, but forward secrecy does not hold against an adversary who records traffic now, learns the link, and has a quantum computer later. The symmetric parts (AES-256, HMAC-SHA256, HKDF-SHA256) are not affected in a meaningful way.
 
 ## Notation
 
@@ -25,27 +25,29 @@ Nicknames are deliberately **not** authenticated: anyone in the room can post un
 - $\mathsf{Seal}_K(m; a) = \mathsf{iv} \Vert \mathsf{AES\text{-}GCM}_K(\mathsf{iv}, m, a)$ with a fresh $\mathsf{iv} \leftarrow_R \{0,1\}^{96}$ and additional data $a$. $\mathsf{Open}_K$ reverses it and fails if the tag does not match.
 - Fixed strings are written as $\textsf{“pb-live-…”}$; when identifiers follow a fixed string in the encoding, they are separated by `|`.
 
-## Opening a room
+## Opening a channel
 
-### The room link
+### The channel link
 
-When someone opens `/live` with an empty fragment, the page picks a room secret $S \leftarrow_R \{0,1\}^{256}$ and rewrites the URL to `/live#<S>`, with $S$ in base64 (`/` replaced by `_`, no padding). Sharing that URL is how people are invited. The fragment is never sent to the server.
+When someone opens `/live` with an empty fragment, the page picks a channel secret $S \leftarrow_R \{0,1\}^{256}$ and rewrites the URL to `/live#<S>`, with $S$ in base64 (`/` replaced by `_`, no padding). Sharing that URL is how people are invited. The fragment is never sent to the server.
 
 Every page with the link derives three values from $S$:
 
 $$
 \begin{aligned}
-\mathsf{roomId} &= \mathsf{HKDF}(S, \varepsilon, \textsf{“pb-live-room-v1”})[0..16) \\
-K_\text{room} &= \mathsf{HKDF}(S, \varepsilon, \textsf{“pb-live-key-v1”}) \\
+\mathsf{channelId} &= \mathsf{HKDF}(S, \varepsilon, \textsf{“pb-live-room-v1”})[0..16) \\
+K_\text{channel} &= \mathsf{HKDF}(S, \varepsilon, \textsf{“pb-live-key-v1”}) \\
 \mathsf{psk} &= \mathsf{HKDF}(S, \varepsilon, \textsf{“pb-live-psk-v2”})
 \end{aligned}
 $$
 
-- $\mathsf{roomId}$, hex encoded, is the only one that leaves the browser: the page connects to `/live/ws/<roomId>`, and the server puts all connections with the same id in one room.
-- $K_\text{room}$ is an AES-256-GCM key that encrypts the outer layer of every frame, so the server cannot see who talks to whom.
+- $\mathsf{channelId}$, hex encoded, is the only one that leaves the browser: the page connects to `/live/ws/<channelId>`, and the server puts all connections with the same id in one channel.
+- $K_\text{channel}$ is an AES-256-GCM key that encrypts the outer layer of every frame, so the server cannot see who talks to whom.
 - $\mathsf{psk}$ is mixed into every pairwise key below, so that knowing the public keys of a pair is not enough to compute its keys.
 
-The three outputs are independent, so the server learns nothing about $K_\text{room}$ or $\mathsf{psk}$ from $\mathsf{roomId}$.
+The three outputs are independent, so the server learns nothing about $K_\text{channel}$ or $\mathsf{psk}$ from $\mathsf{channelId}$.
+
+The label $\textsf{“pb-live-room-v1”}$ comes from when channels were called rooms. Changing it would change every derived value, so it is kept for links shared before the rename.
 
 ### Connecting
 
@@ -65,14 +67,14 @@ $$
 From now on, everything passes through the relay as binary frames of the same shape:
 
 $$
-\mathsf{frame} = \mathsf{len}(o) \Vert o \Vert b, \qquad o = \mathsf{Seal}_{K_\text{room}}(\mathsf{msg}; \varepsilon)
+\mathsf{frame} = \mathsf{len}(o) \Vert o \Vert b, \qquad o = \mathsf{Seal}_{K_\text{channel}}(\mathsf{msg}; \varepsilon)
 $$
 
-where $\mathsf{len}$ is a 4-byte big-endian length, $\mathsf{msg}$ is a JSON control message (listed in the [message reference](#message-reference)), and the body $b$ is only present in posts. The server forwards each frame to every other connection in the room and sees nothing but its size.
+where $\mathsf{len}$ is a 4-byte big-endian length, $\mathsf{msg}$ is a JSON control message (listed in the [message reference](#message-reference)), and the body $b$ is only present in posts. The server forwards each frame to every other connection in the channel and sees nothing but its size.
 
 ## Joining
 
-Suppose B and C are in the room and A connects.
+Suppose B and C are in the channel and A connects.
 
 1. A sends $\mathsf{hello}(X_A, n_A)$.
 2. B receives it. If $\mathsf{sid}_A$ is new, B imports $X_A$ (WebCrypto rejects points that are not on the curve) and derives two pairwise keys:
@@ -124,7 +126,7 @@ Each wrap adds about 130 bytes to the outer layer, so a post to 63 peers stays w
 
 - Every 30 seconds each page sends $\mathsf{alive}(\mathsf{sid}, \mathsf{seq})$. An alive refreshes a confirmed peer only if its sequence number is above every one seen from that peer, so a replayed alive cannot keep a departed peer listed.
 - Peers not refreshed for 75 seconds, confirmed or not, are forgotten.
-- On `pagehide` and when leaving the room, the page sends $\mathsf{bye}(\mathsf{sid})$ and closes the connection, which drops the session and its keys. A page restored from the back/forward cache reconnects with a new session.
+- On `pagehide` and when leaving the channel, the page sends $\mathsf{bye}(\mathsf{sid})$ and closes the connection, which drops the session and its keys. A page restored from the back/forward cache reconnects with a new session.
 
 ## Message reference
 
@@ -135,7 +137,7 @@ Every control message is a JSON object with `v: 2` and a type `t`. Binary fields
 | `hello` | `pub` ($X$), `nonce` ($n$)                              | announce a new session                     |
 | `proof` | `pub`, `nonce`, `seq`, `to` (session id), `tag` ($\pi$) | prove possession of the private key        |
 | `alive` | `from` (session id), `seq`                              | stay in the other peers' lists             |
-| `bye`   | `from`                                                  | leave the room                             |
+| `bye`   | `from`                                                  | leave the channel                          |
 | `post`  | `from`, `wraps`: a list of `{to, key}` ($w_P$)          | the content key wrapped for each recipient |
 
 The post plaintext $p$ is a 4-byte big-endian header length, a JSON header (`id`, `ts`, `author`, `kind`, and optional `filename`, `lang`, `mime`), then the body (UTF-8 text or raw file content).
@@ -149,12 +151,12 @@ The post plaintext $p$ is a 4-byte big-endian header length, a JSON header (`id`
 | Passive server    | Records every frame and connection metadata (IP addresses, timing, sizes)            |
 | Active server     | Also drops, delays, replays, injects frames, separates peers, lies about peer counts |
 | Late link holder  | Learns $S$ after the fact (chat history, browser history, screenshots)               |
-| Room member       | Legitimately holds $S$ and takes part in the room                                    |
+| Channel member    | Legitimately holds $S$ and takes part in the channel                                 |
 | Device compromise | Reads the memory or page of a participant                                            |
 
 ### Confidentiality against the server
 
-Without $S$, the server cannot open the outer layer under $K_\text{room}$, and it cannot compute pairwise keys because they depend on $\mathsf{psk}$. An injected hello or proof fails to decrypt. Even if it could insert its own public key $X_E$, the derived key $\mathsf{HKDF}(\mathsf{DH}(x_E, X_A), \mathsf{psk}, \dots)$ would still be unknown to it. Content is protected under the security of AES-GCM and HKDF.
+Without $S$, the server cannot open the outer layer under $K_\text{channel}$, and it cannot compute pairwise keys because they depend on $\mathsf{psk}$. An injected hello or proof fails to decrypt. Even if it could insert its own public key $X_E$, the derived key $\mathsf{HKDF}(\mathsf{DH}(x_E, X_A), \mathsf{psk}, \dots)$ would still be unknown to it. Content is protected under the security of AES-GCM and HKDF.
 
 ### Forward secrecy
 
@@ -166,12 +168,12 @@ The forward secrecy window is one connection: while a page is open and connected
 
 ### A link that leaks during a session
 
-- **Passive eavesdropper with $S$**, such as someone who sees the link in a chat but cannot change traffic: it reads hellos, but cannot compute any pairwise key, so it reads no post. To read posts it must join the room, and then it appears in everyone's peer count.
+- **Passive eavesdropper with $S$**, such as someone who sees the link in a chat but cannot change traffic: it reads hellos, but cannot compute any pairwise key, so it reads no post. To read posts it must join the channel, and then it appears in everyone's peer count.
 - **Active server with $S$**: it can replace public keys in hellos and proofs with its own and relay between both sides, a man-in-the-middle that the pages cannot detect without comparing key fingerprints out of band. We do not offer fingerprint comparison, because an operator willing to do this can more easily serve a modified page (see [limitations](#limitations)).
 
-### Room members
+### Channel members
 
-A member can read every post sent while it is confirmed; that is the point of the room. Compared with a single shared key, it can no longer read posts sent while it was away, even with frames recorded by the server, because those posts have no wrap for it. As decided above, a member can post under any nickname, including the nickname of someone else.
+A member can read every post sent while it is confirmed; that is the point of the channel. Compared with a single shared key, it can no longer read posts sent while it was away, even with frames recorded by the server, because those posts have no wrap for it. As decided above, a member can post under any nickname, including the nickname of someone else.
 
 Pairwise keys are symmetric, so B can create a wrap that seems to come from A. Posts are therefore deniable: no recipient can prove to a third party who sent a post.
 
@@ -182,7 +184,7 @@ Pairwise keys are symmetric, so B can create a wrap that seems to come from A. P
 - A **replayed post** within the same connection is dropped by its message id. After a reconnect, its wraps are for an old session id and cannot be opened.
 - A **replayed bye** can only remove a peer that has already left.
 - The server can always drop frames, separate peers, or close connections. These attacks only affect availability. The count of confirmed peers cannot be inflated by the server, since confirmation requires the pairwise key.
-- Frames that fail to decrypt are cheap to reject (one AES-GCM operation). A room member could flood hellos to make others run ECDH, which costs well under a millisecond each; the server rate limits frames by size, and a page keeps at most 64 peers.
+- Frames that fail to decrypt are cheap to reject (one AES-GCM operation). A channel member could flood hellos to make others run ECDH, which costs well under a millisecond each; the server rate limits frames by size, and a page keeps at most 64 peers.
 
 ### Metadata
 
@@ -190,15 +192,15 @@ The server sees who connects, when, how often, and the size of every frame. The 
 
 ### Summary
 
-| Scenario                                          | Single room key (v1) | Per-connection keys (v2)       |
-| ------------------------------------------------- | -------------------- | ------------------------------ |
-| Link leaks later, frames were recorded            | all posts readable   | content safe, metadata visible |
-| Link leaks during a session, passive eavesdropper | all posts readable   | content safe                   |
-| Link leaks during a session, active server        | all posts readable   | man-in-the-middle possible     |
-| Member reads posts sent while away                | yes, with recordings | no                             |
-| Replayed post to a new page                       | readable             | cannot be opened               |
-| Peer count                                        | reported by server   | confirmed with keys            |
-| Malicious page served by the operator             | not protected        | not protected                  |
+| Scenario                                          | Single channel key (v1) | Per-connection keys (v2)       |
+| ------------------------------------------------- | ----------------------- | ------------------------------ |
+| Link leaks later, frames were recorded            | all posts readable      | content safe, metadata visible |
+| Link leaks during a session, passive eavesdropper | all posts readable      | content safe                   |
+| Link leaks during a session, active server        | all posts readable      | man-in-the-middle possible     |
+| Member reads posts sent while away                | yes, with recordings    | no                             |
+| Replayed post to a new page                       | readable                | cannot be opened               |
+| Peer count                                        | reported by server      | confirmed with keys            |
+| Malicious page served by the operator             | not protected           | not protected                  |
 
 ## Primitives
 

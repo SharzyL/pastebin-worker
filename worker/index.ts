@@ -9,7 +9,7 @@ import { cleanExpiredInR2 } from "./storage/storage.js"
 import { handleLiveSocket } from "./live.js"
 import { LIVE_WS_PATH_PREFIX } from "../shared/live.js"
 
-export { LiveRoom } from "./live.js"
+export { LiveChannel } from "./live.js"
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {

@@ -13,15 +13,15 @@ import { PasteInputPanel } from "../components/PasteInputPanel.js"
 import { LIVE_MAX_BODY_BYTES, LIVE_PAGE_PATH } from "../../shared/live.js"
 import type { LivePost } from "../utils/live.js"
 import { genLiveSecret, genNickname } from "../utils/live.js"
-import type { LiveStatus } from "../utils/useLiveRoom.js"
-import { useLiveRoom } from "../utils/useLiveRoom.js"
+import type { LiveStatus } from "../utils/useLiveChannel.js"
+import { useLiveChannel } from "../utils/useLiveChannel.js"
 import { formatSize } from "../utils/utils.js"
 import { cardOverrides, tst } from "../utils/overrides.js"
 
 import "../style.css"
 
-// enough to tell rooms apart in a tab bar
-const ROOM_ID_TITLE_CHARS = 8
+// enough to tell channels apart in a tab bar
+const CHANNEL_ID_TITLE_CHARS = 8
 
 const statusText: Record<LiveStatus, string> = {
   connecting: "Connecting",
@@ -78,13 +78,15 @@ export function LivePaste({ config }: { config: Env }) {
   const [_, modeSelection, setModeSelection] = useDarkModeSelection()
   const { ErrorModal, showModal, handleError } = useErrorModal()
 
-  const room = useLiveRoom(config.DEPLOY_URL, secret)
+  const channel = useLiveChannel(config.DEPLOY_URL, secret)
 
-  // the room id rather than the secret, which must not end up in window titles
+  // the channel id rather than the secret, which must not end up in window titles
   useEffect(() => {
     const base = `${config.INDEX_PAGE_TITLE} / Live`
-    document.title = room.roomId ? `${base} (Room ${room.roomId.slice(0, ROOM_ID_TITLE_CHARS)})` : base
-  }, [config.INDEX_PAGE_TITLE, room.roomId])
+    document.title = channel.channelId
+      ? `${base} (Channel ${channel.channelId.slice(0, CHANNEL_ID_TITLE_CHARS)})`
+      : base
+  }, [config.INDEX_PAGE_TITLE, channel.channelId])
 
   useEffect(() => {
     const onHashChange = () => setSecret(readSecretFromHash())
@@ -92,19 +94,19 @@ export function LivePaste({ config }: { config: Env }) {
     return () => window.removeEventListener("hashchange", onHashChange)
   }, [])
 
-  const roomUrl = `${config.DEPLOY_URL}${LIVE_PAGE_PATH}#${secret}`
+  const channelUrl = `${config.DEPLOY_URL}${LIVE_PAGE_PATH}#${secret}`
   const isFile = editorState.editKind === "file"
   const draftBytes = isFile ? (editorState.file?.size ?? 0) : new TextEncoder().encode(editorState.editContent).length
   const isDraftEmpty = isFile ? editorState.file === null : editorState.editContent.length === 0
   const isDraftTooLarge = draftBytes > LIVE_MAX_BODY_BYTES
-  const canSend = room.status === "open" && !isDraftEmpty && !isDraftTooLarge && !isSending
+  const canSend = channel.status === "open" && !isDraftEmpty && !isDraftTooLarge && !isSending
 
   function onSend() {
     if (!canSend) return
     setSending(true)
     const sentState = editorState
     postFromEditor(sentState, nickname.trim() || "anon")
-      .then((post) => room.send(post))
+      .then((post) => channel.send(post))
       // keep anything edited while the post was being sent
       .then(() =>
         setEditorState((state) =>
@@ -115,7 +117,7 @@ export function LivePaste({ config }: { config: Env }) {
       .finally(() => setSending(false))
   }
 
-  function onNewRoom() {
+  function onNewChannel() {
     // the hashchange listener picks the new secret up
     location.hash = genLiveSecret()
   }
@@ -132,8 +134,8 @@ export function LivePaste({ config }: { config: Env }) {
         <DarkModeToggle modeSelection={modeSelection} setModeSelection={setModeSelection} />
       </div>
       <p className="my-2">
-        Everyone with the room link can post here, and posts show up on every open page immediately. Posts are encrypted
-        and not visible to the server. (
+        Everyone with the channel link can post here, and posts show up on every open page immediately. Posts are
+        encrypted and not visible to the server. (
         <Link href={`${config.DEPLOY_URL}/doc/live-crypto`} className={tst}>
           How it works
         </Link>
@@ -163,44 +165,44 @@ export function LivePaste({ config }: { config: Env }) {
         showModal={showModal}
         maxFileSize={LIVE_MAX_BODY_BYTES}
       />
-      <Card aria-label="Live post settings and room" classNames={cardOverrides} className="mt-4">
+      <Card aria-label="Live post settings and channel" classNames={cardOverrides} className="mt-4">
         <CardBody>
           <div className="flex items-end gap-2">
             <Input
-              label="Room link"
+              label="Channel link"
               labelExtra={
                 // plain inline text, so it wraps like a sentence on narrow screens
                 <span className="ml-3" role="status">
                   <span
-                    className={`inline-block size-2 mr-1.5 align-middle rounded-full ${statusColor[room.status]}`}
+                    className={`inline-block size-2 mr-1.5 align-middle rounded-full ${statusColor[channel.status]}`}
                   />
-                  <span className="text-foreground">{statusText[room.status]}</span>
-                  {room.status === "open" && (
+                  <span className="text-foreground">{statusText[channel.status]}</span>
+                  {channel.status === "open" && (
                     <>
                       {" · "}
-                      {room.peerCount} online
+                      {channel.peerCount} online
                     </>
                   )}
-                  {room.status === "open" && room.peerCount === 1 && (
+                  {channel.status === "open" && channel.peerCount === 1 && (
                     <span className="text-yellow-600"> · nobody will see your post!</span>
                   )}
                 </span>
               }
               readOnly
-              value={roomUrl}
+              value={channelUrl}
               className="grow"
               endContent={
                 <div className="flex items-center">
-                  <CopyWidget getCopyContent={() => roomUrl} />
-                  <QRCodeWidget label="Room link" getContent={() => roomUrl} />
+                  <CopyWidget getCopyContent={() => channelUrl} />
+                  <QRCodeWidget label="Channel link" getContent={() => channelUrl} />
                 </div>
               }
             />
-            <Button variant="ghost" onPress={onNewRoom} className="shrink-0">
-              New Room
+            <Button variant="ghost" onPress={onNewChannel} className="shrink-0">
+              New Channel
             </Button>
           </div>
-          {room.error && <p className="mt-2 text-sm text-danger">{room.error}</p>}
+          {channel.error && <p className="mt-2 text-sm text-danger">{channel.error}</p>}
         </CardBody>
         <Divider />
         <CardBody className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
@@ -239,17 +241,17 @@ export function LivePaste({ config }: { config: Env }) {
 
   const posts = (
     <div className="flex flex-col gap-3 mx-2 lg:mx-0 mt-4 mb-4">
-      {room.messages.length === 0 ? (
+      {channel.messages.length === 0 ? (
         <p className="text-center text-default-500 my-8">No posts yet. Share the link and start posting.</p>
       ) : (
         <div className="flex items-center justify-between mx-2">
           <h2 className="text-xl">Posts</h2>
-          <Button size="sm" variant="light" onPress={room.clear} title="Remove all posts from this page">
+          <Button size="sm" variant="light" onPress={channel.clear} title="Remove all posts from this page">
             Clear posts
           </Button>
         </div>
       )}
-      {[...room.messages].reverse().map((msg) => (
+      {[...channel.messages].reverse().map((msg) => (
         <LivePostCard key={msg.id} msg={msg} isOwn={msg.isOwn} />
       ))}
     </div>
