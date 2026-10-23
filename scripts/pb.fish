@@ -1,7 +1,7 @@
 # fish-shell completions for pb
 # See: https://github.com/SharzyL/pastebin-worker/tree/goshujin/scripts
 
-set -l commands p post u update g get d delete
+set -l commands p post u update g get d delete l list history
 
 complete -c pb -f
 
@@ -16,6 +16,8 @@ complete -c pb -n "not __fish_seen_subcommand_from $commands" -a post -d "Post p
 complete -c pb -n "not __fish_seen_subcommand_from $commands" -a update -d "Update paste"
 complete -c pb -n "not __fish_seen_subcommand_from $commands" -a get -d "Get paste"
 complete -c pb -n "not __fish_seen_subcommand_from $commands" -a delete -d "Delete paste"
+complete -c pb -n "not __fish_seen_subcommand_from $commands" -a list -d "List pastes from history"
+complete -c pb -n "not __fish_seen_subcommand_from $commands" -a history -d "Maintain the history file"
 
 # case post:
 # todo: - Read the paste from stdin
@@ -42,10 +44,14 @@ complete -c pb -n "__fish_seen_subcommand_from update u" -s F -l filename -x -d 
 
 # case get:
 function __pb_hist_names
-    set -l hist_file (test -n "$XDG_CONFIG_DIR"; and echo "$XDG_CONFIG_DIR/pb_hist"; or echo "$HOME/.config/pb_hist")
-    test -r "$hist_file"; or return
-    # latest-first, dedup keeping the most recent occurrence
-    awk -F: 'NF { last[$1]=NR; name[NR]=$1 } END { for (i=NR; i>=1; i--) if (name[i] != "" && last[name[i]] == i) print name[i] }' "$hist_file"
+    # names of the pastes in pb's history, latest first, on the endpoint
+    # given by --base-url or $PB_DOMAIN
+    set -l tokens (commandline -opc)
+    set -l base_args
+    if set -l i (contains -i -- --base-url $tokens); and test (count $tokens) -gt $i
+        set base_args --base-url $tokens[(math $i + 1)]
+    end
+    pb list --names $base_args 2>/dev/null
 end
 complete -c pb -n "__fish_seen_subcommand_from get g" -s o -l output -r -d 'Output the paste in file'
 complete -c pb -n "__fish_seen_subcommand_from get g" -s u -l url -f -d 'Make a 302 redirection'
@@ -54,4 +60,16 @@ complete -c pb -n "__fish_seen_subcommand_from get g" -s K -l key -x -d 'Decrypt
 complete -c pb -n "__fish_seen_subcommand_from get g" -l no-decrypt -f -d 'Do not decrypt encrypted pastes'
 complete -c pb -n "__fish_seen_subcommand_from get g" -l save -r -d 'Save under DIR using server filename'
 complete -c pb -n "__fish_seen_subcommand_from get g" -s f -l force -f -d 'Overwrite existing file without prompting'
-complete -c pb -n "__fish_seen_subcommand_from get g" -f -a '(__pb_hist_names)' -d 'paste from history'
+complete -c pb -n "__fish_seen_subcommand_from get g" -f -k -a '(__pb_hist_names)' -d 'paste from history'
+complete -c pb -n "__fish_seen_subcommand_from update u delete d" -f -k -a '(__pb_hist_names)' -d 'paste from history'
+
+# case list:
+complete -c pb -n "__fish_seen_subcommand_from list l" -s a -l all -d 'Include deleted and expired pastes'
+complete -c pb -n "__fish_seen_subcommand_from list l" -l all-endpoints -d 'Include pastes on other endpoints'
+complete -c pb -n "__fish_seen_subcommand_from list l" -l json -d 'Print one JSON object per paste'
+complete -c pb -n "__fish_seen_subcommand_from list l" -l names -d 'Print paste names only'
+
+# case history:
+complete -c pb -n "__fish_seen_subcommand_from history; and not __fish_seen_subcommand_from migrate prune" -a migrate -d 'Import the old history file'
+complete -c pb -n "__fish_seen_subcommand_from history; and not __fish_seen_subcommand_from migrate prune" -a prune -d 'Drop deleted and expired pastes'
+complete -c pb -n "__fish_seen_subcommand_from migrate" -F

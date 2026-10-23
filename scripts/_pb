@@ -1,13 +1,13 @@
 #compdef pb
 
 __pb_hist_names() {
-    local hist_file="${XDG_CONFIG_DIR:-$HOME/.config}/pb_hist"
-    [[ -r "$hist_file" ]] || return
-    local -a names
-    # strip ":passwd", drop empties, reverse (latest first), then dedup keeping first
-    names=(${${(f)"$(<$hist_file)"}%%:*})
-    names=(${names:#})
-    compadd -- ${(u)${(Oa)names}}
+    # names of the pastes in pb's history, latest first, on the endpoint
+    # given by --base-url or $PB_DOMAIN
+    local -a base_args names
+    local i=${words[(i)--base-url]}
+    (( i < $#words )) && base_args=(--base-url "${words[i+1]}")
+    names=(${(f)"$(pb list --names $base_args 2>/dev/null)"})
+    compadd -V history -- $names
 }
 
 # Flags accepted at any position (before OR after the action).
@@ -33,6 +33,8 @@ case "$state" in
         {u,update}":Update paste"
         {d,delete}":Delete paste"
         {g,get}":Get paste"
+        {l,list}":List pastes from history"
+        "history:Maintain the history file"
     )
     _describe -t pb-commands 'pb.sh command' cmdlist
     ;;
@@ -60,7 +62,7 @@ case "$state" in
         local -a args=(
             '(-f -c --file --content -)'{-c,--content}'[Read the paste from file]'
             '(-f -c --file --content -)'{-f,--file}'[Content of the paste]:paste from file:_files'
-            '*:paste name'
+            '*:paste name:__pb_hist_names'
 
             '(-e --expire)'{-e,--expire}'[Expiration time]:expiration'
             '(-s --passwd)'{-s,--passwd}'[Password]:Password of paste'
@@ -88,7 +90,25 @@ case "$state" in
         ;;
 
     (d|delete)
-        _arguments -s $common_args
+        _arguments -s '*:paste name:__pb_hist_names' $common_args
+        ;;
+
+    (l|list)
+        local -a args=(
+            '(-a --all)'{-a,--all}'[Include deleted and expired pastes]'
+            '--all-endpoints[Include pastes on other endpoints]'
+            '(--json --names)--json[Print one JSON object per paste]'
+            '(--json --names)--names[Print paste names only]'
+        )
+        _arguments -s $args $common_args
+        ;;
+
+    (history)
+        local -a args=(
+            '1:action:((migrate\:"Import the old history file" prune\:"Drop deleted and expired pastes"))'
+            '*:old history file:_files'
+        )
+        _arguments -s $args $common_args
         ;;
     esac
 esac
