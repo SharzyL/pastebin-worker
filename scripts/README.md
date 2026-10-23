@@ -19,6 +19,8 @@ $ install -Dm755 pb ~/.local/bin
 
 By default the script will use the instance on `https://shz.al`, you can either modify the script itself, or specify the `PB_DOMAIN` environment variable to use other instances.
 
+**History**: every successful post, update and delete is recorded in `$XDG_STATE_HOME/pb/history.jsonl` (by default `~/.local/state/pb/history.jsonl`), one JSON object per line, together with the endpoint, so that `update`, `get` and `delete` can find a paste's password and key by its name. The file holds passwords and keys, so it is only readable by you. Older versions of `pb` kept a `~/.config/pb_hist` file instead; import it with `pb history migrate`.
+
 **Zsh completion**: download `_pb` in a folder within your zsh `fpath`
 
 **fish completion**: download `pb.fish` in a folder within your fish `fish_complete_path`
@@ -35,16 +37,33 @@ Usage:
     upload your text to pastebin, if neither '-f FILE' nor '-c CONTENT' are
     given, read the paste from stdin.
 
-  pb [u|update] [OPTIONS] NAME[:PASSWD]
+  pb [u|update] [OPTIONS] NAME[:PASSWD]|URL
     Update your text to pastebin, if neither '-f FILE' nor '-c CONTENT' are
     given, read the paste from stdin. If 'PASSWD' is not given, try to read
     password from the history file.
 
-  pb [g|get] [OPTIONS] NAME[.EXT]
+  pb [g|get] [OPTIONS] NAME[.EXT]|URL
     fetch the paste with name 'NAME' and extension 'EXT'
 
-  pb [d|delete] [OPTIONS] NAME[:PASSWD]
-    delete the paste with name 'NAME'
+    get, update and delete also accept a URL of the paste, such as its
+    display URL https://shz.al/d/NAME#KEY or its manage URL: the endpoint,
+    name, password and key are taken from it, and role prefixes such as /d/
+    and /a/ are ignored
+
+  pb [d|delete] [OPTIONS] NAME[:PASSWD]|URL
+    delete the paste with name 'NAME'. If 'PASSWD' is not given, try to read
+    password from the history file.
+
+  pb [l|list] [OPTIONS]
+    list the pastes in the history file that are on the current endpoint and
+    neither deleted nor expired, most recently touched first
+
+  pb history migrate [FILE]
+    import the history file of older pb versions (default:
+    ~/.config/pb_hist) into the current one, as pastes on the current endpoint
+
+  pb history prune
+    remove the records of deleted and expired pastes from the history file
 
 Options:
   post options:
@@ -99,6 +118,12 @@ Options:
 
   delete options:
     none
+
+  list options:
+    -a, --all               include deleted and expired pastes
+    --all-endpoints         include pastes on other endpoints
+    --json                  print one JSON object per paste
+    --names                 print paste names only (used by shell completions)
 
   general options:
     -v, --verbose           log the planned request (method, URL, fields)

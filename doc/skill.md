@@ -60,8 +60,9 @@ Pastes are encrypted by default, so:
   used as a URL shortener.
 
 `pb` records the manage URL and the key in its history file
-(`~/.config/pb_hist`), so later `update`, `get` and `delete` calls on the same
-machine only need the paste name. Keep `manageUrl` yourself if the paste may be
+(`~/.local/state/pb/history.jsonl`), so later `update`, `get` and `delete`
+calls on the same machine only need the paste name, and `pb list` shows the
+pastes uploaded from there. Keep `manageUrl` yourself if the paste may be
 managed from elsewhere — it is the only way to authenticate as the owner.
 
 ## Upload options
@@ -78,7 +79,8 @@ managed from elsewhere — it is the only way to authenticate as the owner.
 ```shell
 pb get <name>                    # content, decrypted with the key from history
 pb get <name> -K <key>           # decrypt with an explicit key
-pb get <name> --save [DIR]       # save with the server filename
+pb get <decryptionUrl>           # any paste URL works; the endpoint and key come from it
+pb get <name> --save [DIR]       # save with the server-provided filename
 pb get <name> --meta             # JSON metadata (size, dates, …)
 ```
 
@@ -86,8 +88,9 @@ pb get <name> --meta             # JSON metadata (size, dates, …)
 
 ```shell
 pb update <name> -c 'new content'   # password looked up from history
-pb update <name>:<password> -f file
+pb update <manageUrl> -f file      # endpoint and password come from the URL
 pb delete <name>
+pb list                             # pastes uploaded from here, with their URLs
 ```
 
 `update` accepts `-e`, `-s`, `-F` and `-u` like `post`; `-e` recalculates the

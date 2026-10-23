@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 from urllib.parse import unquote, urlsplit, urlunsplit
@@ -194,8 +195,27 @@ def make_decryption_url(paste_url: str, encoded_key: str) -> str:
 
 
 def bare_paste_name(name: str) -> str:
-    # /get accepts NAME[.EXT]; the history is keyed on the bare name.
-    return name.split(".", 1)[0]
+    # /get accepts NAME[.EXT] or NAME/FILENAME; the history is keyed on the
+    # bare name. Paste names never contain "." or "/".
+    return name.split("/", 1)[0].split(".", 1)[0]
+
+
+def parse_paste_url(arg: str) -> Optional[tuple]:
+    """Split a paste URL such as https://shz.al/d/abcd#KEY into its endpoint, the
+    path after any role prefix ("abcd", "abcd.md", "abcd:PASSWD", ...) and the
+    key in the fragment, which may be None. Returns None if `arg` is not a URL."""
+    if not re.match(r"https?://", arg):
+        return None
+    parts = urlsplit(arg)
+    path = unquote(parts.path).lstrip("/")
+    # a one-letter role such as d/, a/, u/ or m/, as the worker parses it
+    if len(path) > 1 and path[1] == "/":
+        path = path[2:]
+    if not bare_paste_name(path):
+        die(f"no paste name in URL '{arg}'")
+    # markdown URLs may append ":<section>" to the key
+    key = parts.fragment.split(":", 1)[0] or None
+    return urlunsplit((parts.scheme, parts.netloc, "", "", "")), path, key
 
 
 def _confirm_overwrite(path: Path) -> bool:
@@ -226,7 +246,9 @@ def parse_content_disposition_filename(header: Optional[str]) -> Optional[str]:
             return unquote(value, encoding=charset or "utf-8")
         except (LookupError, UnicodeDecodeError):
             return unquote(value)
-    m = re.search(r'filename="([^"]+)"', header) or re.search(r"filename=([^;\s]+)", header)
+    m = re.search(r'filename="([^"]+)"', header) or re.search(
+        r"filename=([^;\s]+)", header
+    )
     return m.group(1) if m else None
 
 
@@ -243,70 +265,249 @@ def die(msg: str) -> "Optional[None]":
     sys.exit(1)
 
 
+# ---------------------------------------------------------------------------
+# History
+#
+# Every successful post, update and delete appends one JSON line to the
+# history file, so later commands can find a paste's password and key by its
+# name. A record looks like
+#
+#   {"v": 1, "op": "post", "ts": "2026-10-23T08:00:00Z",
+#    "base": "https://shz.al", "name": "abcd", "passwd": "...", "key": "...",
+#    "url": "https://shz.al/abcd", "filename": "a.md", "size": 1234,
+#    "expireAt": "2026-10-30T08:00:00Z"}
+#
+# The state of a paste is the fold of its records, keyed by endpoint and
+# name: an update replaces the password and key ("key": null means the paste
+# is no longer encrypted), and a delete marks it deleted. Appending keeps
+# concurrent pb runs from overwriting each other, and a damaged line only
+# loses that record.
+
+HISTORY_VERSION = 1
+HISTORY_OPS = ("post", "update", "delete")
+
+
 def history_path() -> Path:
+    base = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    return Path(base) / "pb" / "history.jsonl"
+
+
+def legacy_history_path() -> Path:
+    # Where pb used to keep its history, in the "NAME:PASSWD[#KEY]" format.
+    # It read the non-standard XDG_CONFIG_DIR rather than XDG_CONFIG_HOME.
     base = os.environ.get("XDG_CONFIG_DIR") or os.path.expanduser("~/.config")
     return Path(base) / "pb_hist"
 
 
-def ensure_history() -> Path:
+def normalize_base(domain: str) -> str:
+    parts = urlsplit(domain)
+    return urlunsplit(
+        (parts.scheme.lower(), parts.netloc.lower(), parts.path.rstrip("/"), "", "")
+    )
+
+
+def _now_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
+    if not ts:
+        return None
+    try:
+        # fromisoformat() only accepts a trailing "Z" from Python 3.11 on
+        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _write_history(lines: list, mode: str) -> None:
     p = history_path()
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.touch(exist_ok=True)
+        # the file holds passwords and keys: keep it private to the user
+        p.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if mode == "a":
+            fd = os.open(p, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+            with os.fdopen(fd, "a") as f:
+                f.write("".join(lines))
+        else:
+            # rewrite atomically, so an interrupted prune keeps the old file
+            tmp = p.with_name(p.name + ".tmp")
+            fd = os.open(tmp, os.O_WRONLY | os.O_TRUNC | os.O_CREAT, 0o600)
+            with os.fdopen(fd, "w") as f:
+                f.write("".join(lines))
+            os.replace(tmp, p)
     except OSError as e:
-        die(f"cannot create history file '{p}': {e}")
-    return p
+        die(f"cannot write history file '{p}': {e}")
 
 
-def append_history(entry: str, key: Optional[str] = None) -> None:
-    # entry is the manage-URL basename "NAME:PASSWD"; an optional decryption
-    # key is appended as "...#KEY" so the existing awk-based fish completion
-    # (split on ':') still sees NAME in $1.
-    p = ensure_history()
-    line = entry if key is None else f"{entry}#{key}"
-    with p.open("a") as f:
-        f.write(line + "\n")
+def append_history(record: dict) -> None:
+    line = json.dumps(
+        {"v": HISTORY_VERSION, "ts": _now_iso(), **record}, ensure_ascii=False
+    )
+    _write_history([line + "\n"], "a")
 
 
-# PASSWD only forbids newlines, so it may legitimately contain '#'. KEYs are
-# b64-variant-encoded raw AES keys, so they are always [A-Za-z0-9+_]{22,32,43}
-# (no padding, for 128/192/256-bit). We rely on that exact shape to split a
-# 'PASSWD' / 'PASSWD#KEY' value without ambiguity.
+def read_history() -> list:
+    p = history_path()
+    if not p.exists():
+        return []
+    records = []
+    try:
+        with p.open() as f:
+            for lineno, line in enumerate(f, 1):
+                if not line.strip():
+                    continue
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    logger.debug(f"{p}:{lineno}: not JSON, skipped")
+                    continue
+                if (
+                    not isinstance(rec, dict)
+                    or rec.get("v") != HISTORY_VERSION
+                    or rec.get("op") not in HISTORY_OPS
+                    or not isinstance(rec.get("base"), str)
+                    or not isinstance(rec.get("name"), str)
+                ):
+                    logger.debug(f"{p}:{lineno}: not a history record, skipped")
+                    continue
+                records.append(rec)
+    except OSError as e:
+        die(f"cannot read history file '{p}': {e}")
+    return records
+
+
+class Paste:
+    """The current state of one paste, folded from its history records."""
+
+    def __init__(self, base: str, name: str) -> None:
+        self.base = base
+        self.name = name
+        self.passwd: Optional[str] = None
+        self.key: Optional[str] = None
+        self.url: Optional[str] = None
+        self.filename: Optional[str] = None
+        self.size: Optional[int] = None
+        self.expire_at: Optional[str] = None
+        self.created: Optional[str] = None
+        self.updated: Optional[str] = None
+        self.deleted = False
+        self.imported = False
+
+    def apply(self, rec: dict) -> None:
+        if rec["op"] == "delete":
+            self.deleted = True
+            self.updated = rec.get("ts")
+            return
+        if rec["op"] == "post" or self.deleted:
+            self.__init__(self.base, self.name)  # a new paste under the same name
+            self.created = rec.get("ts")
+        self.passwd = rec.get("passwd")
+        self.key = rec.get("key")
+        self.imported = bool(rec.get("imported"))
+        if self.imported:
+            # the old history did not record when a paste was uploaded
+            self.created = None
+        for attr, field in (
+            ("url", "url"),
+            ("filename", "filename"),
+            ("size", "size"),
+            ("expire_at", "expireAt"),
+        ):
+            if rec.get(field) is not None:
+                setattr(self, attr, rec[field])
+        self.updated = None if self.imported else rec.get("ts")
+
+    def is_expired(self, now: datetime) -> bool:
+        expire_at = _parse_iso(self.expire_at)
+        return expire_at is not None and expire_at <= now
+
+    def is_live(self, now: datetime) -> bool:
+        return not self.deleted and not self.is_expired(now)
+
+    def share_url(self) -> Optional[str]:
+        if self.url and self.key:
+            return make_decryption_url(self.url, self.key)
+        return self.url
+
+    def to_json(self) -> dict:
+        return {
+            "base": self.base,
+            "name": self.name,
+            "url": self.share_url(),
+            "manageUrl": f"{self.base}/{self.name}:{self.passwd}"
+            if self.passwd
+            else None,
+            "filename": self.filename,
+            "size": self.size,
+            "encrypted": self.key is not None,
+            "createdAt": self.created,
+            "updatedAt": self.updated,
+            "expireAt": self.expire_at,
+            "deleted": self.deleted,
+            "imported": self.imported,
+        }
+
+
+def history_state(records: Optional[list] = None) -> dict:
+    """Map (base, name) to Paste, in the order the pastes were last touched."""
+    state: dict = {}
+    for rec in read_history() if records is None else records:
+        k = (rec["base"], rec["name"])
+        paste = state.pop(k, None) or Paste(*k)
+        paste.apply(rec)
+        state[k] = paste
+    return state
+
+
+def lookup_paste(domain: str, name: str) -> Optional[Paste]:
+    """The paste called `name` on `domain` that is not deleted. Custom names are
+    recorded with their leading '~', which may be left out."""
+    state = history_state()
+    base = normalize_base(domain)
+    candidates = [name] if name.startswith("~") else [name, f"~{name}"]
+    for candidate in candidates:
+        paste = state.get((base, candidate))
+        if paste is not None and not paste.deleted:
+            return paste
+    return None
+
+
+def resolve_name(domain: str, name: str) -> str:
+    """The recorded name of a paste, which adds the '~' of a custom name"""
+    paste = lookup_paste(domain, name)
+    return paste.name if paste else name
+
+
+def _migrate_hint() -> str:
+    legacy = legacy_history_path()
+    if legacy.exists():
+        return f"; to use the old history file '{legacy}', run 'pb history migrate'"
+    return ""
+
+
+def lookup_passwd(domain: str, name: str) -> Optional[str]:
+    paste = lookup_paste(domain, name)
+    return paste.passwd if paste else None
+
+
+def lookup_key(domain: str, name: str) -> Optional[str]:
+    paste = lookup_paste(domain, name)
+    return paste.key if paste else None
+
+
+# Legacy lines are "NAME:PASSWD" or "NAME:PASSWD#KEY". PASSWD only forbids
+# newlines, so it may contain '#'. KEYs are b64-variant-encoded raw AES keys,
+# always [A-Za-z0-9+_]{22,32,43} (no padding, for 128/192/256-bit); that exact
+# shape tells a key suffix apart from a '#' in the password.
 _KEY_SUFFIX_RE = re.compile(r"#([A-Za-z0-9+_]+)$")
 
 
-def _split_passwd_and_key(value: str) -> tuple[str, Optional[str]]:
+def _split_passwd_and_key(value: str) -> tuple:
     m = _KEY_SUFFIX_RE.search(value)
     if m and len(m.group(1)) in (22, 32, 43):
         return value[: m.start()], m.group(1)
     return value, None
-
-
-def lookup_passwd(name: str) -> Optional[str]:
-    p = ensure_history()
-    found: Optional[str] = None
-    with p.open() as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if line.startswith(f"{name}:"):
-                value = line.split(":", 1)[1]
-                passwd, _ = _split_passwd_and_key(value)
-                found = passwd
-    return found
-
-
-def lookup_key(name: str) -> Optional[str]:
-    p = ensure_history()
-    found: Optional[str] = None
-    with p.open() as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if line.startswith(f"{name}:"):
-                value = line.split(":", 1)[1]
-                _, key = _split_passwd_and_key(value)
-                if key is not None:
-                    found = key
-    return found
 
 
 def clip(text: str) -> None:
@@ -371,8 +572,11 @@ def _print_json(payload: dict) -> None:
 def _finalize_response(
     payload: dict,
     clip_flag: bool,
+    history: dict,
     encryption_key: Optional[str] = None,
 ) -> None:
+    """Print the server's response and record it in the history. `history`
+    holds the record fields the response lacks: op, base and filename."""
     page_url = payload.get("url")
     display_url: Optional[str] = None
     if encryption_key and page_url:
@@ -383,7 +587,18 @@ def _finalize_response(
     _print_json(payload)
     manage_url = payload.get("manageUrl")
     if manage_url:
-        append_history(manage_basename(manage_url), key=encryption_key)
+        name, _, passwd = manage_basename(manage_url).partition(":")
+        append_history(
+            {
+                **history,
+                "name": name,
+                "passwd": passwd,
+                "key": encryption_key,
+                "url": page_url,
+                "size": payload.get("sizeBytes"),
+                "expireAt": payload.get("expireAt"),
+            }
+        )
     if clip_flag:
         target = display_url or page_url
         if target:
@@ -401,6 +616,7 @@ def upload_mpu(
     expire: Optional[str],
     dry: bool,
     clip_flag: bool,
+    history: dict,
     encryption_key: Optional[str] = None,
     filename: Optional[str] = None,
 ) -> None:
@@ -526,9 +742,11 @@ def upload_mpu(
                 )
                 logger.info("MPU aborted on server")
             except requests.RequestException as abort_err:
-                logger.warning(f"MPU abort failed; orphaned parts may remain: {abort_err}")
+                logger.warning(
+                    f"MPU abort failed; orphaned parts may remain: {abort_err}"
+                )
 
-    _finalize_response(payload, clip_flag, encryption_key=encryption_key)
+    _finalize_response(payload, clip_flag, history, encryption_key=encryption_key)
 
 
 def post_or_put(
@@ -539,6 +757,7 @@ def post_or_put(
     verbose: bool,
     dry: bool,
     clip_flag: bool,
+    history: dict,
     log_url: Optional[str] = None,
     encryption_key: Optional[str] = None,
     filename: Optional[str] = None,
@@ -577,7 +796,7 @@ def post_or_put(
         die(f"non-JSON response: {resp.text}")
         return
 
-    _finalize_response(payload, clip_flag, encryption_key=encryption_key)
+    _finalize_response(payload, clip_flag, history, encryption_key=encryption_key)
 
 
 def parse_name_passwd(arg: str) -> tuple[str, Optional[str]]:
@@ -600,6 +819,7 @@ def cmd_post(args: argparse.Namespace, domain: str) -> None:
     encryption_key: Optional[str] = None
     if args.encrypt:
         encryption_key, body = encrypt_body(body)
+    history = {"op": "post", "base": normalize_base(domain), "filename": filename}
 
     if len(body) > MPU_THRESHOLD:
         mpu_fields: dict = {}
@@ -620,6 +840,7 @@ def cmd_post(args: argparse.Namespace, domain: str) -> None:
             expire=args.expire,
             dry=args.dry,
             clip_flag=args.clip,
+            history=history,
             encryption_key=encryption_key,
             filename=filename,
         )
@@ -645,18 +866,24 @@ def cmd_post(args: argparse.Namespace, domain: str) -> None:
         args.verbose,
         args.dry,
         args.clip,
+        history=history,
         encryption_key=encryption_key,
         filename=filename,
     )
 
 
 def cmd_update(args: argparse.Namespace, domain: str) -> None:
+    url = parse_paste_url(args.target)
+    if url:
+        domain, args.target, _ = url
     name, passwd = parse_name_passwd(args.target)
+    name = resolve_name(domain, name)
     if passwd is None:
-        passwd = args.passwd or lookup_passwd(name)
+        passwd = args.passwd or lookup_passwd(domain, name)
     if not passwd:
         die(
-            f"no passwd given, and cannot find passwd in history file '{history_path()}'"
+            f"no passwd given, and cannot find it in the history file '{history_path()}'"
+            + _migrate_hint()
         )
 
     body = read_content(args.file, args.content)
@@ -665,6 +892,7 @@ def cmd_update(args: argparse.Namespace, domain: str) -> None:
     encryption_key: Optional[str] = None
     if args.encrypt:
         encryption_key, body = encrypt_body(body)
+    history = {"op": "update", "base": normalize_base(domain), "filename": filename}
 
     if len(body) > MPU_THRESHOLD:
         mpu_fields: dict = {}
@@ -685,6 +913,7 @@ def cmd_update(args: argparse.Namespace, domain: str) -> None:
             expire=args.expire,
             dry=args.dry,
             clip_flag=args.clip,
+            history=history,
             encryption_key=encryption_key,
             filename=filename,
         )
@@ -706,6 +935,7 @@ def cmd_update(args: argparse.Namespace, domain: str) -> None:
         args.verbose,
         args.dry,
         args.clip,
+        history=history,
         log_url=f"{domain}/{name}:***",
         encryption_key=encryption_key,
         filename=filename,
@@ -713,6 +943,12 @@ def cmd_update(args: argparse.Namespace, domain: str) -> None:
 
 
 def cmd_get(args: argparse.Namespace, domain: str) -> None:
+    url_key: Optional[str] = None
+    url = parse_paste_url(args.name)
+    if url:
+        domain, path, url_key = url
+        # a manage URL works too; reading needs no password
+        args.name = path.split(":", 1)[0]
     if args.meta:
         if args.url:
             die("cannot combine --meta with --url")
@@ -723,6 +959,8 @@ def cmd_get(args: argparse.Namespace, domain: str) -> None:
         prefix = None
     if args.save is not None and args.output:
         die("cannot combine --save with -o/--output")
+    bare = bare_paste_name(args.name)
+    args.name = resolve_name(domain, bare) + args.name[len(bare) :]
     base = f"{domain}/{prefix}/{args.name}" if prefix else f"{domain}/{args.name}"
 
     log_request("GET", base, {}, {})
@@ -751,11 +989,11 @@ def cmd_get(args: argparse.Namespace, domain: str) -> None:
     scheme = resp.headers.get(ENCRYPTION_HEADER)
     decrypted = False
     if scheme and not args.no_decrypt:
-        key = args.key or lookup_key(bare_paste_name(args.name))
+        key = args.key or url_key or lookup_key(domain, bare_paste_name(args.name))
         if not key:
             die(
                 f"paste '{args.name}' is encrypted ({scheme}); pass --key KEY "
-                f"or use --no-decrypt to keep the raw ciphertext"
+                f"or use --no-decrypt to keep the raw ciphertext" + _migrate_hint()
             )
         content = decrypt_body(scheme, key, content)
         decrypted = True
@@ -763,7 +1001,9 @@ def cmd_get(args: argparse.Namespace, domain: str) -> None:
         logger.warning("--key given but paste is not encrypted; ignoring")
 
     if args.save is not None:
-        server_name = parse_content_disposition_filename(resp.headers.get("Content-Disposition"))
+        server_name = parse_content_disposition_filename(
+            resp.headers.get("Content-Disposition")
+        )
         # Server tags encrypted downloads with a trailing `.encrypted`; strip
         # it once we've actually decrypted so the saved file gets its real name.
         if decrypted and server_name and server_name.endswith(".encrypted"):
@@ -803,12 +1043,17 @@ def cmd_get(args: argparse.Namespace, domain: str) -> None:
 
 
 def cmd_delete(args: argparse.Namespace, domain: str) -> None:
+    url = parse_paste_url(args.target)
+    if url:
+        domain, args.target, _ = url
     name, passwd = parse_name_passwd(args.target)
+    name = resolve_name(domain, name)
     if passwd is None:
-        passwd = lookup_passwd(name)
+        passwd = lookup_passwd(domain, name)
     if not passwd:
         die(
-            f"no passwd given, and cannot find passwd in history file '{history_path()}'"
+            f"no passwd given, and cannot find it in the history file '{history_path()}'"
+            + _migrate_hint()
         )
 
     url = f"{domain}/{name}:{passwd}"
@@ -824,6 +1069,151 @@ def cmd_delete(args: argparse.Namespace, domain: str) -> None:
 
     if resp.status_code != 200:
         die(f"{resp.status_code}: {resp.text}")
+    append_history({"op": "delete", "base": normalize_base(domain), "name": name})
+
+
+def _format_remaining(paste: Paste, now: datetime) -> str:
+    if paste.deleted:
+        return "deleted"
+    expire_at = _parse_iso(paste.expire_at)
+    if expire_at is None:
+        return "?"
+    seconds = (expire_at - now).total_seconds()
+    if seconds <= 0:
+        return "expired"
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit}"
+    return f"{int(seconds)}s"
+
+
+def _format_local_time(ts: Optional[str]) -> str:
+    dt = _parse_iso(ts)
+    return dt.astimezone().strftime("%Y-%m-%d %H:%M") if dt else "?"
+
+
+def cmd_list(args: argparse.Namespace, domain: str) -> None:
+    now = datetime.now(timezone.utc)
+    base = normalize_base(domain)
+    pastes = [
+        p
+        for p in history_state().values()
+        if (args.all_endpoints or p.base == base) and (args.all or p.is_live(now))
+    ]
+    pastes.reverse()  # most recently touched first
+
+    if args.names:
+        for p in pastes:
+            print(p.name)
+        return
+    if args.json:
+        for p in pastes:
+            print(json.dumps(p.to_json(), ensure_ascii=False))
+        return
+    if not pastes:
+        logger.info(f"no pastes on {base} in the history file '{history_path()}'")
+        return
+
+    rows = [("NAME", "UPLOADED", "EXPIRES", "SIZE", "ENC", "FILENAME", "URL")]
+    for p in pastes:
+        rows.append(
+            (
+                p.name,
+                _format_local_time(p.created or p.updated),
+                _format_remaining(p, now),
+                _format_size(p.size) if p.size is not None else "?",
+                "yes" if p.key else "",
+                p.filename or "",
+                p.share_url() or "",
+            )
+        )
+    widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]) - 1)]
+    for row in rows:
+        cells = [cell.ljust(width) for cell, width in zip(row, widths)]
+        print("  ".join(cells + [row[-1]]).rstrip())
+
+
+def cmd_history_migrate(args: argparse.Namespace, domain: str) -> None:
+    src = Path(args.file) if args.file else legacy_history_path()
+    try:
+        lines = src.read_text().splitlines()
+    except OSError as e:
+        die(f"cannot read old history file '{src}': {e}")
+        return
+
+    # The old file has one line per post or update; the last one of a name
+    # holds its current password and key.
+    latest: dict = {}
+    for line in lines:
+        name, sep, value = line.partition(":")
+        if not name or not sep:
+            continue
+        latest.pop(name, None)
+        latest[name] = _split_passwd_and_key(value)
+
+    base = normalize_base(domain)
+    state = history_state()
+    new = [(name, pk) for name, pk in latest.items() if (base, name) not in state]
+    for name, (passwd, key) in new:
+        logger.debug(f"import {name}{' (encrypted)' if key else ''}")
+    if args.dry:
+        logger.info(
+            f"would import {len(new)} of {len(latest)} pastes from '{src}' as pastes on {base}"
+        )
+        return
+    if new:
+        _write_history(
+            [
+                json.dumps(
+                    {
+                        "v": HISTORY_VERSION,
+                        "ts": _now_iso(),
+                        "op": "post",
+                        "base": base,
+                        "name": name,
+                        "passwd": passwd,
+                        "key": key,
+                        "url": f"{base}/{name}",
+                        "imported": True,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+                for name, (passwd, key) in new
+            ],
+            "a",
+        )
+    skipped = len(latest) - len(new)
+    logger.info(
+        f"imported {len(new)} pastes from '{src}' into '{history_path()}' as pastes on {base}"
+        + (f", skipped {skipped} already there" if skipped else "")
+        + ". The old file is left in place; remove it once you no longer need it."
+    )
+
+
+def cmd_history_prune(args: argparse.Namespace, domain: str) -> None:
+    now = datetime.now(timezone.utc)
+    records = read_history()
+    state = history_state(records)
+    gone = {k for k, p in state.items() if not p.is_live(now)}
+    kept = [rec for rec in records if (rec["base"], rec["name"]) not in gone]
+    for base, name in gone:
+        logger.debug(
+            f"prune {base}/{name} ({_format_remaining(state[(base, name)], now)})"
+        )
+    removed = len(records) - len(kept)
+    if args.dry:
+        logger.info(
+            f"would remove {removed} records of {len(gone)} deleted or expired pastes"
+        )
+        return
+    if removed:
+        _write_history(
+            [json.dumps(rec, ensure_ascii=False) + "\n" for rec in kept], "w"
+        )
+    logger.info(
+        f"removed {removed} records of {len(gone)} deleted or expired pastes from '{history_path()}'"
+    )
 
 
 def build_common_parser() -> argparse.ArgumentParser:
@@ -927,7 +1317,11 @@ def build_parser() -> argparse.ArgumentParser:
         "looked up from the history file.",
         parents=[common],
     )
-    p_update.add_argument("target", help="NAME[:PASSWD]")
+    p_update.add_argument(
+        "target",
+        help="NAME[:PASSWD], or a URL of the paste such as its manage URL, "
+        "which also selects the endpoint",
+    )
     p_update.add_argument("-c", "--content", help="inline content of the paste")
     p_update.add_argument("-e", "--expire", help="expiration time")
     p_update.add_argument("-s", "--passwd", help="password (overrides history lookup)")
@@ -950,7 +1344,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="fetch a paste",
         parents=[common],
     )
-    p_get.add_argument("name", help="NAME[.EXT]")
+    p_get.add_argument(
+        "name",
+        help="NAME[.EXT], or a URL of the paste such as https://shz.al/d/NAME#KEY, "
+        "which also selects the endpoint and gives the key",
+    )
     p_get.add_argument("-o", "--output", help="write to FILE instead of stdout")
     p_get.add_argument(
         "-u", "--url", action="store_true", help="hit /u/ for 302 URL redirect"
@@ -993,8 +1391,64 @@ def build_parser() -> argparse.ArgumentParser:
         help="delete a paste",
         parents=[common],
     )
-    p_del.add_argument("target", help="NAME[:PASSWD]")
+    p_del.add_argument(
+        "target",
+        help="NAME[:PASSWD], or a URL of the paste such as its manage URL, "
+        "which also selects the endpoint",
+    )
     p_del.set_defaults(func=cmd_delete)
+
+    p_list = sub.add_parser(
+        "list",
+        aliases=["l"],
+        help="list pastes uploaded from here",
+        description="List the pastes in the history file that are on the current "
+        "endpoint and neither deleted nor expired, most recently touched first. "
+        "Expiry is judged from the expiration time the server returned.",
+        parents=[common],
+    )
+    p_list.add_argument(
+        "-a", "--all", action="store_true", help="include deleted and expired pastes"
+    )
+    p_list.add_argument(
+        "--all-endpoints", action="store_true", help="include pastes on other endpoints"
+    )
+    output = p_list.add_mutually_exclusive_group()
+    output.add_argument(
+        "--json", action="store_true", help="print one JSON object per paste"
+    )
+    output.add_argument("--names", action="store_true", help="print paste names only")
+    p_list.set_defaults(func=cmd_list)
+
+    p_hist = sub.add_parser(
+        "history",
+        help="maintain the history file",
+        description=f"Maintain the history file '{history_path()}', where pb records "
+        "the passwords and keys of uploaded pastes.",
+        parents=[common],
+    )
+    hist_sub = p_hist.add_subparsers(
+        dest="history_action", required=True, metavar="ACTION"
+    )
+    p_migrate = hist_sub.add_parser(
+        "migrate",
+        help="import the history file of older pb versions",
+        description="Import the 'NAME:PASSWD[#KEY]' history file of older pb versions "
+        f"(default: '{legacy_history_path()}'). That file does not record endpoints, "
+        "so its pastes are imported as pastes on the current endpoint. Pastes already "
+        "in the history are skipped, and the old file is left in place.",
+        parents=[common],
+    )
+    p_migrate.add_argument("file", nargs="?", metavar="FILE", help="old history file")
+    p_migrate.set_defaults(func=cmd_history_migrate)
+    p_prune = hist_sub.add_parser(
+        "prune",
+        help="drop deleted and expired pastes",
+        description="Remove the records of deleted and expired pastes, on all endpoints, "
+        "from the history file.",
+        parents=[common],
+    )
+    p_prune.set_defaults(func=cmd_history_prune)
 
     return parser
 
