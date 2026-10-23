@@ -85,11 +85,12 @@ export function Input({
         className={`flex items-center ${boxBg} border rounded-xl color-tst ${borderColor} ${startContent || endContent || showClearButton ? "px-3" : ""} ${classNames.box || ""}`}
       >
         {startContent && <div className="flex-shrink-0">{startContent}</div>}
+        {/* 16px on small screens: iOS Safari zooms into inputs with smaller text */}
         <input
           ref={inputRef}
           aria-label={label}
           aria-invalid={isInvalid}
-          className={`flex-1 min-w-0 py-2 bg-transparent text-sm text-foreground focus:outline-none color-tst ${startContent || endContent || showClearButton ? "" : "px-3"} ${classNames.input || ""}`}
+          className={`flex-1 min-w-0 py-2 bg-transparent text-base sm:text-sm text-foreground focus:outline-none color-tst ${startContent || endContent || showClearButton ? "" : "px-3"} ${classNames.input || ""}`}
           onChange={handleChange}
           value={value}
           {...rest}

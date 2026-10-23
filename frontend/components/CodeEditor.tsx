@@ -198,8 +198,9 @@ export function CodeEditor({
           )}
         </Autocomplete>
       </div>
+      {/* 16px on small screens: iOS Safari zooms into inputs with smaller text */}
       <div
-        className={`text-sm w-full bg-default-100 ${tst} rounded-xl p-2 relative border border-default-200 hover:border-default-400 focus-within:border-default-400`}
+        className={`text-base sm:text-sm w-full bg-default-100 ${tst} rounded-xl p-2 relative border border-default-200 hover:border-default-400 focus-within:border-default-400`}
       >
         <div
           className={`relative w-full`}
