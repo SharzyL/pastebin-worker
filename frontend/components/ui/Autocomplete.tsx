@@ -135,6 +135,7 @@ export const Autocomplete = React.forwardRef<AutocompleteHandle, AutocompletePro
       <div
         className={`flex items-center w-full bg-default-100 rounded-xl border transition-colors ${isOpen ? "border-default-400" : "border-default-200 hover:border-default-400"}`}
       >
+        {/* 16px on small screens: iOS Safari zooms into inputs with smaller text */}
         <input
           ref={inputRef}
           aria-label={label}
@@ -164,7 +165,7 @@ export const Autocomplete = React.forwardRef<AutocompleteHandle, AutocompletePro
               setFocusedKey(null)
             }
           }}
-          className={`flex-1 min-w-0 px-3 py-2 bg-transparent text-sm text-foreground focus:outline-none ${classNames.input || ""}`}
+          className={`flex-1 min-w-0 px-3 py-2 bg-transparent text-base sm:text-sm text-foreground focus:outline-none ${classNames.input || ""}`}
         />
         {isClearable && internalValue !== "" && (
           <button
