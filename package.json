@@ -24,26 +24,26 @@
   "author": "SharzyL <me@sharzy.in>",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "^1.0.0",
+    "@cloudflare/vitest-plugin": "^1.4.7",
     "@craftamap/esbuild-plugin-html": "^0.9.0",
     "@eslint/js": "^10.0.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^25.9.9",
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-istanbul": "4.1.10",
-    "eslint": "^10.12.0",
+    "eslint": "^10.13.0",
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
-    "prettier": "^3.9.9",
+    "prettier": "^3.9.10",
     "toml": "^4.3.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.1",
-    "vite": "^8.3.4",
+    "typescript-eslint": "^8.72.0",
+    "vite": "^8.3.5",
     "vitest": "4.1.10",
-    "wrangler": "^4.149.0"
+    "wrangler": "^4.152.0"
   },
   "prettier": {
     "singleQuote": false,
@@ -61,12 +61,12 @@
     "bcrypt-ts": "^8.0.1",
     "github-slugger": "^2.0.0",
     "highlight.js": "^11.12.0",
-    "marked": "^18.1.0",
-    "mime": "^4.1.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "marked": "^18.1.1",
+    "mime": "^4.1.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tailwindcss": "^4.3.3",
     "uqr": "^0.1.3",
-    "xss": "^1.0.15"
+    "xss": "^1.0.17"
   }
 }
