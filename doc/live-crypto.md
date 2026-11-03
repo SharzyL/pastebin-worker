@@ -168,7 +168,7 @@ The forward secrecy window is one connection: while a page is open and connected
 
 ### A link that leaks during a session
 
-- **Passive eavesdropper with $S$**, such as someone who sees the link in a chat but cannot change traffic: it reads hellos, but cannot compute any pairwise key, so it reads no post. To read posts it must join the channel, and then it appears in everyone's peer count.
+- **Passive eavesdropper with $S$**, such as someone who intercepts the link and records network traffic but never sends or changes anything: it cannot read any post, whether sent before or after it got the link. On the network it sees TLS only. Even given the raw frames the server relays, $S$ only opens their outer layer, which shows public keys, session ids, recipient lists, sizes and times; every pairwise key also needs $\mathsf{DH}(x_A, X_B)$, which takes a private key that never leaves its page. To read posts it must join the channel with the link, and then it appears in everyone's online count.
 - **Active server with $S$**: it can replace public keys in hellos and proofs with its own and relay between both sides, a man-in-the-middle that the pages cannot detect without comparing key fingerprints out of band. We do not offer fingerprint comparison, because an operator willing to do this can more easily serve a modified page (see [limitations](#limitations)).
 
 ### Channel members
