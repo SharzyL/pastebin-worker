@@ -222,6 +222,15 @@ Deletion may take a few seconds to propagate globally.
 
 ## Tips
 
+- Add this line to `~/.curlrc` so that URLs without a scheme, such as
+  `curl shz.al/abcd`, use HTTPS rather than plain HTTP. Uploads then never
+  leave your machine unencrypted, and you skip the redirect to HTTPS, which
+  `curl` does not follow by default:
+
+  ```
+  proto-default = "https"
+  ```
+
 - Pipe long output through `jq` to inspect upload responses:
 
   ```shell
