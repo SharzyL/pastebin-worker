@@ -64,6 +64,20 @@ describe("write error paths — name and password validation", () => {
     await uploadExpectStatus(ctx, { c: new Blob(["second"]), n: name }, 409)
   })
 
+  it("POST with an unknown encryption scheme or a malformed lang returns 400", async () => {
+    // both go into response headers, so a newline must never get stored
+    await uploadExpectStatus(ctx, { c: new Blob(["x"]), "encryption-scheme": "AES-GCM\r\nX-Injected: 1" }, 400)
+    await uploadExpectStatus(ctx, { c: new Blob(["x"]), "encryption-scheme": "ROT13" }, 400)
+    await uploadExpectStatus(ctx, { c: new Blob(["x"]), lang: "js\r\nX-Injected: 1" }, 400)
+    await uploadExpectStatus(ctx, { c: new Blob(["x"]), lang: "a".repeat(65) }, 400)
+    await uploadExpectStatus(ctx, { c: new Blob(["x"]), lang: "<script>" }, 400)
+    // the names highlight.js uses are fine, and so is an empty one
+    for (const lang of ["c++", "objective-c", "x86asm", "1c", "asp.net", "f#", ""]) {
+      await uploadExpectStatus(ctx, { c: new Blob(["x"]), lang }, 200)
+    }
+    await uploadExpectStatus(ctx, { c: new Blob(["x"]), "encryption-scheme": "AES-GCM" }, 200)
+  })
+
   it("POST with too-short password returns 400", async () => {
     await uploadExpectStatus(ctx, { c: new Blob(["x"]), s: "short" }, 400)
   })
