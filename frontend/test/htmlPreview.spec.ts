@@ -128,7 +128,18 @@ describe("html preview page", () => {
     expect(frame.srcdoc).toBe(html)
   })
 
-  it("uses a blob URL for other document types", async () => {
+  it("loads other document types from the raw URL, which is sandboxed by the server", async () => {
+    stubFetch(new TextEncoder().encode("<svg xmlns='http://www.w3.org/2000/svg'/>"))
+    const frame = mount(`data-src="/abcd.svg" data-type="image/svg+xml"`)
+    await clickRender()
+    await settle()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(frame.getAttribute("src")).toBe("/abcd.svg")
+    expect(frame.srcdoc).toBe("")
+    expect(frame.hidden).toBe(false)
+  })
+
+  it("puts other encrypted document types in a data URL, never a blob of this origin", async () => {
     const svg = "<svg xmlns='http://www.w3.org/2000/svg'/>"
     const key = await prepareEncrypted(svg)
     history.replaceState(null, "", `/h/abcd.svg#${key}`)
@@ -137,11 +148,10 @@ describe("html preview page", () => {
     vi.stubGlobal("URL", Object.assign(URL, { createObjectURL }))
     await clickRender()
     await settle()
-    expect(createObjectURL).toHaveBeenCalledOnce()
-    const blob = createObjectURL.mock.calls[0][0]
-    expect(blob.type).toBe("image/svg+xml")
-    expect(await blob.text()).toBe(svg)
-    expect(frame.getAttribute("src")).toBe("blob:mock")
+    expect(createObjectURL).not.toHaveBeenCalled()
+    const src = frame.getAttribute("src")!
+    expect(src.startsWith("data:image/svg+xml;base64,")).toBe(true)
+    expect(atob(src.slice(src.indexOf(",") + 1))).toBe(svg)
     expect(frame.srcdoc).toBe("")
   })
 
