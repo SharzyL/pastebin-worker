@@ -94,7 +94,7 @@ user2 = "$2b$08$KeVnmXoMuRjNHKQjDHppEeXAf5lTLv9HMJCTlKW5uvRcEG5LOdBpO"
 
 Passwords here are hashed by bcrypt2 algorithm. You can generate the hashed password by running `./scripts/bcrypt.js`.
 
-Now every access to POST request, and every access to static pages, requires an HTTP basic auth with the user-password pair listed above. For example:
+Now every access to POST request, and every access to static pages, requires an HTTP basic auth with the user-password pair listed above. Browsers remember the credentials and would send them along with a form posted from any other site (a rendered paste included), so POST requests that a browser marks as cross-site (`Sec-Fetch-Site: cross-site`) are refused with 403; command-line clients are unaffected. For example:
 
 ```console
 $ curl example-pb.com
