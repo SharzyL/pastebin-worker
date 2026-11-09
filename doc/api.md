@@ -18,11 +18,11 @@ If the paste is uploaded with a `lang` parameter, an `X-PB-Highlight-Language` h
 
 - `?a=`: optional. Set `Content-Disposition` to `attachment` if present.
 
-- `?mime=<mime>`: optional. Specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`). A value that is not a well-formed `type/subtype` is replaced by `text/plain;charset=UTF-8`.
+- `?mime=<mime>`: optional. Specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`). A value that is not a well-formed `type/subtype`, or that is a document type (see below), is replaced by `text/plain;charset=UTF-8`.
 
 Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`.
 
-A raw paste may carry markup and scripts whatever its type, so the response always has `X-Content-Type-Options: nosniff`, and unless the type is plain media (`image/*` except SVG, `audio/*`, `video/*`, `font/*`, `application/pdf`) it has `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups allow-modals`: rendered as a document, the paste runs in an opaque origin with no access to this site's cookies, storage or credentials. Note that `nosniff` makes browsers refuse a `text/plain` paste as a script or stylesheet; use `/<name>.js`, `/<name>.css` or `?mime=` for those.
+A raw paste may carry markup and scripts whatever its type, so the response always has `X-Content-Type-Options: nosniff`, and unless the type is plain media (`image/*`, `audio/*`, `video/*`, `font/*` except the `+xml` ones such as SVG, and `application/pdf`) it has `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups allow-modals`: rendered as a document, the paste runs in an opaque origin with no access to this site's cookies, storage or credentials. Note that `nosniff` makes browsers refuse a `text/plain` paste as a script or stylesheet; use `/<name>.js`, `/<name>.css` or `?mime=` for those.
 
 Document types (`text/html`, `text/xml`, `application/xml`, `text/xsl` and every `*/*+xml` type such as `application/xhtml+xml` or `application/rss+xml`) and the types in `DISALLOWED_MIME_FOR_PASTE` of `wrangler.toml` (by default the `m3u` playlist types) are served as `text/plain;charset=UTF-8` instead, so a raw URL never shows up as a web page. SVG stays `image/svg+xml`, so that `<img>` keeps working; opened directly, it runs in the sandbox like everything else. To render an HTML paste in a browser, use `/h/<name>`.
 
@@ -62,7 +62,7 @@ If error occurs, the worker returns status code different from `200`:
 
 Return the preview page of the paste of name `<name>`: a header naming the site, a warning listing what the paste can and cannot do, and, once the viewer agrees, the paste rendered below the header in a sandboxed iframe. Nothing of the paste is loaded before that. The browser fetches `/<name>[.<ext>]` with the same query string, decrypts it if the paste is encrypted (with a key appended to the URL like for `/d/<name>`), takes the page title from an HTML paste for the browser tab, and puts the content in the frame: HTML as `srcdoc` (so relative URLs resolve against the site root), other document types from the raw URL itself, or, when encrypted, from a `data:` URL of the rendered type. The paste runs in an opaque origin and cannot reach the header, this site's data, or navigate the page away.
 
-The preview always renders a document. A `?mime=`, `<ext>` or `<filename>` in the URL is taken as is. Without one, the uploaded filename decides if it names a document type (HTML, XHTML, SVG, XML); otherwise the paste is rendered as `text/html`, so `/h/<name>` of a paste uploaded without a filename shows it as HTML.
+The preview always renders a document. A `?mime=`, `<ext>` or `<filename>` in the URL is taken as is. Without one, the uploaded filename decides if it names a document type (HTML, SVG, XML and the like); otherwise the paste is rendered as `text/html`, so `/h/<name>` of a paste uploaded without a filename shows it as HTML.
 
 If error occurs, the worker returns status code different from `200`:
 
@@ -204,6 +204,8 @@ The remaining fields mirror the [`GET /m/<name>`](#get-mname) metadata response:
 If error occurs, the worker returns status code different from `200`:
 
 - `400`: your request is in bad format.
+- `401`: the deployment requires HTTP basic auth and the request has none, or a wrong one.
+- `403`: the deployment requires HTTP basic auth and the request is marked cross-site by the browser (`Sec-Fetch-Site: cross-site`), see the README.
 - `409`: the name is already used.
 - `413`: the request body exceeds Cloudflare's 100 MB per-request cap (returned by the platform before the worker runs), or the content exceeds the deployment's `R2_MAX_ALLOWED`.
 - `500`: unexpected exception. You may report this to the author to give it a fix.
