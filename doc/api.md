@@ -18,9 +18,13 @@ If the paste is uploaded with a `lang` parameter, an `X-PB-Highlight-Language` h
 
 - `?a=`: optional. Set `Content-Disposition` to `attachment` if present.
 
-- `?mime=<mime>`: optional. Specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`).
+- `?mime=<mime>`: optional. Specify the mime-type, suppressing the effect of `<ext>`. No effect if `lang` is specified (in which case the mime-type is always `text/html`). A value that is not a well-formed `type/subtype` is replaced by `text/plain;charset=UTF-8`.
 
 Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`.
+
+A raw paste may carry markup and scripts whatever its type, so the response always has `X-Content-Type-Options: nosniff`, and unless the type is plain media (`image/*` except SVG, `audio/*`, `video/*`, `font/*`, `application/pdf`) it has `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups allow-modals`: rendered as a document, the paste runs in an opaque origin with no access to this site's cookies, storage or credentials. Note that `nosniff` makes browsers refuse a `text/plain` paste as a script or stylesheet; use `/<name>.js`, `/<name>.css` or `?mime=` for those.
+
+The types in `DISALLOWED_MIME_FOR_PASTE` of `wrangler.toml` (by default `text/html` and `audio/x-mpegurl`) are served as `text/plain;charset=UTF-8` instead, so a raw URL never shows up as a web page. To render an HTML paste in a browser, use `/h/<name>`.
 
 If error occurs, the worker returns status code different from `200`:
 
@@ -48,6 +52,17 @@ If error occurs, the worker returns status code different from `302`:
 ## **GET** `/d/<name>[.<ext>]` or `/d/<name>/<filename>`
 
 Return the web page that will display the content of the paste of name `<name>`. If the paste is encrypted, a key can be appended to the URL to decrypt the paste of name `<name>` in browser.
+
+If error occurs, the worker returns status code different from `200`:
+
+- `404`: the paste of given name is not found.
+- `500`: unexpected exception. You may report this to the author to give it a fix.
+
+## **GET** `/h/<name>[.<ext>]` or `/h/<name>/<filename>`
+
+Return the preview page of the paste of name `<name>`: a header naming the site, a warning listing what the paste can and cannot do, and, once the viewer agrees, the paste rendered below the header in a sandboxed iframe. Nothing of the paste is loaded before that. The browser fetches `/<name>[.<ext>]` with the same query string, decrypts it if the paste is encrypted (with a key appended to the URL like for `/d/<name>`), takes the page title from an HTML paste for the browser tab, and puts the content in the frame as `srcdoc` (HTML, so relative URLs resolve against the site root) or a blob URL of the rendered type. The paste runs in an opaque origin and cannot reach the header, this site's data, or navigate the page away.
+
+The preview always renders a document. A `?mime=`, `<ext>` or `<filename>` in the URL is taken as is. Without one, the uploaded filename decides if it names a document type (HTML, XHTML, SVG, XML); otherwise the paste is rendered as `text/html`, so `/h/<name>` of a paste uploaded without a filename shows it as HTML.
 
 If error occurs, the worker returns status code different from `200`:
 

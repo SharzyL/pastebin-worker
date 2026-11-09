@@ -53,6 +53,11 @@ const RAW_URL_FLAGS: { syntax: string; desc: string }[] = [
   { syntax: "/foo.txt", desc: "Append a filename for the downloaded file" },
 ]
 
+const HTML_URL_FLAGS: { syntax: string; desc: string }[] = [
+  { syntax: ".svg", desc: "Append an extension to render as SVG or XML instead of HTML" },
+  { syntax: "?mime=…", desc: "Override the Content-Type of the rendered paste" },
+]
+
 const DISPLAY_URL_FLAGS: { syntax: string; desc: string }[] = [
   { syntax: "?lang=js", desc: "Override syntax highlighting language" },
   { syntax: "/foo.txt", desc: "Append a filename — shown in the header and used as the download name" },
@@ -112,7 +117,9 @@ export function UploadedPanel({
   const [moreOpen, setMoreOpen] = useState<boolean>(false)
 
   const isEncrypted = Boolean(encryptionKey)
-  const isMarkdown = highlightLang === "markdown"
+  // language names as the picker offers them, aliases included
+  const isMarkdown = highlightLang === "markdown" || highlightLang === "md"
+  const isHtml = highlightLang === "html" || highlightLang === "xhtml" || highlightLang === "svg"
 
   // `hasKey`: the URL carries the decryption key, which is shown in green
   const urlInput = (label: string, value: string, labelExtra?: React.ReactNode, hasKey = false) => {
@@ -142,6 +149,23 @@ export function UploadedPanel({
         Render the paste as GitHub-flavored markdown (with code highlighting and LaTeX).
         {encryptionKey && " The paste is decrypted and rendered in the browser."}
       </InfoTooltip>,
+      isEncrypted,
+    )
+
+  const htmlUrlField = (pasteResponse: PasteResponse) =>
+    urlInput(
+      "HTML URL",
+      makeKeyedUrl(withPathPrefix(pasteResponse.url, "/h"), encryptionKey),
+      <UrlTooltip
+        desc={
+          <>
+            Render the paste as a web page, in a sandbox below a header naming this site. The raw URL never renders
+            HTML.
+            {encryptionKey && " The paste is decrypted and rendered in the browser."}
+          </>
+        }
+        flags={HTML_URL_FLAGS}
+      />,
       isEncrypted,
     )
 
@@ -208,6 +232,7 @@ export function UploadedPanel({
                 }
               />
               {isMarkdown && markdownUrlField(pasteResponse)}
+              {isHtml && htmlUrlField(pasteResponse)}
               {urlInput(
                 "Raw URL",
                 pasteResponse.url,
@@ -244,6 +269,7 @@ export function UploadedPanel({
               {moreOpen && (
                 <div id="uploaded-paste-more">
                   {!isMarkdown && markdownUrlField(pasteResponse)}
+                  {!isHtml && htmlUrlField(pasteResponse)}
                   {!isEncrypted &&
                     isUrlPaste &&
                     urlInput(

@@ -65,6 +65,8 @@ export default defineConfig(({ mode }) => {
         "display.html": resolveEntry("display.html"),
         // Vanilla bootstrap for the /a/<paste> markdown render page.
         "pages/render/markdown.ts": resolveEntry("pages/render/markdown.ts"),
+        // Vanilla bootstrap for the /h/<paste> preview page (encrypted pastes).
+        "pages/render/htmlPreview.ts": resolveEntry("pages/render/htmlPreview.ts"),
       }
       writeFileSync(
         resolve(import.meta.dirname, "../dist/frontend/.vite/ssr-manifest.json"),
@@ -133,6 +135,7 @@ export default defineConfig(({ mode }) => {
           display: resolve(import.meta.dirname, "display.html"),
           live: resolve(import.meta.dirname, "live.html"),
           markdown: resolve(import.meta.dirname, "pages/render/markdown.ts"),
+          htmlPreview: resolve(import.meta.dirname, "pages/render/htmlPreview.ts"),
         },
       },
     },

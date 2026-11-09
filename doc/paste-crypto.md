@@ -52,6 +52,8 @@ Without a fragment, the page reports that the paste is encrypted and offers the 
 
 The markdown URL `/a/<name>` of a plain paste is rendered by the server. For an encrypted paste, the server sends a page that contains nothing derived from the content: a fixed title, the paste URL, the scheme label, and $c$ itself if it is at most 1 MiB. The page takes $c$ from there or fetches it from `/<name>`, computes $m = \mathsf{Open}_K(c)$ with the key from the fragment, renders $m$ with the same markdown renderer and HTML sanitizer that the server uses for plain pastes, and only then sets the title and builds the table of contents.
 
+The preview URL `/h/<name>` works the same way. The server sends a page with a header, a warning and an empty sandboxed frame; once the viewer agrees, the browser fetches $c$ from `/<name>`, computes $m$ with the key from the fragment, and puts $m$ in the frame. Only the first part of the fragment, before any `:`, is taken as the key, so a markdown link works here too.
+
 The fragment of a markdown URL is `#<key>` or `#<key>:<section>`, where `<section>` is the id of a heading. Keys never contain `:`, so the two parts are told apart without ambiguity. Every in-page link of the rendered page, including the table of contents and the heading anchors, is rewritten to `#<key>:<section>`, so following, copying or sharing a link to a section keeps the key in it.
 
 ## Updating and deleting

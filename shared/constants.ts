@@ -15,3 +15,10 @@ export const ENCRYPTION_SCHEMES: readonly string[] = ["AES-GCM"]
 export const HIGHLIGHT_LANG_REGEX = /^[\w+#.-]{1,64}$/
 // Placeholder on /a/<name> for an encrypted paste, which the browser renders
 export const ENCRYPTED_MARKDOWN_ID = "encrypted-markdown"
+// Elements on /h/<name>: the sandboxed iframe showing the paste, the warning
+// shown until the viewer agrees to render it, its button, and the notice
+// shown while an encrypted paste is decrypted in the browser
+export const HTML_PREVIEW_ID = "html-preview"
+export const HTML_PREVIEW_GATE_ID = "html-preview-gate"
+export const HTML_PREVIEW_RENDER_ID = "html-preview-render"
+export const HTML_PREVIEW_STATUS_ID = "html-preview-status"
