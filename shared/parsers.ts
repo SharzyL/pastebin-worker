@@ -77,7 +77,11 @@ export function parsePath(pathname: string): ParsedPath {
   // extract and remove filename
   const startOfFilename = pathname.lastIndexOf("/")
   if (startOfFilename >= 0) {
-    filename = decodeURIComponent(pathname.slice(startOfFilename + 1))
+    try {
+      filename = decodeURIComponent(pathname.slice(startOfFilename + 1))
+    } catch {
+      throw new ParseError(`invalid path: malformed filename encoding`)
+    }
     pathname = pathname.slice(0, startOfFilename)
   }
 
