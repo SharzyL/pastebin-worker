@@ -62,6 +62,9 @@ export const Autocomplete = React.forwardRef<AutocompleteHandle, AutocompletePro
   const ref = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Set while a mouse click is focusing the input, so that the mouseup does
+  // not undo the select-all done on focus
+  const selectingOnClick = useRef(false)
 
   useImperativeHandle(forwardedRef, () => ({
     focus() {
@@ -155,9 +158,20 @@ export const Autocomplete = React.forwardRef<AutocompleteHandle, AutocompletePro
             })
           }}
           onKeyDown={handleKeyDown}
-          onFocus={() => {
+          onFocus={(e) => {
+            // the current value is more often replaced than edited
+            e.target.select()
             setIsOpen(true)
             setFocusedKey(defaultFocusKey(filtered))
+          }}
+          onMouseDown={() => {
+            selectingOnClick.current = document.activeElement !== inputRef.current
+          }}
+          onMouseUp={(e) => {
+            if (selectingOnClick.current) {
+              selectingOnClick.current = false
+              e.preventDefault()
+            }
           }}
           onBlur={(e) => {
             if (!ref.current?.contains(e.relatedTarget)) {

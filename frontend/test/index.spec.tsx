@@ -128,14 +128,15 @@ describe("Pastebin", () => {
     await userEvent.keyboard("{Shift>}{Tab}{/Shift}{Shift>}{Tab}{/Shift}")
     expect(language).not.toHaveFocus()
 
-    // Indent With -> Language
+    // Indent With -> Language, whose value is selected so typing replaces it
     await userEvent.keyboard("{Enter}")
     expect(language).toHaveFocus()
+    expect(language).toHaveValue("plaintext")
+    expect((language as HTMLInputElement).selectionStart).toBe(0)
+    expect((language as HTMLInputElement).selectionEnd).toBe("plaintext".length)
 
     // Language -> editor, with the highlighted language chosen
-    await userEvent.clear(language)
-    await userEvent.type(language, "pyth")
-    await userEvent.keyboard("{Enter}")
+    await userEvent.keyboard("pyth{Enter}")
     expect(editor).toHaveFocus()
     expect(language).toHaveValue("python")
 
