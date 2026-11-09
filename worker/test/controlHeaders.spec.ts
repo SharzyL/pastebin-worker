@@ -1,7 +1,7 @@
 import { createExecutionContext, env } from "cloudflare:test"
 import { afterEach, beforeEach, expect, test, vi } from "vitest"
 
-import { BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils.js"
+import { addRole, BASE_URL, genRandomBlob, upload, workerFetch } from "./testUtils.js"
 
 test("mime type", async () => {
   const ctx = createExecutionContext()
@@ -181,4 +181,13 @@ test("option method", async () => {
   )
   expect(resp1.status).toStrictEqual(200)
   expect(resp1.headers.has("Allow")).toStrictEqual(true)
+})
+
+test("malformed filename encoding", async () => {
+  const ctx = createExecutionContext()
+  const url = (await upload(ctx, { c: genRandomBlob(16) })).url
+  for (const path of ["/%ZZ", "/a%"]) {
+    expect((await workerFetch(ctx, url + path)).status, path).toStrictEqual(400)
+    expect((await workerFetch(ctx, addRole(url + path, "h"))).status, path).toStrictEqual(400)
+  }
 })

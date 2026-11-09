@@ -45,6 +45,12 @@ test("parsePath throws on empty name", () => {
   }
 })
 
+test("parsePath throws on a malformed filename", () => {
+  for (const input of ["/abcd/%ZZ", "/d/abcd/%E3%81", "/abcd/a%"]) {
+    expect(() => parsePath(input), `should throw for ${input}`).toThrow(ParseError)
+  }
+})
+
 test("parseFilenameFromContentDisposition", () => {
   const testPairs: [string, string | undefined][] = [
     [`inline; filename="abc.jpg"`, "abc.jpg"],
