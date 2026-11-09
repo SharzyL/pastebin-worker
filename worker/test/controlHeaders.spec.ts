@@ -32,12 +32,19 @@ test("mime type", async () => {
 
   // test disallowed mimetypes, matched on the lowercased `type/subtype`
   await testMime(`${url_pic}.m3u`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}.m3u8`, "text/plain;charset=UTF-8")
   await testMime(`${url_pic}?mime=audio/x-mpegurl`, "text/plain;charset=UTF-8")
   await testMime(`${url_pic}?mime=Audio/X-MPEGURL;foo=bar`, "text/plain;charset=UTF-8")
 
+  // everything a browser would show as a web page
   await testMime(`${url_pic}.html`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}.xhtml`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}.xml`, "text/plain;charset=UTF-8")
   await testMime(`${url_pic}?mime=text/html`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}?mime=text/xml`, "text/plain;charset=UTF-8")
   await testMime(`${url_pic}?mime=TEXT/HTML;charset=utf-8`, "text/plain;charset=UTF-8")
+  // but SVG stays an image, so <img src> keeps working
+  await testMime(`${url_pic}.svg`, "image/svg+xml")
   // whoever asks, including a frame
   const framed = new Request(`${url_pic}.html`, { headers: { "Sec-Fetch-Dest": "iframe" } })
   expect((await workerFetch(ctx, framed)).headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")

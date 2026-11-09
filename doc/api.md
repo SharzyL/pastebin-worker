@@ -24,7 +24,7 @@ Examples: `GET /abcd?lang=js`, `GET /abcd?mime=application/json`.
 
 A raw paste may carry markup and scripts whatever its type, so the response always has `X-Content-Type-Options: nosniff`, and unless the type is plain media (`image/*` except SVG, `audio/*`, `video/*`, `font/*`, `application/pdf`) it has `Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups allow-modals`: rendered as a document, the paste runs in an opaque origin with no access to this site's cookies, storage or credentials. Note that `nosniff` makes browsers refuse a `text/plain` paste as a script or stylesheet; use `/<name>.js`, `/<name>.css` or `?mime=` for those.
 
-The types in `DISALLOWED_MIME_FOR_PASTE` of `wrangler.toml` (by default `text/html` and `audio/x-mpegurl`) are served as `text/plain;charset=UTF-8` instead, so a raw URL never shows up as a web page. To render an HTML paste in a browser, use `/h/<name>`.
+The types in `DISALLOWED_MIME_FOR_PASTE` of `wrangler.toml` (by default `text/html`, `application/xhtml+xml`, `text/xml`, `application/xml` and the `m3u` playlist types) are served as `text/plain;charset=UTF-8` instead, so a raw URL never shows up as a web page. SVG stays `image/svg+xml`, so that `<img>` keeps working; opened directly, it runs in the sandbox like everything else. To render an HTML paste in a browser, use `/h/<name>`.
 
 If error occurs, the worker returns status code different from `200`:
 
