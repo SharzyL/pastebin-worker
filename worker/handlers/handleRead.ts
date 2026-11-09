@@ -352,9 +352,12 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   // handle display page with SSR
   if (role === "d") {
+    // The page's own address. The extension stays, it picks the highlight
+    // language; the filename form, query and fragment do not.
+    const displayUrl = `${env.DEPLOY_URL}/d/${name}${ext ?? ""}`
     try {
       const { renderDisplayPage } = await import("../pages/display.js")
-      const page = await renderDisplayPage(env, name, filename, ext, item.paste, item.metadata)
+      const page = await renderDisplayPage(env, name, filename, ext, item.paste, item.metadata, displayUrl)
       if (page) {
         return new Response(isHead ? null : page, {
           headers: {
@@ -377,9 +380,9 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     // not interpreted
     const titleName =
       name + (filename ? " / " + filename : ext ? ext : item.metadata.filename ? " / " + item.metadata.filename : "")
-    const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace("{{PASTE_NAME}}", () =>
-      escapeHtml(titleName),
-    )
+    const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer())
+      .replace("{{PASTE_NAME}}", () => escapeHtml(titleName))
+      .replaceAll("{{PAGE_URL}}", () => escapeHtml(displayUrl))
     return new Response(isHead ? null : page, {
       headers: {
         "Content-Type": `text/html;charset=UTF-8`,
