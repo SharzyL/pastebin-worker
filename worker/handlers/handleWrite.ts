@@ -9,7 +9,7 @@ import {
 } from "../storage/storage.js"
 import { DEFAULT_PASSWD_LEN, PASTE_NAME_LEN, PRIVATE_PASTE_NAME_LEN, PASSWD_SEP } from "../../shared/constants.js"
 import { parsePath, parseSize, parseExpiration } from "../../shared/parsers.js"
-import { verifyName, verifyPassword } from "../../shared/verify.js"
+import { verifyEncryptionScheme, verifyHighlightLanguage, verifyName, verifyPassword } from "../../shared/verify.js"
 import type { PasteResponse } from "../../shared/interfaces.js"
 import { MaxFileSizeExceededError, MultipartParseError, parseMultipartRequest } from "@mjackson/multipart-parser"
 import {
@@ -131,6 +131,16 @@ export async function handlePostOrPut(
   // check if password is legal
   if (passwdFromForm) {
     const [ok, msg] = verifyPassword(passwdFromForm)
+    if (!ok) throw new WorkerError(400, msg)
+  }
+
+  // both are stored and sent back as headers, so only known-good values
+  if (encryptionScheme !== undefined) {
+    const [ok, msg] = verifyEncryptionScheme(encryptionScheme)
+    if (!ok) throw new WorkerError(400, msg)
+  }
+  if (highlightLanguage !== undefined) {
+    const [ok, msg] = verifyHighlightLanguage(highlightLanguage)
     if (!ok) throw new WorkerError(400, msg)
   }
 

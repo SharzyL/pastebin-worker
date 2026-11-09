@@ -1,10 +1,23 @@
-import { MAX_PASSWD_LEN, MIN_PASSWD_LEN, NAME_REGEX } from "./constants.js"
+import { ENCRYPTION_SCHEMES, HIGHLIGHT_LANG_REGEX, MAX_PASSWD_LEN, MIN_PASSWD_LEN, NAME_REGEX } from "./constants.js"
 import { parseExpiration, parseExpirationReadable } from "./parsers.js"
 
 export type VerifyResult = [ok: true, message: string] | [ok: false, error: string]
 
 export function isLegalUrl(url: string): boolean {
   return URL.canParse(url)
+}
+
+// Both end up in response headers, which cannot hold arbitrary strings
+export function verifyEncryptionScheme(scheme: string): VerifyResult {
+  return ENCRYPTION_SCHEMES.includes(scheme)
+    ? [true, ""]
+    : [false, `Unknown encryption scheme ‘${scheme}’, expected one of: ${ENCRYPTION_SCHEMES.join(", ")}`]
+}
+
+export function verifyHighlightLanguage(lang: string): VerifyResult {
+  return lang === "" || HIGHLIGHT_LANG_REGEX.test(lang)
+    ? [true, ""]
+    : [false, `Invalid highlight language ‘${lang}’: letters, digits, "+", "#", ".", "-" and "_" only, up to 64`]
 }
 
 export function verifyPassword(password: string): VerifyResult {

@@ -8,5 +8,10 @@ export const MIN_PASSWD_LEN = 8
 export const MAX_URL_REDIRECT_LEN = 2000
 export const PASSWD_SEP = ":"
 export const MAX_AUTO_FETCH_BYTES = 256 * 1024
+// Client-side encryption schemes a paste can declare, see doc/paste-crypto.md
+export const ENCRYPTION_SCHEMES: readonly string[] = ["AES-GCM"]
+// A highlight language name: what highlight.js and the editor accept, and
+// safe in the X-PB-Highlight-Language header
+export const HIGHLIGHT_LANG_REGEX = /^[\w+#.-]{1,64}$/
 // Placeholder on /a/<name> for an encrypted paste, which the browser renders
 export const ENCRYPTED_MARKDOWN_ID = "encrypted-markdown"
