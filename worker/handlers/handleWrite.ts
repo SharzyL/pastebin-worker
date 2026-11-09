@@ -76,6 +76,14 @@ export async function handlePostOrPut(
     if (authResponse !== null) {
       return authResponse
     }
+    // A browser sends the cached credentials along with a form POST from any
+    // site, a rendered paste included, which could then create pastes as
+    // the viewer. Browsers also say where a request comes from, so refuse
+    // the cross-site ones on a private deployment. Clients such as curl do
+    // not send the header and are not affected.
+    if (Object.keys(env.BASIC_AUTH).length > 0 && request.headers.get("Sec-Fetch-Site") === "cross-site") {
+      throw new WorkerError(403, "cross-site requests are not accepted on a private deployment")
+    }
   }
 
   const url = new URL(request.url)

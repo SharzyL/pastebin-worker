@@ -68,6 +68,13 @@ describe("basic auth", () => {
     await uploadExpectStatus(ctx, { c: blob1 }, 401, { headers: wrongAuthHeader })
   })
 
+  it("should forbid upload from another site, even with auth", async () => {
+    await uploadExpectStatus(ctx, { c: blob1 }, 403, { headers: { ...authHeader, "Sec-Fetch-Site": "cross-site" } })
+    for (const site of ["same-origin", "same-site", "none"]) {
+      await upload(ctx, { c: blob1 }, { headers: { ...authHeader, "Sec-Fetch-Site": site } })
+    }
+  })
+
   it("should allow visit paste without auth", async () => {
     const uploadResp1 = await upload(ctx, { c: blob1 }, { headers: authHeader })
     const revisitResp = await workerFetch(ctx, uploadResp1.url)
