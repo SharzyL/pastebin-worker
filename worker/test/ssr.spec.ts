@@ -5,6 +5,23 @@ import { createExecutionContext } from "cloudflare:test"
 describe("SSR Display Page", () => {
   const ctx = createExecutionContext()
 
+  test("names its own address, with the extension but not the filename or query", async () => {
+    const canonicalOf = async (url: string) => {
+      const html = await (await workerFetch(ctx, url)).text()
+      const m = /<link rel="canonical" href="([^"]*)" \/>/.exec(html)
+      expect(m, url).not.toBeNull()
+      expect(html, url).toContain(`<meta property="og:url" content="${m![1]}" />`)
+      return m![1]
+    }
+    const name = new URL((await upload(ctx, { c: "hello" })).url).pathname.slice(1)
+    expect(await canonicalOf(`${BASE_URL}/d/${name}`)).toBe(`${BASE_URL}/d/${name}`)
+    expect(await canonicalOf(`${BASE_URL}/d/${name}.py?lang=js`)).toBe(`${BASE_URL}/d/${name}.py`)
+    expect(await canonicalOf(`${BASE_URL}/d/${name}/notes.py`)).toBe(`${BASE_URL}/d/${name}.py`)
+    // an encrypted paste is not rendered by the server, but its page has the address too
+    const enc = new URL((await upload(ctx, { c: "hello", "encryption-scheme": "AES-GCM" })).url).pathname.slice(1)
+    expect(await canonicalOf(`${BASE_URL}/d/${enc}`)).toBe(`${BASE_URL}/d/${enc}`)
+  })
+
   test("should render display page HTML", async () => {
     // Upload a test paste
     const content = "Hello SSR World"

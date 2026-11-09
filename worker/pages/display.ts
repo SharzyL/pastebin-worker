@@ -23,6 +23,8 @@ export async function renderDisplayPage(
   urlExt: string | undefined,
   paste: ArrayBuffer | ReadableStream<Uint8Array>,
   metadata: PasteMetadata,
+  // the canonical URL of the page, for crawlers and link previews
+  pageUrl: string,
 ): Promise<string | null> {
   // Skip SSR for encrypted files (client needs hash key to decrypt)
   if (metadata.encryptionScheme) {
@@ -104,6 +106,8 @@ export async function renderDisplayPage(
 <link rel="icon" href="/favicon.ico" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${escapeHtml(env.INDEX_PAGE_TITLE)} / ${escapeHtml(titleName)}</title>
+<link rel="canonical" href="${escapeHtml(pageUrl)}" />
+<meta property="og:url" content="${escapeHtml(pageUrl)}" />
 ${renderCssLinks(cssPaths)}
 <script>
 ${DARK_MODE_SCRIPT}

@@ -53,6 +53,8 @@ If error occurs, the worker returns status code different from `302`:
 
 Return the web page that will display the content of the paste of name `<name>`. If the paste is encrypted, a key can be appended to the URL to decrypt the paste of name `<name>` in browser.
 
+The page names its own address in a `<link rel="canonical">` and an `og:url` meta tag: `{{BASE_URL}}/d/<name>[.<ext>]`, keeping the extension (it picks the highlight language) but not the filename form or the query.
+
 If error occurs, the worker returns status code different from `200`:
 
 - `404`: the paste of given name is not found.
