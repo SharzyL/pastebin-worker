@@ -4,11 +4,20 @@ import { getDocMarkdown, getCurlIndexMarkdown, renderDocAsHtml } from "../pages/
 import { verifyAuth } from "../pages/auth.js"
 import mime from "mime"
 import { makeEncryptedMarkdown, makeMarkdown } from "../pages/markdown.js"
+import { makeHtmlPreview } from "../pages/htmlPreview.js"
 import type { PasteMetadata, PasteWithMetadata } from "../storage/storage.js"
 import { getPaste, getPasteMetadata, metaResponseFromMetadata } from "../storage/storage.js"
 import { parsePath } from "../../shared/parsers.js"
 import { MAX_URL_REDIRECT_LEN } from "../../shared/constants.js"
 import { LIVE_PAGE_PATH } from "../../shared/live.js"
+import {
+  isDocumentMime,
+  isPlainMedia,
+  mimeEssence,
+  PLAIN_TEXT_MIME,
+  RAW_PASTE_CSP,
+  sanitizeMime,
+} from "../../shared/mime.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { getAssetPaths, renderCssLinks, streamToArrayBuffer, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
 
@@ -208,9 +217,9 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
 
   const disp = url.searchParams.has("a") ? "attachment" : "inline"
 
-  // when not isHead, always need to get paste unless "m"
+  // when not isHead, always need to get paste unless "m" or "h" (the browser fetches it)
   // when isHead, no need to get paste unless "u"
-  const shouldGetPasteContent = (!isHead && role !== "m") || (isHead && role === "u")
+  const shouldGetPasteContent = (!isHead && role !== "m" && role !== "h") || (isHead && role === "u")
 
   const item: PasteWithMetadata | null = shouldGetPasteContent
     ? await getPaste(env, name, ctx)
@@ -221,14 +230,16 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     throw new WorkerError(404, `paste of name '${name}' not found`)
   }
 
+  // Disallowed types (HTML by default) are served as plain text; the preview
+  // page /h/<name> renders them in a sandboxed frame of its own.
   const disallowedMimes = env.DISALLOWED_MIME_FOR_PASTE as readonly string[]
-  const sanitize = (m: string) => (disallowedMimes.includes(m) ? "text/plain;charset=UTF-8" : m)
+  const sanitize = (m: string) => sanitizeMime(m, disallowedMimes)
 
   const realMime =
     url.searchParams.get("mime") ||
     (ext && mime.getType(ext)) ||
     (item.metadata.filename && mime.getType(item.metadata.filename)) ||
-    "text/plain;charset=UTF-8"
+    PLAIN_TEXT_MIME
 
   let inferred_mime = item.metadata.encryptionScheme
     ? url.searchParams.get("mime") || (ext && mime.getType(ext)) || "application/octet-stream"
@@ -309,6 +320,32 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     })
   }
 
+  // handle preview page: the paste framed below a header, see pages/htmlPreview.ts
+  if (role === "h") {
+    // Asking for the preview is asking for a document. An explicit `?mime=`,
+    // extension or filename in the URL is taken as is; without one, the
+    // uploaded filename counts only if it names a document type, and
+    // anything else is rendered as HTML. The disallowed list does not apply:
+    // the browser fetches the paste and renders it in the frame itself.
+    let frameMime = mimeEssence(sanitizeMime(realMime, [])) ?? "text/plain"
+    if (!url.searchParams.has("mime") && !ext && !isDocumentMime(frameMime)) frameMime = "text/html"
+    const page = makeHtmlPreview(env, {
+      name,
+      ext,
+      filename,
+      search: url.search,
+      encryptionScheme: item.metadata.encryptionScheme,
+      type: frameMime,
+    })
+    return new Response(isHead ? null : page, {
+      headers: {
+        "Content-Type": `text/html;charset=UTF-8`,
+        ...pasteCacheHeader(env),
+        ...lastModifiedHeader(item.metadata),
+      },
+    })
+  }
+
   // handle display page with SSR
   if (role === "d") {
     try {
@@ -349,11 +386,17 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   }
 
   // handle default
+  const essence = mimeEssence(inferred_mime) ?? "text/plain"
   const headers: Headers = {
     "Content-Type": `${inferred_mime}`,
+    // no sniffing a paste into something else
+    "X-Content-Type-Options": "nosniff",
     ...pasteCacheHeader(env),
     ...lastModifiedHeader(item.metadata),
   }
+  // Whatever the type, a raw paste may carry markup and scripts. Rendered as
+  // a document, it runs in an opaque origin with no access to this site.
+  if (!isPlainMedia(essence)) headers["Content-Security-Policy"] = RAW_PASTE_CSP
   const exposeHeaders = ["Content-Disposition"]
 
   if (item.metadata.encryptionScheme) {

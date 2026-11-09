@@ -17,16 +17,30 @@ test("mime type", async () => {
   await testMime(url, "text/plain;charset=UTF-8")
   await testMime(`${url}.jpg`, "image/jpeg")
   await testMime(`${url}/test.jpg`, "image/jpeg")
-  await testMime(`${url}?mime=random-mime`, "random-mime")
-  await testMime(`${url}.jpg?mime=random-mime`, "random-mime")
-  await testMime(`${url}/test.jpg?mime=random-mime`, "random-mime")
+  await testMime(`${url}?mime=application/x-custom`, "application/x-custom")
+  await testMime(`${url}.jpg?mime=application/x-custom`, "application/x-custom")
+  await testMime(`${url}/test.jpg?mime=application/x-custom`, "application/x-custom")
+  await testMime(`${url}?mime=text/plain;charset=gbk`, "text/plain;charset=gbk")
 
   await testMime(url_pic, "image/jpeg")
   await testMime(`${url_pic}.png`, "image/png")
 
-  // test disallowed mimetypes
+  // not a mime type
+  await testMime(`${url}?mime=random-mime`, "text/plain;charset=UTF-8")
+  await testMime(`${url}?mime=`, "text/plain;charset=UTF-8")
+  await testMime(`${url}?mime=text/plain%0D%0AX-Injected:1`, "text/plain;charset=UTF-8")
+
+  // test disallowed mimetypes, matched on the lowercased `type/subtype`
+  await testMime(`${url_pic}.m3u`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}?mime=audio/x-mpegurl`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}?mime=Audio/X-MPEGURL;foo=bar`, "text/plain;charset=UTF-8")
+
   await testMime(`${url_pic}.html`, "text/plain;charset=UTF-8")
   await testMime(`${url_pic}?mime=text/html`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}?mime=TEXT/HTML;charset=utf-8`, "text/plain;charset=UTF-8")
+  // whoever asks, including a frame
+  const framed = new Request(`${url_pic}.html`, { headers: { "Sec-Fetch-Dest": "iframe" } })
+  expect((await workerFetch(ctx, framed)).headers.get("Content-Type")).toStrictEqual("text/plain;charset=UTF-8")
 })
 
 test("cache control", async () => {

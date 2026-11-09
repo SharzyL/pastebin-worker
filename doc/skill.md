@@ -103,6 +103,10 @@ expiration from now. An encrypted update uses a fresh key, so it prints a new
   the highlighting language.
 - `/a/<name>` — render a markdown paste as HTML (GitHub-flavored Markdown + MathJax).
   For an encrypted paste, append `#<key>` like the decryption URL.
+- `/h/<name>` — render a paste as a document (HTML unless the extension, `?mime=` or the
+  uploaded filename says SVG or XML) in a sandboxed frame below a site header, after the
+  viewer confirms a warning. This is the only URL that renders HTML: the raw URL serves
+  HTML as `text/plain`. For an encrypted paste, append `#<key>` like the decryption URL.
 - `/u/<name>` — redirect to the URL stored in an unencrypted paste (URL shortener).
 - `/m/<name>` — JSON metadata.
 

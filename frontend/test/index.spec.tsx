@@ -90,6 +90,12 @@ describe("Pastebin", () => {
     const manageUrlShow = screen.getByRole("textbox", { name: "Manage URL" })
     expect((manageUrlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.manageUrl)
 
+    // the html preview URL is under "More" for a plain-text paste, with the key
+    expect(screen.queryByRole("textbox", { name: "HTML URL" })).toBeNull()
+    await userEvent.click(screen.getByRole("button", { name: "More" }))
+    const htmlUrlShow = screen.getByRole<HTMLInputElement>("textbox", { name: "HTML URL" })
+    expect(htmlUrlShow.value).toMatch(/^https:\/\/example\.com\/h\/abcd#.+/)
+
     const qrButtons = screen.getAllByRole("button", { name: "Show QR code" })
     expect(qrButtons.length).toBeGreaterThanOrEqual(3)
     await userEvent.click(qrButtons[0])

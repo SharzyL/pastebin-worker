@@ -90,5 +90,7 @@ R2_THRESHOLD = "20K"
 # File larger than this will be denied
 R2_MAX_ALLOWED = "256M"
 
-# The following mimetypes will be converted to text/plain
+# The following mimetypes will be converted to text/plain, so that a raw paste
+# never shows up as a web page. The /h/<name> preview page renders a paste in
+# a sandboxed frame of its own instead.
 DISALLOWED_MIME_FOR_PASTE = ["text/html", "audio/x-mpegurl"]
