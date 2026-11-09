@@ -12,7 +12,9 @@ import { escapeHtml } from "../../shared/html.js"
 export type { HLJSApi }
 
 export function highlightHTML(hljs: HLJSApi | undefined, lang: string | undefined, content: string): string {
-  if (hljs && lang && hljs.listLanguages().includes(lang) && lang !== "plaintext") {
+  // `getLanguage` resolves aliases ("html" → xml, "py" → python), which
+  // `listLanguages` does not include
+  if (hljs && lang && lang !== "plaintext" && hljs.getLanguage(lang)) {
     return hljs.highlight(content, { language: lang }).value
   }
   return escapeHtml(content)

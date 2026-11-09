@@ -36,13 +36,42 @@ export function loaderForLang(lang: string): (() => Promise<{ default: LanguageF
   return languageLoaders[pathOf(canonical)]
 }
 
+// Aliases worth listing next to the canonical names in the language picker:
+// what people call these languages, or name their files, rather than what
+// highlight.js registers them as ("html" and "svg" are xml, "sh" is bash,
+// "md" is markdown…). Any alias highlight.js knows works when typed; these
+// are just the ones offered. Filtered against the alias map at build time.
+const LISTED_ALIASES = [
+  "c++",
+  "docker",
+  "golang",
+  "html",
+  "js",
+  "jsx",
+  "md",
+  "py",
+  "rb",
+  "rs",
+  "sh",
+  "svg",
+  "toml",
+  "ts",
+  "tsx",
+  "xhtml",
+  "yml",
+  "zsh",
+]
+
 // All canonical language names known to the bundled highlight.js, derived at
-// build time from the glob keys. Used by the editor's language picker, which
-// must know the full set even though only one language is loaded at a time.
-export const ALL_LANGUAGES: readonly string[] = Object.keys(languageLoaders)
-  .map((p) => /\/([^/]+)\.js$/.exec(p)?.[1])
-  .filter((s): s is string => !!s)
-  .sort()
+// build time from the glob keys, plus the listed aliases. Used by the
+// editor's language picker, which must know the full set even though only
+// one language is loaded at a time.
+export const ALL_LANGUAGES: readonly string[] = [
+  ...Object.keys(languageLoaders)
+    .map((p) => /\/([^/]+)\.js$/.exec(p)?.[1])
+    .filter((s): s is string => !!s),
+  ...LISTED_ALIASES.filter((a) => a in aliasMap),
+].sort()
 
 export function useHLJS(lang: string | undefined): HLJSApi | undefined {
   const [hljs, setHljs] = useState<HLJSApi | undefined>(undefined)

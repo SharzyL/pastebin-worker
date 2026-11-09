@@ -138,6 +138,13 @@ describe("Pastebin", () => {
     await userEvent.keyboard("{Enter}")
     expect(editor).toHaveFocus()
     expect(language).toHaveValue("python")
+
+    // an alias is offered too: "html" is highlight.js's xml
+    await userEvent.click(language)
+    await userEvent.clear(language)
+    await userEvent.type(language, "html")
+    await userEvent.keyboard("{Enter}")
+    expect(language).toHaveValue("html")
   })
 
   it("toggles the encryption switch with Enter", async () => {
