@@ -41,6 +41,6 @@ export function getCurlIndexMarkdown(env: Env): string {
   return renderTemplate(indexMd, env)
 }
 
-export function renderDocAsHtml(md: string): string {
-  return makeMarkdown(md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, ""))
+export function renderDocAsHtml(md: string, url: string): string {
+  return makeMarkdown(md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, ""), url)
 }

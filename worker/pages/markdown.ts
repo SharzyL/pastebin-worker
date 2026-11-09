@@ -44,9 +44,11 @@ interface MarkdownPage {
   description: string
   tocHtml: string
   bodyHtml: string
+  // the canonical URL of the page, for crawlers and link previews
+  url: string
 }
 
-function makeMarkdownPage({ title, description, tocHtml, bodyHtml }: MarkdownPage): string {
+function makeMarkdownPage({ title, description, tocHtml, bodyHtml, url }: MarkdownPage): string {
   const { jsFile, cssPaths } = getAssetPaths(manifest, "pages/render/markdown.ts")
 
   return `<!DOCTYPE html>
@@ -56,6 +58,8 @@ function makeMarkdownPage({ title, description, tocHtml, bodyHtml }: MarkdownPag
   <meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'>
   <title>${escapeHtml(title)}</title>
   ${description.length > 0 ? `<meta name='description' content='${escapeHtml(description)}'>` : ""}
+  <link rel='canonical' href='${escapeHtml(url)}'>
+  <meta property='og:url' content='${escapeHtml(url)}'>
   <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css'>
   ${renderCssLinks(cssPaths)}
   <style>${sidebarStyles}</style>
@@ -75,9 +79,9 @@ ${bodyHtml}
 `
 }
 
-export function makeMarkdown(content: string): string {
+export function makeMarkdown(content: string, url: string): string {
   const doc = renderMarkdownDoc(content)
-  return makeMarkdownPage({ ...doc, bodyHtml: doc.html })
+  return makeMarkdownPage({ ...doc, bodyHtml: doc.html, url })
 }
 
 // The server cannot read an encrypted paste, so it sends a page without
@@ -85,12 +89,13 @@ export function makeMarkdown(content: string): string {
 // URL fragment. Nothing derived from the content is in this page. A small
 // paste comes with its ciphertext, which saves a request; a large one is
 // fetched from `rawPath`.
-export function makeEncryptedMarkdown(rawPath: string, scheme: string, ciphertext?: ArrayBuffer): string {
+export function makeEncryptedMarkdown(rawPath: string, scheme: string, url: string, ciphertext?: ArrayBuffer): string {
   const embedded = ciphertext ? ` data-ciphertext="${arrayBufferToBase64(ciphertext)}"` : ""
   return makeMarkdownPage({
     title: "Encrypted paste",
     description: "",
     tocHtml: "",
+    url,
     bodyHtml:
       `<div id="${ENCRYPTED_MARKDOWN_ID}" data-src="${escapeHtml(rawPath)}" data-scheme="${escapeHtml(scheme)}"${embedded}>` +
       `<div class="pending-notice">Decrypting…</div><noscript><p>This paste is encrypted, and is decrypted with JavaScript.</p></noscript>` +

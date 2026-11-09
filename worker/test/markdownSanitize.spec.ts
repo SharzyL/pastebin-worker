@@ -11,7 +11,7 @@ function articleBody(html: string): string {
 }
 
 function render(md: string): string {
-  return articleBody(makeMarkdown(md))
+  return articleBody(makeMarkdown(md, "https://example.com/a/test"))
 }
 
 describe("makeMarkdown sanitization", () => {
