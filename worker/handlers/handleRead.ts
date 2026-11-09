@@ -331,9 +331,13 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     const pageUrl = url
     pageUrl.search = ""
     pageUrl.pathname = "/display.html"
-    const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace(
-      "{{PASTE_NAME}}",
-      name + (filename ? " / " + filename : ext ? ext : item.metadata.filename ? " / " + item.metadata.filename : ""),
+    // The name, extension and filename come from the URL or the upload: escape
+    // them, and replace with a function so that "$&"-like patterns in them are
+    // not interpreted
+    const titleName =
+      name + (filename ? " / " + filename : ext ? ext : item.metadata.filename ? " / " + item.metadata.filename : "")
+    const page = decode(await (await env.ASSETS.fetch(pageUrl)).arrayBuffer()).replace("{{PASTE_NAME}}", () =>
+      escapeHtml(titleName),
     )
     return new Response(isHead ? null : page, {
       headers: {
