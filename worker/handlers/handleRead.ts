@@ -325,9 +325,10 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
     // Asking for the preview is asking for a document. An explicit `?mime=`,
     // extension or filename in the URL is taken as is; without one, the
     // uploaded filename counts only if it names a document type, and
-    // anything else is rendered as HTML. The disallowed list does not apply:
-    // the browser fetches the paste and renders it in the frame itself.
-    let frameMime = mimeEssence(sanitizeMime(realMime, [])) ?? "text/plain"
+    // anything else is rendered as HTML. The plain-text rule of the raw
+    // response does not apply: the browser fetches the paste and renders it
+    // in the frame itself.
+    let frameMime = mimeEssence(realMime) ?? "text/plain"
     if (!url.searchParams.has("mime") && !ext && !isDocumentMime(frameMime)) frameMime = "text/html"
     const page = makeHtmlPreview(env, {
       name,

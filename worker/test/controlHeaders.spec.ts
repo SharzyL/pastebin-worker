@@ -43,6 +43,9 @@ test("mime type", async () => {
   await testMime(`${url_pic}?mime=text/html`, "text/plain;charset=UTF-8")
   await testMime(`${url_pic}?mime=text/xml`, "text/plain;charset=UTF-8")
   await testMime(`${url_pic}?mime=TEXT/HTML;charset=utf-8`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}.rss`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}?mime=application/atom%2Bxml`, "text/plain;charset=UTF-8")
+  await testMime(`${url_pic}?mime=text/xsl`, "text/plain;charset=UTF-8")
   // but SVG stays an image, so <img src> keeps working
   await testMime(`${url_pic}.svg`, "image/svg+xml")
   // whoever asks, including a frame
