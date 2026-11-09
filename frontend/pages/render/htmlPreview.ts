@@ -102,9 +102,12 @@ export async function renderPaste(frame: HTMLIFrameElement) {
 export function initPreview(frame: HTMLIFrameElement) {
   // Links to the display page need the key too
   if (frame.dataset.scheme) {
-    document.querySelectorAll<HTMLAnchorElement>("a[data-keep-key]").forEach((a) => {
-      a.setAttribute("href", a.getAttribute("href")! + location.hash)
-    })
+    const key = keyFromFragment()
+    if (key) {
+      document.querySelectorAll<HTMLAnchorElement>("a[data-keep-key]").forEach((a) => {
+        a.setAttribute("href", `${a.getAttribute("href")!}#${key}`)
+      })
+    }
     window.addEventListener("hashchange", () => location.reload())
   }
   document.getElementById(HTML_PREVIEW_RENDER_ID)?.addEventListener("click", () => {

@@ -119,10 +119,11 @@ describe("html preview page", () => {
     expect(document.getElementById(HTML_PREVIEW_GATE_ID)).toBeNull()
   })
 
-  it("takes only the key from a markdown-style fragment", async () => {
+  it("takes only the key from a markdown-style fragment, on links too", async () => {
     const key = await prepareEncrypted(html)
     history.replaceState(null, "", `/h/abcd.html#${key}:section`)
     const frame = encryptedFrame()
+    expect(document.querySelector("a")!.getAttribute("href")).toBe(`/d/abcd.html#${key}`)
     await clickRender()
     await settle()
     expect(frame.srcdoc).toBe(html)
