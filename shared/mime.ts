@@ -5,12 +5,14 @@
 // may carry markup and scripts, so instead of guessing which types a browser
 // would render, every raw response that is not plain media is served under a
 // CSP sandbox (an opaque origin: no cookies, storage or credentials of this
-// site). On top of that, the types in `DISALLOWED_MIME_FOR_PASTE` (HTML by
-// default) are served as plain text, so a raw URL never shows up as a web
-// page under this site's name. To render a paste, the preview page
-// `/h/<name>` fetches it and puts it in a sandboxed frame itself.
+// site). On top of that, document types (HTML, XHTML, XML; everything but
+// SVG, which has to stay an image for `<img>`) and the types in
+// `DISALLOWED_MIME_FOR_PASTE` are served as plain text, so a raw URL never
+// shows up as a web page under this site's name. To render a paste, the
+// preview page `/h/<name>` fetches it and puts it in a sandboxed frame itself.
 
 export const PLAIN_TEXT_MIME = "text/plain;charset=UTF-8"
+const SVG_MIME = "image/svg+xml"
 
 // RFC 7231 token characters, in `type/subtype`
 const ESSENCE_RE = /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/
@@ -23,13 +25,20 @@ export function mimeEssence(m: string): string | null {
 
 /**
  * A MIME string safe to put in a header: trimmed, with a well-formed
- * `type/subtype` that is not in `disallowed`. Anything else is plain text.
- * Parameters such as `charset` are kept as given.
+ * `type/subtype` that is neither a document type (SVG aside) nor in
+ * `disallowed`. Anything else is plain text. Parameters such as `charset`
+ * are kept as given.
  */
 export function sanitizeMime(m: string, disallowed: readonly string[]): string {
   const trimmed = m.trim()
   const essence = mimeEssence(trimmed)
-  if (essence === null || disallowed.includes(essence) || /[^\x20-\x7e]/.test(trimmed)) return PLAIN_TEXT_MIME
+  if (
+    essence === null ||
+    (isDocumentMime(essence) && essence !== SVG_MIME) ||
+    disallowed.includes(essence) ||
+    /[^\x20-\x7e]/.test(trimmed)
+  )
+    return PLAIN_TEXT_MIME
   return trimmed
 }
 
@@ -37,17 +46,17 @@ export function sanitizeMime(m: string, disallowed: readonly string[]): string {
 export function isDocumentMime(essence: string): boolean {
   return (
     essence === "text/html" ||
-    essence === "application/xhtml+xml" ||
-    essence === "image/svg+xml" ||
     essence === "text/xml" ||
     essence === "application/xml" ||
+    essence === "text/xsl" ||
     essence.endsWith("+xml")
   )
 }
 
 /** Media the browser shows by itself, with no markup or script. These are the only raw responses served without a sandbox. */
 export function isPlainMedia(essence: string): boolean {
-  if (essence === "image/svg+xml") return false
+  // `+xml` media such as SVG is a document in disguise
+  if (essence.endsWith("+xml")) return false
   return /^(image|audio|video|font)\//.test(essence) || essence === "application/pdf"
 }
 

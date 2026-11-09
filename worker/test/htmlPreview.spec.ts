@@ -10,7 +10,19 @@ describe("raw paste headers", () => {
 
   it("sandboxes everything but plain media", async () => {
     const url = (await upload(ctx, { c: html })).url
-    for (const suffix of ["", ".html", ".svg", ".xhtml", ".xml", ".json", "?mime=text/html;charset=utf-8", "/x.txt"]) {
+    for (const suffix of [
+      "",
+      ".html",
+      ".svg",
+      ".xhtml",
+      ".xml",
+      ".json",
+      "?mime=text/html;charset=utf-8",
+      "/x.txt",
+      // +xml media is a document in disguise
+      "?mime=image/x%2Bxml",
+      "?mime=font/x%2Bxml",
+    ]) {
       const resp = await workerFetch(ctx, url + suffix)
       expect(resp.status, suffix).toBe(200)
       expect(resp.headers.get("Content-Security-Policy"), suffix).toBe(RAW_PASTE_CSP)

@@ -16,8 +16,21 @@ describe("mimeEssence", () => {
 describe("sanitizeMime", () => {
   const disallowed = ["audio/x-mpegurl"]
   it("keeps well-formed types with their parameters", () => {
-    expect(sanitizeMime("text/html", disallowed)).toBe("text/html")
+    expect(sanitizeMime("application/json", disallowed)).toBe("application/json")
     expect(sanitizeMime(" text/plain;charset=gbk ", disallowed)).toBe("text/plain;charset=gbk")
+  })
+  it("replaces document types, but keeps svg an image", () => {
+    for (const m of [
+      "text/html",
+      "TEXT/HTML;charset=utf-8",
+      "application/xhtml+xml",
+      "text/xml",
+      "application/rss+xml",
+      "text/xsl",
+    ]) {
+      expect(sanitizeMime(m, disallowed), m).toBe(PLAIN_TEXT_MIME)
+    }
+    expect(sanitizeMime("image/svg+xml", disallowed)).toBe("image/svg+xml")
   })
   it("replaces malformed, disallowed and header-unsafe values", () => {
     expect(sanitizeMime("random-mime", disallowed)).toBe(PLAIN_TEXT_MIME)
@@ -36,6 +49,8 @@ describe("mime classes", () => {
       "text/xml",
       "application/xml",
       "application/rss+xml",
+      "text/xsl",
+      "image/x+xml",
     ]) {
       expect(isDocumentMime(m), m).toBe(true)
     }
@@ -48,7 +63,14 @@ describe("mime classes", () => {
       expect(isPlainMedia(m), m).toBe(true)
       expect(isDocumentMime(m), m).toBe(false)
     }
-    for (const m of ["image/svg+xml", "text/plain", "text/html", "application/octet-stream"]) {
+    for (const m of [
+      "image/svg+xml",
+      "image/x+xml",
+      "font/x+xml",
+      "text/plain",
+      "text/html",
+      "application/octet-stream",
+    ]) {
       expect(isPlainMedia(m), m).toBe(false)
     }
   })
