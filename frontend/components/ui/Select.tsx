@@ -97,6 +97,7 @@ export const Select = React.forwardRef<SelectHandle, SelectProps>(function Selec
       setFocusedIndex(-1)
       onEnter?.()
     } else if (e.key === "Escape") {
+      e.preventDefault() // consumed: do not also leave fullscreen
       setIsOpen(false)
       setFocusedIndex(-1)
     }

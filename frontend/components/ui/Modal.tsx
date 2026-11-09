@@ -21,7 +21,10 @@ export function Modal({ isOpen, onClose, children, ...rest }: ModalProps) {
   useEffect(() => {
     if (!isOpen) return
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") {
+        e.preventDefault() // consumed: do not also leave fullscreen
+        onClose()
+      }
     }
     document.addEventListener("keydown", onKeyDown)
     return () => document.removeEventListener("keydown", onKeyDown)
