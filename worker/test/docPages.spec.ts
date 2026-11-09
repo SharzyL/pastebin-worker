@@ -18,7 +18,13 @@ describe("doc pages", () => {
       expect(resp.headers.get("Content-Type")).toStrictEqual("text/html;charset=UTF-8")
       const body = await resp.text()
       expect(body.startsWith("<!DOCTYPE html>"), `body of ${page} should be HTML`).toStrictEqual(true)
+      expect(body, `canonical of ${page}`).toContain(`<link rel='canonical' href='${BASE_URL}${page}'>`)
     }
+    // the .html alias points at the plain address
+    const alias = await (
+      await workerFetch(ctx, new Request(`${BASE_URL}/doc/api.html`, { headers: browserHeaders }))
+    ).text()
+    expect(alias).toContain(`<link rel='canonical' href='${BASE_URL}/doc/api'>`)
   })
 
   it("returns raw markdown to curl", async () => {

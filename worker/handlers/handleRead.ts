@@ -185,7 +185,8 @@ ${DARK_MODE_SCRIPT}
     const docMd = getDocMarkdown(lookupPath, env)
     if (docMd !== null) {
       const wantsMarkdown = isExplicitMd || isCurl
-      return new Response(wantsMarkdown ? docMd : renderDocAsHtml(docMd), {
+      const docUrl = env.DEPLOY_URL + lookupPath.replace(/\.html$/, "")
+      return new Response(wantsMarkdown ? docMd : renderDocAsHtml(docMd, docUrl), {
         headers: {
           "Content-Type": wantsMarkdown ? "text/plain;charset=UTF-8" : "text/html;charset=UTF-8",
           Vary: "User-Agent",
@@ -283,6 +284,8 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
   // handle article (render as markdown)
   if (role === "a") {
     const scheme = item.metadata.encryptionScheme
+    // the page's own address, without extension, filename or query
+    const pageUrl = `${env.DEPLOY_URL}/a/${name}`
     let page: string | null = null
     if (scheme) {
       if (shouldGetPasteContent && item.metadata.sizeBytes <= MAX_SSR_FILE_SIZE) {
@@ -290,14 +293,14 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
           item.paste instanceof ArrayBuffer
             ? item.paste
             : await streamToArrayBuffer(item.paste as ReadableStream<Uint8Array>)
-        page = makeEncryptedMarkdown(`/${name}`, scheme, ciphertext)
+        page = makeEncryptedMarkdown(`/${name}`, scheme, pageUrl, ciphertext)
       } else {
         // too large to embed: the browser fetches the paste itself
         if (item.paste instanceof ReadableStream) await item.paste.cancel()
-        if (shouldGetPasteContent) page = makeEncryptedMarkdown(`/${name}`, scheme)
+        if (shouldGetPasteContent) page = makeEncryptedMarkdown(`/${name}`, scheme, pageUrl)
       }
     } else if (shouldGetPasteContent) {
-      page = makeMarkdown(await decodeMaybeStream(item.paste))
+      page = makeMarkdown(await decodeMaybeStream(item.paste), pageUrl)
     }
     return new Response(page, {
       headers: {

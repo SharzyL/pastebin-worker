@@ -1,5 +1,5 @@
 import { expect, test, describe, it, beforeEach, vi, afterEach } from "vitest"
-import { addRole, upload, workerFetch } from "./testUtils.js"
+import { addRole, BASE_URL, upload, workerFetch } from "./testUtils.js"
 import { createExecutionContext } from "cloudflare:test"
 import type { MetaResponse } from "../../shared/interfaces.js"
 import { genRandStr } from "../common.js"
@@ -53,6 +53,14 @@ test("markdown with role a", async () => {
   expect(responseHtml.indexOf("<title>Header 1</title>")).toBeGreaterThan(-1)
   expect(responseHtml.indexOf('<code class="language-js">')).toBeGreaterThan(-1)
 
+  // the page names its own address, whatever the URL it was asked by
+  const name = new URL(url).pathname.slice(1)
+  const canonical = `<link rel='canonical' href='${BASE_URL}/a/${name}'>`
+  expect(responseHtml).toContain(canonical)
+  expect(responseHtml).toContain(`<meta property='og:url' content='${BASE_URL}/a/${name}'>`)
+  const aliased = await (await workerFetch(ctx, addRole(`${url}/notes.md?x=1`, "a"))).text()
+  expect(aliased).toContain(canonical)
+
   const bigMd = "1".repeat(1024 * 1024)
   const bigUrl = (await upload(ctx, { c: bigMd })).url
   const bigResp = await (await workerFetch(ctx, addRole(bigUrl, "a"))).text()
@@ -74,6 +82,7 @@ test("markdown with role a for an encrypted paste", async () => {
     `<div id="encrypted-markdown" data-src="/${name}" data-scheme="AES-GCM" data-ciphertext="${btoa(testMd)}">`,
   )
   expect(html).toContain("<title>Encrypted paste</title>")
+  expect(html).toContain(`<link rel='canonical' href='${BASE_URL}/a/${name}'>`)
   expect(html).not.toContain("Header 1")
   expect(html).not.toContain("language-js")
 })
