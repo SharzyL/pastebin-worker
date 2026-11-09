@@ -93,4 +93,13 @@ R2_MAX_ALLOWED = "256M"
 # The following mimetypes will be converted to text/plain, so that a raw paste
 # never shows up as a web page. The /h/<name> preview page renders a paste in
 # a sandboxed frame of its own instead.
-DISALLOWED_MIME_FOR_PASTE = ["text/html", "audio/x-mpegurl"]
+DISALLOWED_MIME_FOR_PASTE = [
+  # rendered as a web page by browsers
+  "text/html",
+  "application/xhtml+xml",
+  "text/xml",
+  "application/xml",
+  # opened as a playlist by some clients
+  "audio/x-mpegurl",
+  "application/vnd.apple.mpegurl",
+]
