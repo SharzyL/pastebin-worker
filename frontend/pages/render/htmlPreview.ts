@@ -63,23 +63,37 @@ export function titleOf(html: string): string | undefined {
   return title ? title.slice(0, MAX_TITLE_LENGTH) : undefined
 }
 
+function toBase64(bytes: Uint8Array): string {
+  let binary = ""
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  }
+  return btoa(binary)
+}
+
 export async function renderPaste(frame: HTMLIFrameElement) {
   document.getElementById(HTML_PREVIEW_GATE_ID)?.remove()
-  const bytes = await fetchPaste(frame)
-  if (bytes === null) return
   // `data-type` is what the server decided to render the paste as (see
   // handleRead): the response header says text/plain for HTML. HTML goes in
   // as srcdoc, so relative links in it resolve against the site root (the
-  // page's <base>); other document types get a blob URL with their own
-  // type. Either way the sandbox attribute makes the origin opaque.
+  // page's <base>). Other document types are loaded from the raw URL, which
+  // the server serves under a CSP sandbox, or, when encrypted, from a data
+  // URL. Never from a blob URL: a blob belongs to this site's origin, and
+  // opened outside the sandboxed frame it would run as this site.
   const type = frame.dataset.type || "text/html"
-  if (type === "text/html") {
-    const html = new TextDecoder().decode(bytes)
-    const title = titleOf(html)
-    if (title) document.title = title
-    frame.srcdoc = html
+  if (type !== "text/html" && !frame.dataset.scheme) {
+    frame.src = frame.dataset.src!
   } else {
-    frame.src = URL.createObjectURL(new Blob([bytes as BlobPart], { type }))
+    const bytes = await fetchPaste(frame)
+    if (bytes === null) return
+    if (type === "text/html") {
+      const html = new TextDecoder().decode(bytes)
+      const title = titleOf(html)
+      if (title) document.title = title
+      frame.srcdoc = html
+    } else {
+      frame.src = `data:${type};base64,${toBase64(bytes)}`
+    }
   }
   document.getElementById(HTML_PREVIEW_STATUS_ID)?.remove()
   frame.hidden = false
