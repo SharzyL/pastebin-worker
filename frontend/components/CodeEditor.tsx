@@ -20,6 +20,10 @@ interface CodeInputProps extends React.HTMLProps<HTMLDivElement> {
   disabled?: boolean
   // Ctrl+Enter (Cmd+Enter on macOS) in the editor, e.g. to upload
   onCtrlEnter?: () => void
+  // The containing card covers the viewport (see useFullscreen): the editor
+  // fills the height it is given, Escape no longer blurs, Ctrl+Enter leaves
+  isFullscreen?: boolean
+  onLeaveFullscreen?: () => void
 }
 
 interface TabSetting {
@@ -74,6 +78,8 @@ export function CodeEditor({
   placeholder,
   disabled,
   onCtrlEnter,
+  isFullscreen = false,
+  onLeaveFullscreen,
   className,
   ...rest
 }: CodeInputProps) {
@@ -88,6 +94,10 @@ export function CodeEditor({
   const hljs = useHljsForLang(lang)
   const availableLanguages = useAvailableLanguages()
   const [tabSetting, setTabSettings] = useState<TabSetting>({ char: "space", width: 2 })
+  // the editor is what the user expanded; keep the hands on the keyboard
+  useEffect(() => {
+    if (isFullscreen) refTextarea.current?.focus()
+  }, [isFullscreen])
 
   function syncScroll() {
     refHighlighting.current!.scrollLeft = refTextarea.current!.scrollLeft
@@ -107,6 +117,8 @@ export function CodeEditor({
     const element = refTextarea.current!
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault()
+      // the upload result shows on the page behind the editor
+      onLeaveFullscreen?.()
       onCtrlEnter?.()
     } else if (event.key === "Tab" && event.shiftKey) {
       event.preventDefault()
@@ -122,7 +134,8 @@ export function CodeEditor({
       element.selectionStart = curPos
       element.selectionEnd = curPos
     } else if (event.key === "Escape") {
-      element.blur()
+      // in fullscreen, Escape leaves fullscreen instead (see useFullscreen)
+      if (!isFullscreen) element.blur()
     }
   }
 
@@ -145,9 +158,12 @@ export function CodeEditor({
 
   const lineNumOffset = `${Math.floor(Math.log10(lineCount)) + 3}ch`
 
+  // in fullscreen the toolbar stays on top and the text box takes the remaining height
+  const fill = isFullscreen ? "flex-1 min-h-0 flex flex-col" : ""
+
   return (
-    <div className={className} {...rest}>
-      <div className={"mb-2 gap-2 flex flex-row" + " "}>
+    <div className={`${className || ""} ${fill}`} {...rest}>
+      <div className="mb-2 gap-2 flex flex-row">
         <Input
           className="flex-1"
           classNames={inputOverrides}
@@ -200,10 +216,10 @@ export function CodeEditor({
       </div>
       {/* 16px on small screens: iOS Safari zooms into inputs with smaller text */}
       <div
-        className={`text-base sm:text-sm w-full bg-default-100 ${tst} rounded-xl p-2 relative border border-default-200 hover:border-default-400 focus-within:border-default-400`}
+        className={`text-base sm:text-sm w-full bg-default-100 ${tst} rounded-xl p-2 relative border border-default-200 hover:border-default-400 focus-within:border-default-400 ${fill}`}
       >
         <div
-          className={`relative w-full`}
+          className={`relative w-full ${fill}`}
           style={{ tabSize: tabSetting.char === "tab" ? tabSetting.width : undefined }}
         >
           <div className={"w-full font-mono top-0 left-0 absolute"}>
@@ -225,8 +241,11 @@ export function CodeEditor({
             </span>
           </div>
           <textarea
-            className={`w-full font-mono min-h-[20em] text-transparent placeholder-default-400 
-             caret-foreground bg-transparent outline-none relative overflow-x-auto`}
+            className={
+              `w-full font-mono text-transparent placeholder-default-400 ` +
+              `caret-foreground bg-transparent outline-none relative overflow-x-auto ` +
+              (isFullscreen ? "flex-1 min-h-0 resize-none" : "min-h-[20em]")
+            }
             style={{ marginLeft: lineNumOffset, width: `calc(100% - ${lineNumOffset})` }}
             wrap={"off"}
             ref={refTextarea}

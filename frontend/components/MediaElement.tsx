@@ -23,12 +23,19 @@ export function mediaKindOfType(contentType: string): MediaKind | null {
   return null
 }
 
-export function MediaElement({ kind, src, name }: { kind: MediaKind; src: string; name: string }) {
+interface MediaElementProps {
+  kind: MediaKind
+  src: string
+  name: string
+  className?: string
+}
+
+export function MediaElement({ kind, src, name, className = "" }: MediaElementProps) {
   if (kind === "image") {
-    return <img src={src} alt={name} className="max-w-full h-auto mx-auto block" />
+    return <img src={src} alt={name} className={`max-w-full h-auto mx-auto block ${className}`} />
   }
   if (kind === "audio") {
-    return <audio src={src} controls className="w-full" aria-label={name} />
+    return <audio src={src} controls className={`w-full ${className}`} aria-label={name} />
   }
-  return <video src={src} controls className="max-w-full h-auto mx-auto block" aria-label={name} />
+  return <video src={src} controls className={`max-w-full h-auto mx-auto block ${className}`} aria-label={name} />
 }

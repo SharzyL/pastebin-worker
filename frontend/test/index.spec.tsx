@@ -173,6 +173,46 @@ describe("Pastebin", () => {
     expect((editor as HTMLTextAreaElement).value).toStrictEqual("something")
   })
 
+  it("expands the editor to fullscreen and leaves it on Escape", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+
+    await userEvent.click(screen.getByRole("button", { name: "Enter fullscreen" }))
+    expect(screen.getByRole("button", { name: "Exit fullscreen" })).toBeInTheDocument()
+    expect(editor).toHaveFocus()
+    expect(document.body.style.overflow).toStrictEqual("hidden")
+
+    // Escape leaves fullscreen but keeps the editor focused
+    await userEvent.keyboard("{Escape}")
+    expect(screen.getByRole("button", { name: "Enter fullscreen" })).toBeInTheDocument()
+    expect(editor).toHaveFocus()
+    expect(document.body.style.overflow).toStrictEqual("")
+
+    // outside fullscreen, Escape blurs the editor as before
+    await userEvent.keyboard("{Escape}")
+    expect(editor).not.toHaveFocus()
+  })
+
+  it("keeps fullscreen when Escape only closes the language dropdown", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    await userEvent.click(screen.getByRole("button", { name: "Enter fullscreen" }))
+    await userEvent.click(screen.getByRole("textbox", { name: "Language" }))
+    await userEvent.keyboard("{Escape}")
+    expect(screen.getByRole("button", { name: "Exit fullscreen" })).toBeInTheDocument()
+    await userEvent.keyboard("{Escape}")
+    expect(screen.getByRole("button", { name: "Enter fullscreen" })).toBeInTheDocument()
+  })
+
+  it("leaves fullscreen on Ctrl+Enter so the upload result is visible", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    await userEvent.type(editor, "something")
+    await userEvent.click(screen.getByRole("button", { name: "Enter fullscreen" }))
+    await userEvent.keyboard("{Control>}{Enter}{/Control}")
+    expect(screen.getByRole("button", { name: "Enter fullscreen" })).toBeInTheDocument()
+    await screen.findByRole("textbox", { name: "Raw URL" }, { timeout: 3000 })
+  })
+
   it("refuse illegal settings", async () => {
     render(<PasteBin config={__WRANGLER_CONFIG__} />)
     // due to bugs https://github.com/adobe/react-spectrum/discussions/8037, we need to use duplicated name here

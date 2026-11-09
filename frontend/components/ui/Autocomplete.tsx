@@ -127,6 +127,7 @@ export const Autocomplete = React.forwardRef<AutocompleteHandle, AutocompletePro
       setFocusedKey(null)
       onEnter?.()
     } else if (e.key === "Escape") {
+      e.preventDefault() // consumed: do not also leave fullscreen
       setIsOpen(false)
       setFocusedKey(null)
     }

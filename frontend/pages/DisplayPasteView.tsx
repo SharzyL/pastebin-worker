@@ -6,7 +6,9 @@ import { CopyWidget } from "../components/CopyWidget.js"
 import { tst } from "../utils/overrides.js"
 import { CodeView } from "../components/CodeView.js"
 import { MediaElement, mediaKindOf, mediaKindOfType } from "../components/MediaElement.js"
+import { FullscreenToggle } from "../components/FullscreenToggle.js"
 import { formatSize } from "../utils/utils.js"
+import { useFullscreen } from "../utils/useFullscreen.js"
 
 interface PendingInfo {
   sizeBytes: number
@@ -80,7 +82,27 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const pasteMediaKind = pasteFile ? mediaKindOf(pasteFile) : null
   const mediaInfoKind = mediaInfo ? mediaKindOfType(mediaInfo.contentType) : null
   const showFileContent = pasteFile !== undefined && pasteMediaKind === null && (!isFileBinary || forceShowBinary)
+  const showRawMedia = mediaInfo !== null && mediaInfo !== undefined && !pasteFile && mediaInfoKind !== null
+  const showPasteMedia = pasteFile !== undefined && pasteMediaKind !== null
   const pasteStringContent = pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
+
+  // The content box can expand over the viewport; the toggle sits in its top
+  // right corner either way. In fullscreen the caption row stays put as a
+  // bar and the content below it scrolls.
+  const [isFullscreen, setFullscreen] = useFullscreen()
+  const hasContent = !isLoading && (showFileContent || showRawMedia || showPasteMedia)
+  const fill = isFullscreen ? "flex-1 min-h-0 flex flex-col" : ""
+  // right padding keeps the caption clear of the toggle
+  const captionClasses = "text-gray-500 mb-2 pr-8 text-sm flex flex-row gap-2 items-center"
+  const fullscreenToggle = hasContent && (
+    <FullscreenToggle
+      isFullscreen={isFullscreen}
+      onToggle={() => setFullscreen(!isFullscreen)}
+      className="absolute top-1.5 right-1.5 z-10"
+    />
+  )
+  const mediaClasses = isFullscreen ? "max-h-full" : ""
+  const mediaWrapperClasses = isFullscreen ? "flex-1 min-h-0 flex items-center justify-center overflow-auto" : ""
 
   const binaryFileIndicator = pasteFile && (
     <div className="absolute top-[50%] left-[50%] translate-[-50%] flex flex-col items-center w-full">
@@ -187,36 +209,51 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
             )}
           </div>
         </div>
-        <div className="my-4">
-          <div className={`w-full bg-default-100 rounded-lg p-3 relative ${tst}`}>
+        <div className={isFullscreen ? `fixed inset-0 z-50 flex flex-col bg-background p-3 ${tst}` : "my-4"}>
+          <div className={`w-full bg-default-100 rounded-lg p-3 relative ${tst} ${fill}`}>
+            {fullscreenToggle}
             {isLoading ? (
               <div className="h-[10em] flex items-center justify-center">
                 <CircularProgress label={"Loading..."} />
               </div>
-            ) : mediaInfo && !pasteFile && mediaInfoKind ? (
-              <div>
-                <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
+            ) : showRawMedia ? (
+              <div className={fill}>
+                <div className={captionClasses}>
                   <span>{placeholderName}</span>
                   <span>{`(${formatSize(mediaInfo.sizeBytes)})`}</span>
                 </div>
-                <MediaElement kind={mediaInfoKind} src={mediaInfo.rawUrl} name={placeholderName} />
+                <div className={mediaWrapperClasses}>
+                  <MediaElement
+                    kind={mediaInfoKind}
+                    src={mediaInfo.rawUrl}
+                    name={placeholderName}
+                    className={mediaClasses}
+                  />
+                </div>
               </div>
-            ) : pasteFile && pasteMediaKind ? (
-              <div>
-                <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
+            ) : showPasteMedia ? (
+              <div className={fill}>
+                <div className={captionClasses}>
                   <span>{pasteFile.name}</span>
                   <span>{`(${formatSize(pasteFile.size)})`}</span>
                 </div>
-                <MediaElement kind={pasteMediaKind} src={downloadUrl} name={pasteFile.name} />
+                <div className={mediaWrapperClasses}>
+                  <MediaElement
+                    kind={pasteMediaKind}
+                    src={downloadUrl}
+                    name={pasteFile.name}
+                    className={mediaClasses}
+                  />
+                </div>
               </div>
             ) : pendingInfo && !pasteFile ? (
               <div className={"h-[10em]"}>{pendingFileIndicator}</div>
             ) : (
               pasteFile && (
-                <div className={showFileContent ? "" : "h-[10em]"}>
+                <div className={showFileContent ? fill : "h-[10em]"}>
                   {showFileContent ? (
                     <>
-                      <div className="text-gray-500 mb-2 text-sm flex flex-row gap-2">
+                      <div className={captionClasses}>
                         <span>{pasteFile?.name}</span>
                         <span>{`(${formatSize(pasteFile.size)})`}</span>
                         {forceShowBinary && (
@@ -226,7 +263,9 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                         )}
                         {pasteLang && <span className={"grow text-right"}>{pasteLang}</span>}
                       </div>
-                      <CodeView content={pasteStringContent ?? ""} lang={pasteLang} />
+                      <div className={isFullscreen ? "flex-1 min-h-0 overflow-auto" : ""}>
+                        <CodeView content={pasteStringContent ?? ""} lang={pasteLang} />
+                      </div>
                     </>
                   ) : (
                     binaryFileIndicator

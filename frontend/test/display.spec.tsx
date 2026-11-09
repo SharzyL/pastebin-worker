@@ -213,6 +213,28 @@ describe("DisplayPaste", () => {
     expect(article.textContent).toStrictEqual(text)
   })
 
+  it("shows the paste fullscreen until Escape", async () => {
+    server.use(
+      ...mockPaste("abcd", {
+        body: new TextEncoder().encode("hello world").buffer,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+    await screen.findByRole("article")
+
+    await userEvent.click(screen.getByRole("button", { name: "Enter fullscreen" }))
+    expect(screen.getByRole("button", { name: "Exit fullscreen" })).toBeInTheDocument()
+    expect(document.body.style.overflow).toStrictEqual("hidden")
+    expect(screen.getByRole("article")).toBeInTheDocument()
+
+    await userEvent.keyboard("{Escape}")
+    expect(screen.queryByRole("button", { name: "Exit fullscreen" })).toBeNull()
+    expect(document.body.style.overflow).toStrictEqual("")
+  })
+
   it("shows placeholder with load-anyway for oversized text", async () => {
     const oversized = new Uint8Array(MAX_AUTO_FETCH_BYTES + 1)
     let getCalled = false
