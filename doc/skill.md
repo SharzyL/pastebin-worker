@@ -44,12 +44,22 @@ The response is JSON:
 
 ```json
 {
-  "url": "{{BASE_URL}}/abcd",
-  "manageUrl": "{{BASE_URL}}/abcd:<password>",
-  "decryptionUrl": "{{BASE_URL}}/d/abcd#<key>",
-  "expireAt": "2026-05-21T10:33:06.114Z"
+  "lastModifiedAt": "2026-11-10T03:08:51.000Z",
+  "createdAt": "2026-11-10T03:08:51.000Z",
+  "expireAt": "2026-11-17T03:08:51.000Z",
+  "sizeBytes": 40,
+  "location": "KV",
+  "encryptionScheme": "AES-GCM",
+  "url": "{{BASE_URL}}/tkGQ",
+  "manageUrl": "{{BASE_URL}}/tkGQ:XGxdkyeeMMF8fncbKJCpxbKc",
+  "expirationSeconds": 604800,
+  "decryptionUrl": "{{BASE_URL}}/d/tkGQ#EfPaKj_OyuPHZhoexwkrUK_iGEL8Ui6tiDUsZxmn2Uk"
 }
 ```
+
+`decryptionUrl` is added by `pb` for an encrypted paste; everything else is
+the server's answer, where `sizeBytes` is the size of what was stored (the
+ciphertext here) and a `filename` field appears when a file was uploaded.
 
 Pastes are encrypted by default, so:
 
@@ -67,7 +77,7 @@ managed from elsewhere — it is the only way to authenticate as the owner.
 
 ## Upload options
 
-- `-n <name>` — custom name (≥3 chars, returned prefixed with `~`).
+- `-n <name>` — custom name (≥3 chars from letters, digits and `+_-[]*$@,;`, returned prefixed with `~`).
 - `-e <expire>` — expiration: integer/float with unit `s`/`m`/`h`/`d`
   (default seconds). E.g. `-e 30m`, `-e 14d`.
 - `-s <password>` — set a specific management password.
@@ -89,8 +99,16 @@ pb get <name> --meta             # JSON metadata (size, dates, …)
 ```shell
 pb update <name> -c 'new content'   # password looked up from history
 pb update <manageUrl> -f file      # endpoint and password come from the URL
-pb delete <name>
+pb delete <name>                    # prints nothing on success
 pb list                             # pastes uploaded from here, with their URLs
+```
+
+`pb list` prints a table:
+
+```
+NAME  UPLOADED          EXPIRES  SIZE  ENC  FILENAME   URL
+tkGQ  2026-11-10 11:08  6d       40 B  yes             {{BASE_URL}}/d/tkGQ#EfPaKj_OyuPHZhoexwkrUK_iGEL8Ui6tiDUsZxmn2Uk
+bPfn  2026-11-10 11:08  6d       9 B        panty.jpg  {{BASE_URL}}/bPfn
 ```
 
 `update` accepts `-e`, `-s`, `-F` and `-u` like `post`; `-e` recalculates the

@@ -171,7 +171,7 @@ Upload your paste. It accept parameters in form-data:
 
 - `s`: optional. The **password** which allows you to modify and delete the paste. If not specified, the worker will generate a random string as password.
 
-- `n`: optional. The customized **name** of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$=@,;/`.
+- `n`: optional. The customized **name** of your paste. If not specified, the worker will generate a random string (4 characters by default) as the name. You need to prefix the name with `~` when fetching the paste of customized name. The name is at least 3 characters long, consisting of alphabet, digits and characters in `+_-[]*$@,;`.
 
 - `p`: optional. The flag of **private mode**. If specified to any value, the name of the paste is as long as 24 characters. No effect if `n` is used.
 
@@ -183,17 +183,17 @@ Upload your paste. It accept parameters in form-data:
 
 ```json
 {
-  "url": "https://shz.al/abcd",
-  "manageUrl": "https://shz.al/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
-  "expirationSeconds": 1209600,
-  "lastModifiedAt": "2025-05-01T10:33:06.114Z",
-  "createdAt": "2025-05-01T10:33:06.114Z",
-  "expireAt": "2025-05-05T10:33:06.114Z",
+  "lastModifiedAt": "2026-11-10T03:08:13.000Z",
+  "createdAt": "2026-11-10T03:08:13.000Z",
+  "expireAt": "2026-11-17T03:08:13.000Z",
   "sizeBytes": 4096,
   "location": "KV",
   "filename": "a.jpg",
   "highlightLanguage": "rust",
-  "encryptionScheme": "AES-GCM"
+  "encryptionScheme": "AES-GCM",
+  "url": "{{BASE_URL}}/abcd",
+  "manageUrl": "{{BASE_URL}}/abcd:x7wkFAHpyspi2PcxRaN7Shrh",
+  "expirationSeconds": 604800
 }
 ```
 

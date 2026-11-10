@@ -20,19 +20,37 @@ full HTTP API reference, see [api.md]({{BASE_URL}}/doc/api).
 ```shell
 $ curl -Fc='hello, world' {{BASE_URL}}
 {
-  "url": "{{BASE_URL}}/abcd",
-  "manageUrl": "{{BASE_URL}}/abcd:w2eHqyZGc@CQzWLN=BiJiQxZ",
-  "expirationSeconds": 1209600,
-  "expireAt": "2026-05-21T10:33:06.114Z"
+  "lastModifiedAt": "2026-11-10T03:08:13.000Z",
+  "createdAt": "2026-11-10T03:08:13.000Z",
+  "expireAt": "2026-11-17T03:08:13.000Z",
+  "sizeBytes": 12,
+  "location": "KV",
+  "url": "{{BASE_URL}}/sCMi",
+  "manageUrl": "{{BASE_URL}}/sCMi:x7wkFAHpyspi2PcxRaN7Shrh",
+  "expirationSeconds": 604800
 }
 ```
 
-Save `url` for sharing and `manageUrl` for later updates or deletion.
+Save `url` for sharing and `manageUrl` for later updates or deletion. The
+other fields are the paste's metadata, the same as `/m/<name>` returns; a
+`filename`, `highlightLanguage` or `encryptionScheme` field shows up when the
+upload set one.
 
 ### Upload a file
 
 ```shell
 $ curl -Fc=@panty.jpg {{BASE_URL}}
+{
+  "lastModifiedAt": "2026-11-10T03:08:13.000Z",
+  "createdAt": "2026-11-10T03:08:13.000Z",
+  "expireAt": "2026-11-17T03:08:13.000Z",
+  "sizeBytes": 48812,
+  "location": "R2",
+  "filename": "panty.jpg",
+  "url": "{{BASE_URL}}/Vk3d",
+  "manageUrl": "{{BASE_URL}}/Vk3d:3EtywPhWs3MhtcEsiH338CmX",
+  "expirationSeconds": 604800
+}
 ```
 
 The original filename will be sent back as the `Content-Disposition` header
@@ -61,19 +79,22 @@ maximum expiration is also enforced by the deployment.
 ```shell
 $ curl -Fc='kawaii' -Fn=hitagi {{BASE_URL}}
 {
-  "url": "{{BASE_URL}}/~hitagi",
   ...
+  "url": "{{BASE_URL}}/~hitagi",
+  "manageUrl": "{{BASE_URL}}/~hitagi:WRQfDZnR7GX5ZAJshs5cz84W",
+  "expirationSeconds": 604800
 }
 ```
 
 The custom name is at least 3 characters long and may consist of letters,
-digits, and `+_-[]*$=@,;/`. Note the leading `~` in the returned URL.
+digits, and `+_-[]*$@,;`. Note the leading `~` in the returned URL. A name
+that is taken returns `409`.
 
 Because `curl` uses `;` and `,` as field separators, names containing those
 characters need to be wrapped in extra quotes:
 
 ```shell
-$ curl -Fc=@panty.jpg -Fn='"hi/hello;g,ood"' {{BASE_URL}}
+$ curl -Fc=@panty.jpg -Fn='"hi;hello,good"' {{BASE_URL}}
 ```
 
 ### Set a custom password
@@ -97,6 +118,11 @@ the paste effectively unguessable.
 
 ```shell
 $ curl -Fc=@main.rs -Flang=rust {{BASE_URL}}
+{
+  ...
+  "highlightLanguage": "rust",
+  ...
+}
 ```
 
 The `lang` field is sent back as the `X-PB-Highlight-Language` header on
@@ -119,6 +145,23 @@ $ curl -OJ {{BASE_URL}}/~panty               # use server-supplied filename
 ```
 
 `-J` honors the `Content-Disposition` header set from the original filename.
+Headers of a paste look like this:
+
+```shell
+$ curl -I {{BASE_URL}}/~panty
+HTTP/2 200
+content-type: image/jpeg
+content-length: 48812
+content-disposition: inline; filename*=UTF-8''panty.jpg
+last-modified: Tue, 10 Nov 2026 03:08:13 GMT
+cache-control: public, max-age=600
+x-content-type-options: nosniff
+access-control-allow-origin: *
+access-control-expose-headers: Content-Disposition
+```
+
+A text paste also carries `content-security-policy: sandbox ...`, so that a
+browser opening it directly cannot touch the site's data; see `api.md`.
 
 ### Force download (attachment)
 
@@ -152,7 +195,7 @@ $ curl {{BASE_URL}}/~config | jq .
 ### Conditional fetch with `If-Modified-Since`
 
 ```shell
-$ curl -i -H 'If-Modified-Since: Wed, 01 May 2026 00:00:00 GMT' \
+$ curl -I -H 'If-Modified-Since: Wed, 11 Nov 2026 00:00:00 GMT' \
     {{BASE_URL}}/~hitagi
 HTTP/2 304
 ```
@@ -160,16 +203,20 @@ HTTP/2 304
 ## Inspecting metadata
 
 ```shell
-$ curl {{BASE_URL}}/m/abcd
+$ curl {{BASE_URL}}/m/~panty
 {
-  "lastModifiedAt": "2026-05-05T10:33:06.114Z",
-  "createdAt": "2026-05-01T10:33:06.114Z",
-  "expireAt": "2026-05-08T10:33:06.114Z",
-  "sizeBytes": 4096,
-  "location": "KV",
-  "filename": "a.jpg"
+  "lastModifiedAt": "2026-11-10T03:08:13.000Z",
+  "createdAt": "2026-11-10T03:08:13.000Z",
+  "expireAt": "2026-11-17T03:08:13.000Z",
+  "sizeBytes": 48812,
+  "location": "R2",
+  "filename": "panty.jpg"
 }
 ```
+
+`filename`, `highlightLanguage` and `encryptionScheme` are present only when
+the upload set them. `location` tells whether the content lives in KV (small
+pastes) or R2 (large ones).
 
 A `HEAD` request returns the same headers as `GET` without the body, useful
 for quickly checking size and `Content-Type`:
@@ -205,20 +252,39 @@ Use the `manageUrl` returned at upload time:
 
 ```shell
 $ curl -X PUT -Fc='kawaii~' \
-    {{BASE_URL}}/~hitagi:22@-OJWcTOH2jprTJWYadmDv
+    {{BASE_URL}}/~hitagi:WRQfDZnR7GX5ZAJshs5cz84W
+{
+  "lastModifiedAt": "2026-11-10T03:09:02.000Z",
+  "createdAt": "2026-11-10T03:08:13.000Z",
+  "expireAt": "2026-11-17T03:08:13.000Z",
+  "sizeBytes": 7,
+  "location": "KV",
+  "url": "{{BASE_URL}}/~hitagi",
+  "manageUrl": "{{BASE_URL}}/~hitagi:WRQfDZnR7GX5ZAJshs5cz84W",
+  "expirationSeconds": 604800
+}
 ```
 
-`PUT` accepts the same fields as `POST` (`c`, `e`, `s`). Note that `e`
-recalculates the expiration starting from the update time.
+`PUT` accepts the same fields as `POST` (`c`, `e`, `s`, `lang`,
+`encryption-scheme`) except `n`, and answers like `POST`. Note that `e`
+recalculates the expiration starting from the update time; without it the
+expiration is kept.
 
 ## Deleting a paste
 
 ```shell
-$ curl -X DELETE {{BASE_URL}}/~hitagi:22@-OJWcTOH2jprTJWYadmDv
+$ curl -X DELETE {{BASE_URL}}/~hitagi:WRQfDZnR7GX5ZAJshs5cz84W
 the paste will be deleted in seconds
 ```
 
 Deletion may take a few seconds to propagate globally.
+
+With a wrong password, both `PUT` and `DELETE` answer `403`:
+
+```shell
+$ curl -X DELETE {{BASE_URL}}/~hitagi:wrongpassword
+Error 403: incorrect password for paste '~hitagi'
+```
 
 ## Tips
 
@@ -260,6 +326,10 @@ Deletion may take a few seconds to propagate globally.
   chunks through the `/mpu/*` endpoints.
 
 ## Common errors
+
+Errors come as plain text, `Error <status>: <message>`, for example
+`Error 404: paste of name 'zzzz' not found` or
+`Error 400: Name should have at least 3 characters`.
 
 | Status | Meaning                                                                                                                                                 |
 | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
