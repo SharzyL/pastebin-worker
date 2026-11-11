@@ -19,7 +19,15 @@ import {
   sanitizeMime,
 } from "../../shared/mime.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
-import { getAssetPaths, renderCssLinks, streamToArrayBuffer, DARK_MODE_SCRIPT, MAX_SSR_FILE_SIZE } from "../ssrUtils.js"
+import {
+  assetLinkHeader,
+  getAssetPaths,
+  renderCssLinks,
+  renderPreloadLinks,
+  streamToArrayBuffer,
+  DARK_MODE_SCRIPT,
+  MAX_SSR_FILE_SIZE,
+} from "../ssrUtils.js"
 
 type Headers = Record<string, string>
 
@@ -105,6 +113,7 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
           headers: {
             "Content-Type": "text/html;charset=UTF-8",
             ...staticPageCacheHeader(env),
+            ...assetLinkHeader(getAssetPaths(manifest, "index.html")),
           },
         })
       }
@@ -114,7 +123,8 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
     }
 
     // CSR fallback: dynamically generate empty HTML shell
-    const { jsFile, cssPaths } = getAssetPaths(manifest, "index.html")
+    const assetPaths = getAssetPaths(manifest, "index.html")
+    const { jsFile, cssPaths, preloadPaths } = assetPaths
 
     return new Response(
       `<!doctype html>
@@ -125,6 +135,7 @@ async function handleStaticPages(request: Request, env: Env, _: ExecutionContext
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${escapeHtml(env.INDEX_PAGE_TITLE)}</title>
 ${renderCssLinks(cssPaths)}
+${renderPreloadLinks(preloadPaths)}
 <script>
 ${DARK_MODE_SCRIPT}
 </script>
@@ -139,6 +150,7 @@ ${DARK_MODE_SCRIPT}
         headers: {
           "Content-Type": "text/html;charset=UTF-8",
           ...staticPageCacheHeader(env),
+          ...assetLinkHeader(assetPaths),
         },
       },
     )
@@ -146,19 +158,27 @@ ${DARK_MODE_SCRIPT}
 
   // Handle other static assets
   if (path.startsWith("/assets/") || path === "/favicon.ico") {
-    const assetsUrl = url
+    const assetsUrl = new URL(url)
     assetsUrl.pathname = path
-    const resp = await env.ASSETS.fetch(assetsUrl)
+    // the request goes through whole so the asset store sees If-None-Match
+    // and Range and answers them itself
+    const resp = await env.ASSETS.fetch(new Request(assetsUrl, request))
     if (resp.status === 404) {
       throw new WorkerError(404, `asset '${path}' not found`)
     } else {
+      // keep the store's ETag and Last-Modified for the next conditional request
+      const headers = new Headers(resp.headers)
       const pageMime = mime.getType(path) || "text/plain"
-      return new Response(await resp.blob(), {
-        headers: {
-          "Content-Type": `${pageMime};charset=UTF-8`,
-          ...staticPageCacheHeader(env),
-        },
-      })
+      headers.set("Content-Type", `${pageMime};charset=UTF-8`)
+      // A bundle's name carries a hash of its content: the URL never comes to
+      // mean something else, so the browser can keep it for good.
+      if (path.startsWith("/assets/")) {
+        headers.set("Cache-Control", "public, max-age=31536000, immutable")
+      } else {
+        headers.delete("Cache-Control")
+        for (const [k, v] of Object.entries(staticPageCacheHeader(env))) headers.set(k, v)
+      }
+      return new Response(resp.body, { status: resp.status, headers })
     }
   }
 
@@ -364,6 +384,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
             "Content-Type": `text/html;charset=UTF-8`,
             ...pasteCacheHeader(env),
             ...lastModifiedHeader(item.metadata),
+            ...assetLinkHeader(getAssetPaths(manifest, "display.html")),
           },
         })
       }
@@ -388,6 +409,7 @@ export async function handleGet(request: Request, env: Env, ctx: ExecutionContex
         "Content-Type": `text/html;charset=UTF-8`,
         ...pasteCacheHeader(env),
         ...lastModifiedHeader(item.metadata),
+        ...assetLinkHeader(getAssetPaths(manifest, "display.html")),
       },
     })
   }

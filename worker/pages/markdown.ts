@@ -1,6 +1,6 @@
 import { escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
-import { arrayBufferToBase64, getAssetPaths, renderCssLinks } from "../ssrUtils.js"
+import { arrayBufferToBase64, getAssetPaths, renderCssLinks, renderPreloadLinks } from "../ssrUtils.js"
 import { renderMarkdownDoc } from "../../shared/markdownDoc.js"
 import { ENCRYPTED_MARKDOWN_ID } from "../../shared/constants.js"
 
@@ -49,7 +49,7 @@ interface MarkdownPage {
 }
 
 function makeMarkdownPage({ title, description, tocHtml, bodyHtml, url }: MarkdownPage): string {
-  const { jsFile, cssPaths } = getAssetPaths(manifest, "pages/render/markdown.ts")
+  const { jsFile, cssPaths, preloadPaths } = getAssetPaths(manifest, "pages/render/markdown.ts")
 
   return `<!DOCTYPE html>
 <html lang='en' class='light'>
@@ -62,6 +62,7 @@ function makeMarkdownPage({ title, description, tocHtml, bodyHtml, url }: Markdo
   <meta property='og:url' content='${escapeHtml(url)}'>
   <link rel='stylesheet' href='https://pages.github.com/assets/css/style.css'>
   ${renderCssLinks(cssPaths)}
+  ${renderPreloadLinks(preloadPaths)}
   <style>${sidebarStyles}</style>
   <script id="MathJax-script" async
           src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">

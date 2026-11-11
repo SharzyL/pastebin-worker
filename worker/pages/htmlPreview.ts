@@ -7,7 +7,7 @@
 // and the sandbox keeps the paste in an opaque origin.
 import { escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
-import { getAssetPaths } from "../ssrUtils.js"
+import { getAssetPaths, renderPreloadLinks } from "../ssrUtils.js"
 import { PASTE_SANDBOX_FLAGS } from "../../shared/mime.js"
 import {
   HTML_PREVIEW_GATE_ID,
@@ -66,7 +66,7 @@ export function makeHtmlPreview(
   const suffix = pathSuffix(ext, filename)
   const rawPath = `/${name}${suffix}${search}`
   const label = `${name}${filename ? ` / ${filename}` : (ext ?? "")}`
-  const { jsFile } = getAssetPaths(manifest, "pages/render/htmlPreview.ts")
+  const { jsFile, preloadPaths } = getAssetPaths(manifest, "pages/render/htmlPreview.ts")
   const keepKey = encryptionScheme ? " data-keep-key" : ""
 
   // The frame stays empty until the viewer agrees to render the paste. The
@@ -89,6 +89,7 @@ export function makeHtmlPreview(
   <base href="/">
   <title>${escapeHtml(label)} - ${escapeHtml(site)}</title>
   <style>${styles}</style>
+  ${renderPreloadLinks(preloadPaths)}
   <script type="module" src="/${jsFile}"></script>
 </head>
 <body>

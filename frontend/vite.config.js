@@ -46,7 +46,13 @@ export default defineConfig(({ mode }) => {
         // `visited` tracks manifest keys (strings), not entry objects: that
         // way the cycle guard doesn't rely on the JSON parse cache returning
         // the same object reference on repeated lookups.
+        //
+        // The same walk collects every JS chunk the entry imports statically,
+        // however deep. The page lists them as modulepreload so the browser
+        // asks for all of them at once: left to the module graph, each import
+        // level costs a round trip before the next one is even known.
         const css = new Set()
+        const preload = new Set()
         const visited = new Set()
         const walk = (key) => {
           if (!key || visited.has(key)) return
@@ -54,11 +60,14 @@ export default defineConfig(({ mode }) => {
           const e = manifest[key]
           if (!e) return
           for (const p of e.css || []) css.add(p)
-          for (const k of e.imports || []) walk(k)
+          for (const k of e.imports || []) {
+            if (manifest[k]?.file) preload.add(manifest[k].file)
+            walk(k)
+          }
         }
         walk(entryKey)
         const cssPaths = css.size > 0 ? [...css] : ["assets/style.css"]
-        return { jsFile, cssPaths }
+        return { jsFile, cssPaths, preloadPaths: [...preload] }
       }
       const slim = {
         "index.html": resolveEntry("index.html"),

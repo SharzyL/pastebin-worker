@@ -11,6 +11,7 @@ import {
   arrayBufferToBase64,
   getAssetPaths,
   renderCssLinks,
+  renderPreloadLinks,
   streamToArrayBuffer,
   DARK_MODE_SCRIPT,
   MAX_SSR_FILE_SIZE,
@@ -97,7 +98,7 @@ export async function renderDisplayPage(
     html += decode(value.buffer as ArrayBuffer)
   }
 
-  const { jsFile, cssPaths } = getAssetPaths(manifest, "display.html")
+  const { jsFile, cssPaths, preloadPaths } = getAssetPaths(manifest, "display.html")
 
   return `<!doctype html>
 <html lang="en">
@@ -109,6 +110,7 @@ export async function renderDisplayPage(
 <link rel="canonical" href="${escapeHtml(pageUrl)}" />
 <meta property="og:url" content="${escapeHtml(pageUrl)}" />
 ${renderCssLinks(cssPaths)}
+${renderPreloadLinks(preloadPaths)}
 <script>
 ${DARK_MODE_SCRIPT}
 </script>

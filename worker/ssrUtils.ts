@@ -7,16 +7,43 @@ export interface SsrAssetPaths {
   // an entry like index.html now reaches both a Tailwind/component-styles
   // chunk and a highlight-theme chunk through different transitive imports.
   cssPaths: string[]
+  // Every JS chunk the entry imports statically, however deep. Without the
+  // hints the browser learns of each import level only after the previous one
+  // arrived, a round trip per level.
+  preloadPaths: string[]
 }
 
 export type SsrManifest = Record<string, SsrAssetPaths>
 
 export function getAssetPaths(manifest: SsrManifest, entryKey: string): SsrAssetPaths {
-  return manifest[entryKey] ?? { jsFile: `assets/${entryKey.replace(".html", ".js")}`, cssPaths: ["assets/style.css"] }
+  return (
+    manifest[entryKey] ?? {
+      jsFile: `assets/${entryKey.replace(".html", ".js")}`,
+      cssPaths: ["assets/style.css"],
+      preloadPaths: [],
+    }
+  )
 }
 
 export function renderCssLinks(cssPaths: readonly string[]): string {
   return cssPaths.map((p) => `<link rel="stylesheet" href="/${p}">`).join("")
+}
+
+// No crossorigin attribute: the page's module script has none either, and a
+// preload only counts when its credentials mode matches the script's.
+export function renderPreloadLinks(preloadPaths: readonly string[]): string {
+  return preloadPaths.map((p) => `<link rel="modulepreload" href="/${p}">`).join("")
+}
+
+// The same hints as a Link header. The header reaches the browser before the
+// body does, and Cloudflare turns it into a 103 Early Hints response once that
+// is enabled for the zone, so the chunks load while the worker still renders.
+export function assetLinkHeader({ cssPaths, preloadPaths }: SsrAssetPaths): Record<string, string> {
+  const links = [
+    ...cssPaths.map((p) => `</${p}>; rel=preload; as=style`),
+    ...preloadPaths.map((p) => `</${p}>; rel=modulepreload`),
+  ]
+  return links.length > 0 ? { Link: links.join(", ") } : {}
 }
 
 export const DARK_MODE_SCRIPT = `(function() {
