@@ -31,8 +31,9 @@ export function renderCssLinks(cssPaths: readonly string[]): string {
 
 // No crossorigin attribute: the page's module script has none either, and a
 // preload only counts when its credentials mode matches the script's.
-export function renderPreloadLinks(preloadPaths: readonly string[]): string {
-  return preloadPaths.map((p) => `<link rel="modulepreload" href="/${p}">`).join("")
+// `deployUrl` is for a page whose base URL is not the site root.
+export function renderPreloadLinks(preloadPaths: readonly string[], deployUrl = ""): string {
+  return preloadPaths.map((p) => `<link rel="modulepreload" href="${deployUrl}/${p}">`).join("")
 }
 
 // The same hints as a Link header. The header reaches the browser before the
