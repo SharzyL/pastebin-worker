@@ -75,8 +75,9 @@ export async function renderPaste(frame: HTMLIFrameElement) {
   document.getElementById(HTML_PREVIEW_GATE_ID)?.remove()
   // `data-type` is what the server decided to render the paste as (see
   // handleRead): the response header says text/plain for HTML. HTML goes in
-  // as srcdoc, so relative links in it resolve against the site root (the
-  // page's <base>). Other document types are loaded from the raw URL, which
+  // as srcdoc, with the page's base URL, `about:srcdoc`: links to its own
+  // sections work, relative links to this site do not (see
+  // worker/pages/htmlPreview.ts). Other document types are loaded from the raw URL, which
   // the server serves under a CSP sandbox, or, when encrypted, from a data
   // URL. Never from a blob URL: a blob belongs to this site's origin, and
   // opened outside the sandboxed frame it would run as this site.

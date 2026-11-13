@@ -2,9 +2,15 @@
 // the paste can and cannot do, and, once the viewer agrees, the paste
 // rendered in a sandboxed iframe below the header. The browser fetches the
 // paste (and decrypts it if needed), reads its title, and puts it in the
-// frame as srcdoc or a blob URL: the raw URL itself never serves HTML. The
+// frame as srcdoc or a data URL: the raw URL itself never serves HTML. The
 // header is in a document of its own so the paste cannot hide or cover it,
 // and the sandbox keeps the paste in an opaque origin.
+//
+// A srcdoc document resolves URLs against this page's base URL, which is
+// therefore `about:srcdoc`, the frame's own URL: links to sections of the
+// paste (`#section`) then stay in the paste, and relative links to this site
+// lead nowhere (a paste names other pastes by their full URL). So every URL
+// of this page itself is absolute.
 import { escapeHtml } from "../common.js"
 import manifest from "../../dist/frontend/.vite/ssr-manifest.json"
 import { getAssetPaths, renderPreloadLinks } from "../ssrUtils.js"
@@ -63,8 +69,9 @@ export function makeHtmlPreview(
   { name, ext, filename, search, encryptionScheme, type }: HtmlPreviewOptions,
 ): string {
   const site = env.INDEX_PAGE_TITLE || "Pastebin"
+  const deployUrl = env.DEPLOY_URL
   const suffix = pathSuffix(ext, filename)
-  const rawPath = `/${name}${suffix}${search}`
+  const rawUrl = `${deployUrl}/${name}${suffix}${search}`
   const label = `${name}${filename ? ` / ${filename}` : (ext ?? "")}`
   const { jsFile, preloadPaths } = getAssetPaths(manifest, "pages/render/htmlPreview.ts")
   const keepKey = encryptionScheme ? " data-keep-key" : ""
@@ -75,9 +82,11 @@ export function makeHtmlPreview(
   // the page carries nothing derived from the content), and renders it as
   // `data-type`.
   const scheme = encryptionScheme ? ` data-scheme="${escapeHtml(encryptionScheme)}"` : ""
-  const frame = `<iframe id="${HTML_PREVIEW_ID}" sandbox="${PASTE_SANDBOX_FLAGS}" title="Paste content" data-src="${escapeHtml(rawPath)}" data-type="${escapeHtml(type)}"${scheme} hidden></iframe>`
-  const sourceLink = `<a href="/d/${escapeHtml(name + suffix)}"${keepKey}>View source</a>`
-  const links = encryptionScheme ? sourceLink : `${sourceLink}<a href="/${escapeHtml(name + suffix)}?a">Download</a>`
+  const frame = `<iframe id="${HTML_PREVIEW_ID}" sandbox="${PASTE_SANDBOX_FLAGS}" title="Paste content" data-src="${escapeHtml(rawUrl)}" data-type="${escapeHtml(type)}"${scheme} hidden></iframe>`
+  const sourceLink = `<a href="${escapeHtml(`${deployUrl}/d/${name}${suffix}`)}"${keepKey}>View source</a>`
+  const links = encryptionScheme
+    ? sourceLink
+    : `${sourceLink}<a href="${escapeHtml(`${deployUrl}/${name}${suffix}?a`)}">Download</a>`
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -85,16 +94,16 @@ export function makeHtmlPreview(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <!-- srcdoc documents resolve relative URLs against this page's base: make it the site root, as for the raw URL -->
-  <base href="/">
+  <!-- the paste's base URL too: see the top of pages/htmlPreview.ts -->
+  <base href="about:srcdoc">
   <title>${escapeHtml(label)} - ${escapeHtml(site)}</title>
   <style>${styles}</style>
-  ${renderPreloadLinks(preloadPaths)}
-  <script type="module" src="/${jsFile}"></script>
+  ${renderPreloadLinks(preloadPaths, deployUrl)}
+  <script type="module" src="${deployUrl}/${jsFile}"></script>
 </head>
 <body>
 <header class="bar">
-  <a class="site" href="/">${escapeHtml(site)}</a>
+  <a class="site" href="${escapeHtml(deployUrl)}/">${escapeHtml(site)}</a>
   <span class="label">${escapeHtml(label)}${encryptionScheme ? " (encrypted)" : ""}</span>
   <nav class="links">${links}</nav>
 </header>

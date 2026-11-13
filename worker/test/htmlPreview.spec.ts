@@ -63,7 +63,8 @@ describe("preview page", () => {
 
   it("frames the raw paste in a sandbox below a header", async () => {
     const url = (await upload(ctx, { c: html })).url
-    const name = new URL(url).pathname.slice(1)
+    const { origin, pathname } = new URL(url)
+    const name = pathname.slice(1)
     const resp = await workerFetch(ctx, addRole(`${url}.html`, "h"))
     expect(resp.status).toBe(200)
     expect(resp.headers.get("Content-Type")).toBe("text/html;charset=UTF-8")
@@ -71,28 +72,34 @@ describe("preview page", () => {
     expect(resp.headers.has("Content-Security-Policy")).toBe(false)
     const page = await resp.text()
     expect(page).toContain(
-      `<iframe id="html-preview" sandbox="${PASTE_SANDBOX_FLAGS}" title="Paste content" data-src="/${name}.html" data-type="text/html" hidden>`,
+      `<iframe id="html-preview" sandbox="${PASTE_SANDBOX_FLAGS}" title="Paste content" data-src="${origin}/${name}.html" data-type="text/html" hidden>`,
     )
     expect(PASTE_SANDBOX_FLAGS).not.toContain("allow-same-origin")
     expect(PASTE_SANDBOX_FLAGS).not.toContain("allow-top-navigation")
-    expect(page).toContain(`href="/d/${name}.html"`)
-    expect(page).toContain(`href="/${name}.html?a"`)
+    expect(page).toContain(`href="${origin}/d/${name}.html"`)
+    expect(page).toContain(`href="${origin}/${name}.html?a"`)
     // nothing is loaded until the viewer agrees
     expect(/<iframe[^>]*>/.exec(page)![0]).not.toContain(" src=")
     expect(page).toContain('id="html-preview-gate"')
     expect(page).toContain('<button id="html-preview-render"')
     expect(page).toContain("It can</h2>")
     expect(page).toContain("It cannot</h2>")
-    expect(page).toContain('<script type="module" src="/')
+    expect(page).toContain(`<script type="module" src="${origin}/`)
+    // the paste's base URL is its own, so "#section" stays in the paste; the
+    // page's own URLs are absolute, so they do not depend on it
+    expect(page).toContain('<base href="about:srcdoc">')
+    expect(page).toContain(`<a class="site" href="${origin}/">`)
+    expect(page).not.toMatch(/(?:href|src)="\//)
     // nothing of the paste is in the page
     expect(page).not.toContain("hello")
   })
 
   it("carries the filename and query string into the frame", async () => {
     const url = (await upload(ctx, { c: html })).url
-    const name = new URL(url).pathname.slice(1)
+    const { origin, pathname } = new URL(url)
+    const name = pathname.slice(1)
     const page = await (await workerFetch(ctx, addRole(`${url}/my%20page.html?mime=text/html`, "h"))).text()
-    expect(page).toContain(`data-src="/${name}/my%20page.html?mime=text/html" data-type="text/html"`)
+    expect(page).toContain(`data-src="${origin}/${name}/my%20page.html?mime=text/html" data-type="text/html"`)
     expect(page).toContain(`${name} / my page.html`)
   })
 
@@ -102,27 +109,30 @@ describe("preview page", () => {
       /<iframe[^>]*>/.exec(await (await workerFetch(ctx, addRole(u, "h"))).text())![0]
     // no hint at all
     const plain = (await upload(ctx, { c: html })).url
-    expect(await frameOf(plain)).toContain(`data-src="/${name(plain)}" data-type="text/html"`)
+    const { origin } = new URL(plain)
+    expect(await frameOf(plain)).toContain(`data-src="${origin}/${name(plain)}" data-type="text/html"`)
     // the uploaded filename is not a document type
     const txt = (await upload(ctx, { c: { content: new Blob([html]), filename: "notes.txt" } })).url
-    expect(await frameOf(txt)).toContain(`data-src="/${name(txt)}" data-type="text/html"`)
+    expect(await frameOf(txt)).toContain(`data-src="${origin}/${name(txt)}" data-type="text/html"`)
     // the uploaded filename is a document type
     const svg = (await upload(ctx, { c: { content: new Blob([html]), filename: "pic.svg" } })).url
-    expect(await frameOf(svg)).toContain(`data-src="/${name(svg)}" data-type="image/svg+xml"`)
+    expect(await frameOf(svg)).toContain(`data-src="${origin}/${name(svg)}" data-type="image/svg+xml"`)
     // explicit hints in the URL are taken as is
-    expect(await frameOf(`${plain}.txt`)).toContain(`data-src="/${name(plain)}.txt" data-type="text/plain"`)
+    expect(await frameOf(`${plain}.txt`)).toContain(`data-src="${origin}/${name(plain)}.txt" data-type="text/plain"`)
     expect(await frameOf(`${plain}?mime=text/plain`)).toContain(
-      `data-src="/${name(plain)}?mime=text/plain" data-type="text/plain"`,
+      `data-src="${origin}/${name(plain)}?mime=text/plain" data-type="text/plain"`,
     )
     expect(await frameOf(`${plain}?mime=TEXT/HTML;charset=utf-8`)).toContain(
-      `data-src="/${name(plain)}?mime=TEXT/HTML;charset=utf-8" data-type="text/html"`,
+      `data-src="${origin}/${name(plain)}?mime=TEXT/HTML;charset=utf-8" data-type="text/html"`,
     )
-    expect(await frameOf(`${plain}?x=1`)).toContain(`data-src="/${name(plain)}?x=1" data-type="text/html"`)
+    expect(await frameOf(`${plain}?x=1`)).toContain(`data-src="${origin}/${name(plain)}?x=1" data-type="text/html"`)
     // the encrypted frame gets the same treatment
     const enc = (await upload(ctx, { c: html, "encryption-scheme": "AES-GCM" })).url
-    expect(await frameOf(enc)).toContain(`data-src="/${name(enc)}" data-type="text/html" data-scheme="AES-GCM"`)
+    expect(await frameOf(enc)).toContain(
+      `data-src="${origin}/${name(enc)}" data-type="text/html" data-scheme="AES-GCM"`,
+    )
     expect(await frameOf(`${enc}.svg`)).toContain(
-      `data-src="/${name(enc)}.svg" data-type="image/svg+xml" data-scheme="AES-GCM"`,
+      `data-src="${origin}/${name(enc)}.svg" data-type="image/svg+xml" data-scheme="AES-GCM"`,
     )
   })
 
@@ -137,17 +147,18 @@ describe("preview page", () => {
 
   it("lets the browser decrypt an encrypted paste", async () => {
     const url = (await upload(ctx, { c: html, "encryption-scheme": "AES-GCM" })).url
-    const name = new URL(url).pathname.slice(1)
+    const { origin, pathname } = new URL(url)
+    const name = pathname.slice(1)
     const resp = await workerFetch(ctx, addRole(`${url}.html`, "h"))
     expect(resp.status).toBe(200)
     const page = await resp.text()
     expect(page).toContain(
-      `<iframe id="html-preview" sandbox="${PASTE_SANDBOX_FLAGS}" title="Paste content" data-src="/${name}.html" data-type="text/html" data-scheme="AES-GCM" hidden>`,
+      `<iframe id="html-preview" sandbox="${PASTE_SANDBOX_FLAGS}" title="Paste content" data-src="${origin}/${name}.html" data-type="text/html" data-scheme="AES-GCM" hidden>`,
     )
     expect(page).toContain('id="html-preview-status"')
-    expect(page).toContain(`href="/d/${name}.html" data-keep-key`)
+    expect(page).toContain(`href="${origin}/d/${name}.html" data-keep-key`)
     expect(page).toContain('id="html-preview-gate"')
-    expect(page).toContain('<script type="module" src="/')
+    expect(page).toContain(`<script type="module" src="${origin}/`)
     expect(page).not.toContain("hello")
   })
 
