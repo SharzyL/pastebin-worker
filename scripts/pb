@@ -62,29 +62,47 @@ def _format_size(n: int) -> str:
 
 
 class ProgressBar:
-    """Single-line progress bar rendered to stderr; no-op when stderr isn't a TTY."""
+    """Single-line progress bar rendered to stderr; no-op when stderr isn't a TTY.
 
-    def __init__(self, total: int, label: str = "upload") -> None:
+    The bar stays hidden until the transfer has run for SHOW_AFTER seconds, so
+    quick requests leave nothing behind. With an unknown total (None), only the
+    byte count is shown.
+    """
+
+    SHOW_AFTER = 0.5
+
+    def __init__(self, total: Optional[int], label: str = "upload") -> None:
         self.total = total
         self.done = 0
         self.label = label
         # Suppress the bar when verbose logging is on: its per-part debug lines
         # already trace progress and the \r-redraw would otherwise interleave.
         self.tty = sys.stderr.isatty() and not logger.isEnabledFor(logging.DEBUG)
+        self.start = time.monotonic()
         self.last_render = 0.0
+        self.shown = False
         self.width = 30
 
     def update(self, delta: int) -> None:
-        self.done = min(self.done + delta, self.total)
-        self._render(force=self.done >= self.total)
+        self.done += delta
+        if self.total is not None:
+            self.done = min(self.done, self.total)
+        self._render(force=self.total is not None and self.done >= self.total)
 
     def _render(self, force: bool = False) -> None:
         if not self.tty:
             return
         now = time.monotonic()
+        if now - self.start < self.SHOW_AFTER:
+            return
         if not force and now - self.last_render < 0.1:
             return
         self.last_render = now
+        self.shown = True
+        if self.total is None:
+            sys.stderr.write(f"\r{self.label} {_format_size(self.done)}")
+            sys.stderr.flush()
+            return
         frac = self.done / self.total if self.total > 0 else 1.0
         filled = int(self.width * frac)
         if filled >= self.width:
@@ -99,7 +117,8 @@ class ProgressBar:
         sys.stderr.flush()
 
     def close(self) -> None:
-        if self.tty:
+        if self.shown:
+            self._render(force=True)
             sys.stderr.write("\n")
             sys.stderr.flush()
 
@@ -127,6 +146,24 @@ class ProgressReader:
         if chunk:
             self.on_read(len(chunk))
         return chunk
+
+
+def read_with_progress(resp: requests.Response, label: str = "download") -> bytes:
+    """Drain a `stream=True` response, drawing a ProgressBar as bytes arrive."""
+    # Content-Length counts the bytes on the wire, but iter_content yields
+    # decoded ones, so it is only a usable total when no content coding applies.
+    length = resp.headers.get("Content-Length", "")
+    encoded = resp.headers.get("Content-Encoding", "identity") != "identity"
+    total = int(length) if length.isdigit() and not encoded else None
+    bar = ProgressBar(total, label=label)
+    chunks: list = []
+    try:
+        for chunk in resp.iter_content(chunk_size=64 * 1024):
+            chunks.append(chunk)
+            bar.update(len(chunk))
+    finally:
+        bar.close()
+    return b"".join(chunks)
 
 
 def _import_aesgcm():
@@ -782,7 +819,24 @@ def post_or_put(
         return
 
     try:
-        resp = requests.request(method, url, data=data, files=files or None)
+        if body is None:
+            resp = requests.request(method, url, data=data)
+        else:
+            # Encode the multipart form up front, then stream it through
+            # ProgressReader so the bar follows requests as it sends the body.
+            prepped = requests.Request(method, url, data=data, files=files).prepare()
+            encoded_body = prepped.body
+            assert isinstance(encoded_body, bytes)
+            bar = ProgressBar(len(encoded_body), label="upload")
+            try:
+                resp = requests.request(
+                    method,
+                    url,
+                    data=ProgressReader(encoded_body, bar.update),
+                    headers={"Content-Type": prepped.headers["Content-Type"]},
+                )
+            finally:
+                bar.close()
     except requests.RequestException as e:
         die(f"request failed: {e}")
         return  # for type-checker; die() exits
@@ -968,7 +1022,7 @@ def cmd_get(args: argparse.Namespace, domain: str) -> None:
         return
 
     try:
-        resp = requests.get(base, allow_redirects=False)
+        resp = requests.get(base, allow_redirects=False, stream=True)
     except requests.RequestException as e:
         die(f"request failed: {e}")
         return
@@ -985,7 +1039,11 @@ def cmd_get(args: argparse.Namespace, domain: str) -> None:
         _print_json(payload)
         return
 
-    content = resp.content
+    try:
+        content = read_with_progress(resp)
+    except requests.RequestException as e:
+        die(f"download failed: {e}")
+        return
     scheme = resp.headers.get(ENCRYPTION_HEADER)
     decrypted = False
     if scheme and not args.no_decrypt:
