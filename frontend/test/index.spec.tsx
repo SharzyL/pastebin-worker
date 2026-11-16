@@ -84,17 +84,18 @@ describe("Pastebin", () => {
     expect(lastUpload).toMatch(/name="encryption-scheme"\r\n\r\nAES-GCM\r\n/)
     expect(lastUpload).not.toContain("something")
 
-    const urlShow = screen.getByRole("textbox", { name: "Raw URL" })
-    expect((urlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.url)
-
     const manageUrlShow = screen.getByRole("textbox", { name: "Manage URL" })
     expect((manageUrlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.manageUrl)
 
     // the html preview URL is under "More" for a plain-text paste, with the key
     expect(screen.queryByRole("textbox", { name: "HTML URL" })).toBeNull()
+    // so is the raw URL of an encrypted paste
+    expect(screen.queryByRole("textbox", { name: /^Raw URL/ })).toBeNull()
     await userEvent.click(screen.getByRole("button", { name: "More" }))
     const htmlUrlShow = screen.getByRole<HTMLInputElement>("textbox", { name: "HTML URL" })
     expect(htmlUrlShow.value).toMatch(/^https:\/\/example\.com\/h\/abcd#.+/)
+    const urlShow = screen.getByRole<HTMLInputElement>("textbox", { name: "Raw URL (encrypted)" })
+    expect(urlShow.value).toStrictEqual(mockedPasteUpload.url)
 
     const qrButtons = screen.getAllByRole("button", { name: "Show QR code" })
     expect(qrButtons.length).toBeGreaterThanOrEqual(3)
@@ -104,6 +105,18 @@ describe("Pastebin", () => {
     expect(screen.getByRole("img", { name: "QR code" })).toBeInTheDocument()
     await userEvent.keyboard("{Escape}")
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("shows the raw URL of an unencrypted paste outside More", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    await userEvent.click(screen.getByRole("switch", { name: "Client-side encryption" }))
+    await userEvent.type(screen.getByRole("textbox", { name: "Paste editor" }), "something")
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }))
+
+    const urlShow = await screen.findByRole<HTMLInputElement>("textbox", { name: "Raw URL" }, { timeout: 3000 })
+    expect(urlShow.value).toStrictEqual(mockedPasteUpload.url)
+    await userEvent.click(screen.getByRole("button", { name: "More" }))
+    expect(screen.queryByRole("textbox", { name: "Raw URL (encrypted)" })).toBeNull()
   })
 
   it("moves focus from the editor to the language box on Shift+Tab", async () => {
@@ -164,12 +177,12 @@ describe("Pastebin", () => {
     // nothing to upload yet
     await userEvent.click(editor)
     await userEvent.keyboard("{Control>}{Enter}{/Control}")
-    expect(screen.queryByRole("textbox", { name: "Raw URL" })).toBeNull()
+    expect(screen.queryByRole("textbox", { name: "Manage URL" })).toBeNull()
 
     await userEvent.type(editor, "something")
     await userEvent.keyboard("{Control>}{Enter}{/Control}")
-    const urlShow = await screen.findByRole("textbox", { name: "Raw URL" }, { timeout: 3000 })
-    expect((urlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.url)
+    const urlShow = await screen.findByRole("textbox", { name: "Manage URL" }, { timeout: 3000 })
+    expect((urlShow as HTMLInputElement).value).toStrictEqual(mockedPasteUpload.manageUrl)
     expect((editor as HTMLTextAreaElement).value).toStrictEqual("something")
   })
 
@@ -210,7 +223,7 @@ describe("Pastebin", () => {
     await userEvent.click(screen.getByRole("button", { name: "Enter fullscreen" }))
     await userEvent.keyboard("{Control>}{Enter}{/Control}")
     expect(screen.getByRole("button", { name: "Enter fullscreen" })).toBeInTheDocument()
-    await screen.findByRole("textbox", { name: "Raw URL" }, { timeout: 3000 })
+    await screen.findByRole("textbox", { name: "Manage URL" }, { timeout: 3000 })
   })
 
   it("refuse illegal settings", async () => {

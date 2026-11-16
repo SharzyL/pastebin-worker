@@ -169,6 +169,21 @@ export function UploadedPanel({
       isEncrypted,
     )
 
+  // an encrypted paste's raw content is ciphertext, of little use to most, so it goes under "More"
+  const rawUrlField = (pasteResponse: PasteResponse) =>
+    urlInput(
+      isEncrypted ? "Raw URL (encrypted)" : "Raw URL",
+      pasteResponse.url,
+      <UrlTooltip
+        desc={
+          isEncrypted
+            ? "Returns the raw paste content — encrypted, since this paste uses client-side encryption. Decrypt it yourself with the key."
+            : "Returns the raw paste content directly, with the inferred Content-Type."
+        }
+        flags={RAW_URL_FLAGS}
+      />,
+    )
+
   return (
     <Card classNames={mergeClasses({ base: tst }, { base: className })} {...rest}>
       <CardHeader className="text-2xl pl-4 pb-2">Uploaded Paste</CardHeader>
@@ -233,18 +248,7 @@ export function UploadedPanel({
               />
               {isMarkdown && markdownUrlField(pasteResponse)}
               {isHtml && htmlUrlField(pasteResponse)}
-              {urlInput(
-                "Raw URL",
-                pasteResponse.url,
-                <UrlTooltip
-                  desc={
-                    encryptionKey
-                      ? "Returns the raw paste content — encrypted, since this paste uses client-side encryption. Decrypt it yourself with the key."
-                      : "Returns the raw paste content directly, with the inferred Content-Type."
-                  }
-                  flags={RAW_URL_FLAGS}
-                />,
-              )}
+              {!isEncrypted && rawUrlField(pasteResponse)}
               {urlInput(
                 "Manage URL",
                 pasteResponse.manageUrl,
@@ -270,6 +274,7 @@ export function UploadedPanel({
                 <div id="uploaded-paste-more">
                   {!isMarkdown && markdownUrlField(pasteResponse)}
                   {!isHtml && htmlUrlField(pasteResponse)}
+                  {isEncrypted && rawUrlField(pasteResponse)}
                   {!isEncrypted &&
                     isUrlPaste &&
                     urlInput(
