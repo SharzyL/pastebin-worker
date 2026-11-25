@@ -1,7 +1,8 @@
 import { describe, it, vi, expect, beforeAll, afterEach, afterAll } from "vitest"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { PasteBin } from "../pages/PasteBin.js"
 import { HljsProvider } from "../utils/highlight-client.js"
+import { renamePastedFile } from "../components/PasteFileConfirmModal.js"
 
 export const mockedPasteUpload: PasteResponse = {
   url: "https://example.com/abcd",
@@ -224,6 +225,57 @@ describe("Pastebin", () => {
     await userEvent.keyboard("{Control>}{Enter}{/Control}")
     expect(screen.getByRole("button", { name: "Enter fullscreen" })).toBeInTheDocument()
     await screen.findByRole("textbox", { name: "Manage URL" }, { timeout: 3000 })
+  })
+
+  // jsdom has no DataTransfer; fireEvent passes a plain clipboardData object through
+  function pasteClipboard(target: Element, files: File[], text = "") {
+    fireEvent.paste(target, {
+      clipboardData: { files, getData: (type: string) => (type === "text/plain" ? text : "") },
+    })
+  }
+
+  it("offers a pasted file as the paste content", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    pasteClipboard(editor, [new File(["hello"], "notes.txt", { type: "text/plain" })])
+
+    const dialog = await screen.findByRole("dialog", { name: "Use pasted file" })
+    expect(dialog).toHaveTextContent("notes.txt")
+    expect(dialog).toHaveTextContent("5 Bytes")
+    expect(screen.getByRole("button", { name: "Use as paste" })).toHaveFocus()
+
+    await userEvent.keyboard("{Enter}")
+    expect(screen.queryByRole("dialog", { name: "Use pasted file" })).toBeNull()
+    expect(screen.queryByRole("textbox", { name: "Paste editor" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Select file" })).toHaveTextContent("notes.txt")
+  })
+
+  it("keeps the editor when the pasted file is declined", async () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    pasteClipboard(document.body, [new File(["x"], "a.bin"), new File(["y"], "b.bin")])
+
+    const dialog = await screen.findByRole("dialog", { name: "Use pasted file" })
+    expect(dialog).toHaveTextContent("only the first is used")
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(screen.queryByRole("dialog", { name: "Use pasted file" })).toBeNull()
+    expect(screen.getByRole("textbox", { name: "Paste editor" })).toBeInTheDocument()
+  })
+
+  it("pastes as text when the clipboard also holds text", () => {
+    render(<PasteBin config={__WRANGLER_CONFIG__} />)
+    const editor = screen.getByRole("textbox", { name: "Paste editor" })
+    pasteClipboard(editor, [new File(["png"], "image.png", { type: "image/png" })], "a table cell")
+    expect(screen.queryByRole("dialog", { name: "Use pasted file" })).toBeNull()
+  })
+
+  it("names a pasted screenshot by the time of the paste", () => {
+    const now = new Date(2026, 10, 25, 15, 30, 12)
+    const shot = new File(["png"], "image.png", { type: "image/png" })
+    const renamed = renamePastedFile(shot, now)
+    expect(renamed.name).toStrictEqual("pasted-20261125-153012.png")
+    expect(renamed.type).toStrictEqual("image/png")
+    const named = new File(["x"], "diagram.png", { type: "image/png" })
+    expect(renamePastedFile(named, now)).toBe(named)
   })
 
   it("refuse illegal settings", async () => {

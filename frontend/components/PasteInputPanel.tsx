@@ -1,13 +1,15 @@
 import type { CardProps } from "./ui/index.js"
 import { Card, CardBody, Tab, Tabs } from "./ui/index.js"
 import type { DragEvent } from "react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { formatSize, verifyFileSize } from "../utils/utils.js"
 import { XIcon } from "./icons.js"
 import { cardOverrides, tst } from "../utils/overrides.js"
 import { CodeEditor } from "./CodeEditor.js"
 import { FullscreenToggle } from "./FullscreenToggle.js"
 import { useFullscreen } from "../utils/useFullscreen.js"
+import type { PastedFile } from "./PasteFileConfirmModal.js"
+import { PasteFileConfirmModal, renamePastedFile } from "./PasteFileConfirmModal.js"
 
 export type EditKind = "edit" | "file"
 
@@ -64,6 +66,33 @@ export function PasteInputPanel({
     }
     onStateChange({ ...state, editKind: "file", file })
   }
+
+  // A file pasted anywhere on the page (Ctrl+V / Cmd+V) is offered as the
+  // paste content, after a confirmation. A clipboard that also holds text is
+  // left to paste as text: copying from office apps or web pages often adds
+  // an image of the selection, and Finder adds the file's icon.
+  const [pastedFile, setPastedFile] = useState<PastedFile | null>(null)
+  function onPaste(e: ClipboardEvent) {
+    if (e.defaultPrevented || isPasteLoading || !e.clipboardData) return
+    const files = Array.from(e.clipboardData.files)
+    if (files.length === 0 || e.clipboardData.getData("text/plain") !== "") return
+    e.preventDefault()
+    const file = renamePastedFile(files[0])
+    const [ok, msg] = verifyFileSize(file.size, config, maxFileSize)
+    if (!ok) {
+      showModal("File too large", msg)
+      return
+    }
+    setPastedFile({ file, count: files.length })
+  }
+  // subscribe once; the listener always calls the latest onPaste
+  const onPasteRef = useRef(onPaste)
+  onPasteRef.current = onPaste
+  useEffect(() => {
+    const listener = (e: ClipboardEvent) => onPasteRef.current(e)
+    document.addEventListener("paste", listener)
+    return () => document.removeEventListener("paste", listener)
+  }, [])
 
   function onDrop(e: DragEvent) {
     e.preventDefault()
@@ -212,6 +241,15 @@ export function PasteInputPanel({
           </Tabs>
         </CardBody>
       </Card>
+      <PasteFileConfirmModal
+        pasted={pastedFile}
+        currentFile={state.file}
+        onConfirm={(file) => {
+          setPastedFile(null)
+          setFile(file)
+        }}
+        onCancel={() => setPastedFile(null)}
+      />
     </div>
   )
 }

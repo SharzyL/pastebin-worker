@@ -222,7 +222,7 @@ export function PasteBin({ config }: { config: Env }) {
         .
       </p>
       <p className="my-2">
-        <b>Usage</b>: paste text or drop a file, then share the returned URL. You can also use{" "}
+        <b>Usage</b>: paste text, or drop or paste a file, then share the returned URL. You can also use{" "}
         <Link className={tst} href={`${config.DEPLOY_URL}/doc/curl`}>
           curl
         </Link>
