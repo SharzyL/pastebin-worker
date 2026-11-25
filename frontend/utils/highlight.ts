@@ -20,6 +20,27 @@ export function highlightHTML(hljs: HLJSApi | undefined, lang: string | undefine
   return escapeHtml(content)
 }
 
+// Splits the output of `highlightHTML` into lines. A span that crosses a line
+// break (a multi-line comment or string) is closed at the end of the line and
+// reopened at the start of the next one, so each line is well-formed HTML.
+export function splitHighlightedLines(html: string): string[] {
+  const lines: string[] = []
+  const openTags: string[] = []
+  let line = ""
+  for (const [token] of html.matchAll(/<span[^>]*>|<\/span>|\n|[^<\n]+/g)) {
+    if (token === "\n") {
+      lines.push(line + "</span>".repeat(openTags.length))
+      line = openTags.join("")
+    } else {
+      if (token === "</span>") openTags.pop()
+      else if (token.startsWith("<")) openTags.push(token)
+      line += token
+    }
+  }
+  lines.push(line)
+  return lines
+}
+
 // Contexts default to no-ops so worker SSR can render the tree without ever
 // reaching the highlight.js loader. `HljsProvider` (client-only) supplies the
 // real implementations.

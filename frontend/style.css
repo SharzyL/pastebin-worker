@@ -95,6 +95,17 @@
   padding-right: 0.5em;
 }
 
+/* Wrapped code: a grid with one row per line, so a number stays level with
+   the first row of its line however many rows the line wraps into */
+.wrapped-lines {
+  counter-reset: linenumber;
+}
+
+.wrapped-lines > .line-number::before {
+  content: counter(linenumber);
+  counter-increment: linenumber;
+}
+
 pre::after {
   content: "\A";
 }

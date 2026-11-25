@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import hljs from "highlight.js/lib/core"
 import xml from "highlight.js/lib/languages/xml"
 
-import { highlightHTML } from "../utils/highlight.js"
+import { highlightHTML, splitHighlightedLines } from "../utils/highlight.js"
 import { ALL_LANGUAGES, canonicalLangName } from "../utils/highlight-client.js"
 
 describe("highlight languages", () => {
@@ -31,5 +31,16 @@ describe("highlight languages", () => {
     expect(highlightHTML(hljs, "nope", content)).toBe("&lt;b&gt;hi&lt;/b&gt;")
     expect(highlightHTML(hljs, "plaintext", content)).toBe("&lt;b&gt;hi&lt;/b&gt;")
     expect(highlightHTML(undefined, "html", content)).toBe("&lt;b&gt;hi&lt;/b&gt;")
+  })
+
+  it("splits highlighted HTML into well-formed lines", () => {
+    expect(splitHighlightedLines("a\n\nb")).toStrictEqual(["a", "", "b"])
+    expect(splitHighlightedLines("a\n")).toStrictEqual(["a", ""])
+    // a span across a line break is closed and reopened
+    expect(splitHighlightedLines('x<span class="c">/* 1\n<span class="d">2</span>\n3 */</span>y')).toStrictEqual([
+      'x<span class="c">/* 1</span>',
+      '<span class="c"><span class="d">2</span></span>',
+      '<span class="c">3 */</span>y',
+    ])
   })
 })

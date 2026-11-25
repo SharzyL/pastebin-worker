@@ -7,6 +7,7 @@ import { tst } from "../utils/overrides.js"
 import { CodeView } from "../components/CodeView.js"
 import { MediaElement, mediaKindOf, mediaKindOfType } from "../components/MediaElement.js"
 import { FullscreenToggle } from "../components/FullscreenToggle.js"
+import { LineWrapToggle, useLineWrap } from "../components/LineWrapToggle.js"
 import { formatSize } from "../utils/utils.js"
 import { useFullscreen } from "../utils/useFullscreen.js"
 
@@ -86,20 +87,21 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
   const showPasteMedia = pasteFile !== undefined && pasteMediaKind !== null
   const pasteStringContent = pasteContentBuffer && new TextDecoder().decode(pasteContentBuffer)
 
-  // The content box can expand over the viewport; the toggle sits in its top
+  // The content box can expand over the viewport; the toggles sit in its top
   // right corner either way. In fullscreen the caption row stays put as a
   // bar and the content below it scrolls.
   const [isFullscreen, setFullscreen] = useFullscreen()
+  const [wrapLines, setWrapLines] = useLineWrap()
   const hasContent = !isLoading && (showFileContent || showRawMedia || showPasteMedia)
+  const showWrapToggle = !isLoading && showFileContent
   const fill = isFullscreen ? "flex-1 min-h-0 flex flex-col" : ""
-  // right padding keeps the caption clear of the toggle
-  const captionClasses = "text-gray-500 mb-2 pr-8 text-sm flex flex-row gap-2 items-center"
-  const fullscreenToggle = hasContent && (
-    <FullscreenToggle
-      isFullscreen={isFullscreen}
-      onToggle={() => setFullscreen(!isFullscreen)}
-      className="absolute top-1.5 right-1.5 z-10"
-    />
+  // right padding keeps the caption clear of the toggles
+  const captionClasses = `text-gray-500 mb-2 ${showWrapToggle ? "pr-16" : "pr-8"} text-sm flex flex-row gap-2 items-center`
+  const contentToggles = hasContent && (
+    <div className="absolute top-1.5 right-1.5 z-10 flex flex-row">
+      {showWrapToggle && <LineWrapToggle wrap={wrapLines} onToggle={() => setWrapLines(!wrapLines)} />}
+      <FullscreenToggle isFullscreen={isFullscreen} onToggle={() => setFullscreen(!isFullscreen)} />
+    </div>
   )
   const mediaClasses = isFullscreen ? "max-h-full" : ""
   const mediaWrapperClasses = isFullscreen ? "flex-1 min-h-0 flex items-center justify-center overflow-auto" : ""
@@ -211,7 +213,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
         </div>
         <div className={isFullscreen ? `fixed inset-0 z-50 flex flex-col bg-background p-3 ${tst}` : "my-4"}>
           <div className={`w-full bg-default-100 rounded-lg p-3 relative ${tst} ${fill}`}>
-            {fullscreenToggle}
+            {contentToggles}
             {isLoading ? (
               <div className="h-[10em] flex items-center justify-center">
                 <CircularProgress label={"Loading..."} />
@@ -264,7 +266,7 @@ export function DisplayPasteView(props: DisplayPasteViewProps) {
                         {pasteLang && <span className={"grow text-right"}>{pasteLang}</span>}
                       </div>
                       <div className={isFullscreen ? "flex-1 min-h-0 overflow-auto" : ""}>
-                        <CodeView content={pasteStringContent ?? ""} lang={pasteLang} />
+                        <CodeView content={pasteStringContent ?? ""} lang={pasteLang} wrap={wrapLines} />
                       </div>
                     </>
                   ) : (

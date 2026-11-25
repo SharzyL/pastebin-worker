@@ -267,3 +267,20 @@ export const ArrowsPointingInIcon = (props: HTMLAttributes<SVGElement>) => (
     />
   </svg>
 )
+
+export const WrapLinesIcon = (props: HTMLAttributes<SVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    {...props}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M3.75 5.25h16.5M3.75 12h13.125a3.375 3.375 0 0 1 0 6.75H12m0 0 2.25-2.25M12 18.75 14.25 21M3.75 18.75h4.5"
+    />
+  </svg>
+)

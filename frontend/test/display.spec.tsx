@@ -60,6 +60,40 @@ describe("DisplayPaste", () => {
     expect(article.textContent).toStrictEqual(text)
   })
 
+  it("wraps long lines on demand and remembers the choice", async () => {
+    const text = "first line\n\nthird line"
+    server.use(
+      ...mockPaste("abcd", {
+        body: new TextEncoder().encode(text).buffer,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      }),
+    )
+    vi.stubGlobal("location", new URL("https://example.com/d/abcd"))
+    localStorage.removeItem("wrapLines")
+
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+
+    const article = await screen.findByRole("article")
+    expect(article.querySelector("pre")).not.toBeNull()
+    const toggle = screen.getByRole("button", { name: "Wrap lines" })
+    expect(toggle).toHaveAttribute("aria-pressed", "false")
+
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute("aria-pressed", "true")
+    const wrapped = screen.getByRole("article")
+    expect(wrapped.querySelector("pre")).toBeNull()
+    expect(wrapped.querySelectorAll(".line-number")).toHaveLength(3)
+    expect(localStorage.getItem("wrapLines")).toStrictEqual("true")
+
+    // a later page starts wrapped
+    cleanup()
+    render(<DisplayPaste config={__WRANGLER_CONFIG__} />)
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Wrap lines" })).toHaveAttribute("aria-pressed", "true"),
+    )
+    localStorage.removeItem("wrapLines")
+  })
+
   it("renders plain image via raw URL without downloading bytes", async () => {
     // Body is irrelevant: the frontend should not GET it. We still provide a
     // GET handler that would fail loudly if it were called.
