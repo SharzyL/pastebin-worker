@@ -97,8 +97,8 @@ importers:
         specifier: ^3.9.9
         version: 3.9.9
       toml:
-        specifier: ^4.3.0
-        version: 4.3.0
+        specifier: ^5.0.1
+        version: 5.0.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -2140,8 +2140,8 @@ packages:
     resolution: {integrity: sha512-somxA8xKAUzlAxl0TX/jMSYIbRNFIVGnI96pVGJPeMc5BsHmfVXn6mOJT6U++ELnl04eGfzpfcEuZe8WiASkXg==}
     hasBin: true
 
-  toml@4.3.0:
-    resolution: {integrity: sha512-lVb8X9BsPVuH0M4BKeS91tXAmJvCjQ5UIyAbQFaxkKGyUFK2RPkhwaFSQH8vbpl1d23eu/IBH+dwVMHWaq9A5A==}
+  toml@5.0.1:
+    resolution: {integrity: sha512-EqYNA/YvUNndrA2B3O2ojzLQoTQrBxeZ9UIjQwk8t10oe6n7dwclBwd9IdZQTOKwe6vWX+AXtl6IntXRbepdxQ==}
     engines: {node: '>=20'}
 
   tough-cookie@5.1.2:
@@ -4255,7 +4255,7 @@ snapshots:
     dependencies:
       tldts-core: 7.4.18
 
-  toml@4.3.0: {}
+  toml@5.0.1: {}
 
   tough-cookie@5.1.2:
     dependencies:
